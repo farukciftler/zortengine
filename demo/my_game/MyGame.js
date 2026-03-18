@@ -1,11 +1,11 @@
 import { Engine } from 'zortengine';
-import { IsometricBattleScene } from './IsometricBattleScene.js';
+import { RunScene } from '../../game/scenes/RunScene.js';
 
 export class MyGame extends Engine {
     constructor() {
         super(document.body);
-        this.addScene('battle', new IsometricBattleScene());
-        this.useScene('battle');
+        this.addScene('run', new RunScene());
+        this.useScene('run');
         this.start();
     }
 }

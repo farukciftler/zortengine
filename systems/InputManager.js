@@ -13,7 +13,8 @@ export class InputManager {
             'left': ['a', 'arrowleft'],
             'right': ['d', 'arrowright'],
             'attack': [],
-            'jump': [' ']
+            'jump': [' '],
+            'skill1': ['q']
         };
         this.events = new EventEmitter();
 
@@ -66,11 +67,15 @@ export class InputManager {
             this.platform.addEventListener('window', 'keydown', event => {
                 const key = event.key.toLowerCase();
 
-                if (key === ' ' || key.startsWith('arrow')) {
+                if (key === ' ' || key === 'q' || key.startsWith('arrow')) {
                     event.preventDefault();
                 }
 
                 this.keys[key] = true;
+
+                if (event.repeat) {
+                    return;
+                }
 
                 if (event.key === ' ' && this.onJump) {
                     this.onJump();
@@ -78,6 +83,10 @@ export class InputManager {
 
                 if (event.key === ' ') {
                     this.triggerAction('jump');
+                }
+
+                if (key === 'q') {
+                    this.triggerAction('skill1');
                 }
 
                 if (key === 'v') {

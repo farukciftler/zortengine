@@ -8,12 +8,15 @@ export { SystemManager } from './core/SystemManager.js';
 // Objects
 export { Component } from './objects/Component.js';
 export { GameObject } from './objects/GameObject.js';
+export { HealthComponent } from './objects/HealthComponent.js';
 export { ModularCharacter } from './objects/ModularCharacter.js';
 export { Enemy } from './objects/Enemy.js';
 
 // Systems
 export { AudioManager } from './systems/AudioManager.js';
+export { AbilitySystem } from './systems/AbilitySystem.js';
 export { CameraManager } from './systems/CameraManager.js';
+export { DamageSystem } from './systems/DamageSystem.js';
 export { InputManager } from './systems/InputManager.js';
 export { ParticleManager } from './systems/ParticleManager.js';
 export { PhysicsManager } from './systems/PhysicsManager.js';
