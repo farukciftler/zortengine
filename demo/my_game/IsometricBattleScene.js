@@ -96,6 +96,16 @@ export class IsometricBattleScene extends GameScene {
         const dirLight = new THREE.DirectionalLight(0xffffff, 0.9);
         dirLight.position.set(10, 20, 10);
         dirLight.castShadow = true;
+        dirLight.shadow.mapSize.width = 2048;
+        dirLight.shadow.mapSize.height = 2048;
+        dirLight.shadow.camera.left = -60;
+        dirLight.shadow.camera.right = 60;
+        dirLight.shadow.camera.top = 60;
+        dirLight.shadow.camera.bottom = -60;
+        dirLight.shadow.camera.near = 1;
+        dirLight.shadow.camera.far = 120;
+        dirLight.shadow.bias = -0.0002;
+        dirLight.shadow.normalBias = 0.02;
         this.threeScene.add(dirLight);
     }
 
@@ -276,7 +286,6 @@ export class IsometricBattleScene extends GameScene {
             this.cameraMode = 'tps';
             camera.setPreset('tps');
             input.isFpsMode = true;
-            this.hud.setCrosshairVisible(true);
             this.hud.updateInfo('TPS modu: ekrana tikla, fare kilitlensin. V ile tekrar 2.5D moda don.');
             if (movement) movement.setMode('tps');
         } else {
@@ -284,7 +293,6 @@ export class IsometricBattleScene extends GameScene {
             camera.setPreset('2.5d');
             input.isFpsMode = false;
             input.exitPointerLock();
-            this.hud.setCrosshairVisible(false);
             this.hud.updateInfo('2.5D izometrik mod: WASD ile hareket et, tiklayarak veya Space ile ates et.');
             if (movement) movement.setMode('isometric');
         }

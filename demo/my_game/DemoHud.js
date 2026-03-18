@@ -16,8 +16,6 @@ export class DemoHud {
             60,
             { color: '#bdc3c7', size: 16 }
         );
-        this.ui.addCrosshair('crosshair');
-        this.setCrosshairVisible(false);
     }
 
     updateAmmo(freeCount, totalCount = 20) {
