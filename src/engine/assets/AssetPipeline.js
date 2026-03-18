@@ -2,6 +2,7 @@ export class AssetPipeline {
     constructor(options = {}) {
         this.manifest = options.manifest;
         this.loader = options.loader;
+        this.store = options.store || null;
     }
 
     validateManifest() {
@@ -17,15 +18,31 @@ export class AssetPipeline {
         };
     }
 
-    async preloadGroup(group = 'default') {
+    async preloadGroup(group = 'default', options = {}) {
         const assets = this.manifest?.getGroup?.(group) || [];
+        const total = assets.length || 1;
+        let loaded = 0;
+
         for (const asset of assets) {
-            if (asset.type === 'texture') {
-                await this.loader.loadTexture(asset.id, asset.url);
+            if (this.store?.load) {
+                await this.store.load(asset, {
+                    owner: options.owner || `group:${group}`,
+                    signal: options.signal,
+                    onProgress: progress => options.onProgress?.({
+                        ...progress,
+                        loaded: loaded + progress.loaded,
+                        total
+                    })
+                });
+            } else {
+                await this.loader.load(asset, options);
             }
-            if (asset.type === 'model') {
-                await this.loader.loadModel(asset.id, asset.url);
-            }
+            loaded += 1;
+            options.onProgress?.({
+                id: asset.id,
+                loaded,
+                total
+            });
         }
         return assets.length;
     }

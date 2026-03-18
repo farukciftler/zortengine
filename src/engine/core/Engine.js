@@ -1,26 +1,72 @@
-import * as THREE from 'three';
 import { EventEmitter } from '../events/EventEmitter.js';
 import { BrowserPlatform } from '../../adapters/browser/BrowserPlatform.js';
+import { ThreeRendererAdapter } from '../../adapters/render/ThreeRendererAdapter.js';
 import { GameScene } from './GameScene.js';
 import { SceneManager } from './SceneManager.js';
 import { InspectorRegistry } from '../../tooling/inspector/InspectorRegistry.js';
 import { ReplayRecorder } from '../snapshot/ReplayRecorder.js';
 import { SeededRandom } from '../snapshot/SeededRandom.js';
+import { PluginRegistry } from '../plugin/PluginRegistry.js';
+import { AssetStore } from '../assets/AssetStore.js';
+
+class EngineClock {
+    constructor(options = {}) {
+        this.now = options.now || (() => {
+            if (typeof performance !== 'undefined' && typeof performance.now === 'function') {
+                return performance.now() / 1000;
+            }
+            return Date.now() / 1000;
+        });
+        this.started = false;
+        this.lastTime = 0;
+    }
+
+    start() {
+        this.lastTime = this.now();
+        this.started = true;
+    }
+
+    getDelta() {
+        const currentTime = this.now();
+        if (!this.started) {
+            this.lastTime = currentTime;
+            this.started = true;
+            return 0;
+        }
+        const delta = currentTime - this.lastTime;
+        this.lastTime = currentTime;
+        return Math.max(0, delta);
+    }
+}
 
 export class Engine {
     constructor(container, options = {}) {
         this.isHeadless = options.headless || false;
         this.platform = options.platform || new BrowserPlatform();
-        this.clock = new THREE.Clock();
+        this.clock = options.clock || new EngineClock();
         this.events = new EventEmitter();
         this.random = options.random || new SeededRandom(options.seed || 'zortengine');
         this.inspector = options.inspector || new InspectorRegistry();
         this.replayRecorder = options.replayRecorder || new ReplayRecorder();
+        this.plugins = new PluginRegistry(this, {
+            scope: 'engine',
+            events: this.events
+        });
+        this.assets = options.assets || new AssetStore();
+        this.assetLoader = options.assetLoader || options.loader || this.assets.loader || null;
+        if (this.assetLoader && !this.assets.loader) {
+            this.assets.setLoader(this.assetLoader);
+        }
         this.objects = [];
         this.scene = null;
+        this.sceneHandle = null;
         this.camera = null;
         this.renderer = null;
         this.postProcessor = null;
+        this.renderAdapter = this.isHeadless
+            ? null
+            : (options.rendererAdapter || new ThreeRendererAdapter(options.renderOptions || {}));
+        this.rendererAdapter = this.renderAdapter;
         this.sceneManager = new SceneManager(this);
         this.defaultScene = null;
         this.fixedDelta = options.fixedDelta || 1 / 60;
@@ -29,14 +75,14 @@ export class Engine {
         this.simulationTime = 0;
         this.tick = 0;
 
-        if (!this.isHeadless) {
+        if (!this.isHeadless && this.renderAdapter) {
             const viewport = this.platform.getViewportSize();
             this.container = container || this.platform.getBody();
-            this.renderer = new THREE.WebGLRenderer({ antialias: true });
-            this.renderer.setSize(viewport.width, viewport.height);
-            this.renderer.shadowMap.enabled = true;
-            this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-            this.container.appendChild(this.renderer.domElement);
+            this.renderer = this.renderAdapter.mount({
+                container: this.container,
+                platform: this.platform,
+                viewport
+            });
             this.removeResizeListener = this.platform.addEventListener(
                 'window',
                 'resize',
@@ -94,6 +140,24 @@ export class Engine {
         return this.sceneManager.getActiveScene()?.getSystem(name) || null;
     }
 
+    use(plugin, options = {}) {
+        return this.plugins.use(plugin, options);
+    }
+
+    hasCapability(capability) {
+        return this.plugins.hasCapability(capability);
+    }
+
+    getPlugin(id) {
+        return this.plugins.getPlugin(id);
+    }
+
+    setAssetLoader(loader) {
+        this.assetLoader = loader;
+        this.assets.setLoader(loader);
+        return this;
+    }
+
     start() {
         this.clock.start();
         this.loop();
@@ -130,22 +194,19 @@ export class Engine {
     }
 
     render() {
-        if (this.isHeadless || !this.renderer) return;
+        if (this.isHeadless || !this.renderAdapter) return;
 
         const activeScene = this.sceneManager.getActiveScene();
-        const renderScene = activeScene ? activeScene.threeScene : this.scene;
+        const renderScene = activeScene ? activeScene.getSceneHandle?.() : this.sceneHandle;
         const activeCamera = activeScene ? activeScene.getCamera() : this.camera;
         const activePostProcessor = activeScene ? activeScene.getPostProcessor() : this.postProcessor;
 
         if (activeCamera && renderScene) {
-            const cam = activeCamera.getThreeCamera ? activeCamera.getThreeCamera() : activeCamera;
-
-            if (activePostProcessor) {
-                activePostProcessor.setCamera(cam);
-                activePostProcessor.render();
-            } else {
-                this.renderer.render(renderScene, cam);
-            }
+            this.renderAdapter.render({
+                scene: renderScene,
+                camera: activeCamera,
+                postProcessor: activePostProcessor
+            });
         }
     }
 
@@ -154,7 +215,7 @@ export class Engine {
 
         const viewport = this.platform.getViewportSize();
         const aspect = viewport.width / viewport.height;
-        this.renderer.setSize(viewport.width, viewport.height);
+        this.renderAdapter?.resize?.(viewport.width, viewport.height);
 
         const activeScene = this.sceneManager.getActiveScene();
         if (activeScene) {
@@ -184,8 +245,9 @@ export class Engine {
         }
 
         if (this.renderer) {
-            this.renderer.dispose();
+            this.renderAdapter?.dispose?.();
         }
+        this.events.emit('engine:destroyed');
     }
 
     getSimulationStats() {
@@ -235,10 +297,12 @@ export class Engine {
     }
 
     _syncConvenienceRefs(scene) {
-        this.scene = scene ? scene.threeScene : this.scene;
+        this.sceneHandle = scene ? scene.getSceneHandle?.() || null : null;
+        this.scene = scene ? scene.getRenderScene?.() || null : null;
         this.objects = scene ? scene.objects : this.objects;
         this.camera = scene ? scene.getCamera() : this.camera;
         this.physics = scene ? scene.getSystem('physics') : null;
         this.postProcessor = scene ? scene.getPostProcessor() : this.postProcessor;
+        this.renderer = this.renderAdapter?.renderer || this.renderer;
     }
 }

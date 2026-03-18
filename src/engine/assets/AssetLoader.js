@@ -1,92 +1,77 @@
-import * as THREE from 'three';
-
 export class AssetLoader {
-    constructor() {
-        this.textures = new Map();
-        this.models = new Map();
-
-        this.textureLoader = new THREE.TextureLoader();
-        this.gltfLoader = null;
+    constructor(options = {}) {
+        this.capabilities = new Map();
+        this.cache = new Map();
+        this.disposer = options.dispose || null;
     }
 
-    loadTexture(name, url) {
-        return new Promise((resolve, reject) => {
-            if (this.textures.has(name)) {
-                resolve(this.textures.get(name));
-                return;
-            }
-
-            this.textureLoader.load(
-                url,
-                texture => {
-                    this.textures.set(name, texture);
-                    resolve(texture);
-                },
-                undefined,
-                err => {
-                    console.error(`Texture failed to load: ${url}`);
-                    reject(err);
-                }
-            );
-        });
+    registerCapability(type, capability) {
+        if (!type || !capability?.load) return this;
+        this.capabilities.set(type, capability);
+        return this;
     }
 
-    loadModel(name, url) {
-        return new Promise((resolve, reject) => {
-            if (this.models.has(name)) {
-                resolve(this.models.get(name));
-                return;
-            }
+    getCapability(type) {
+        return this.capabilities.get(type) || null;
+    }
 
-            this._getGltfLoader()
-                .then(loader => {
-                    loader.load(
-                        url,
-                        gltf => {
-                            this.models.set(name, gltf);
-                            resolve(gltf);
-                        },
-                        undefined,
-                        err => {
-                            console.error(`Model failed to load: ${url}`);
-                            reject(err);
-                        }
-                    );
-                })
-                .catch(reject);
-        });
+    async load(definition, options = {}) {
+        if (!definition?.id) {
+            throw new Error('Asset definition id gerekli.');
+        }
+
+        if (this.cache.has(definition.id)) {
+            return this.cache.get(definition.id);
+        }
+
+        const capability = this.getCapability(definition.type);
+        if (!capability) {
+            throw new Error(`Asset type '${definition.type}' icin capability tanimli degil.`);
+        }
+
+        const resource = await capability.load(definition, options);
+        this.cache.set(definition.id, resource);
+        return resource;
+    }
+
+    dispose(resource, definition) {
+        const capability = definition ? this.getCapability(definition.type) : null;
+        capability?.dispose?.(resource, definition);
+        this.disposer?.(resource, definition);
+    }
+
+    async loadTexture(name, url, options = {}) {
+        return this.load({ id: name, url, type: 'texture' }, options);
+    }
+
+    async loadModel(name, url, options = {}) {
+        return this.load({ id: name, url, type: 'model' }, options);
+    }
+
+    get(name) {
+        return this.cache.get(name) || null;
     }
 
     getTexture(name) {
-        return this.textures.get(name) || null;
+        return this.get(name);
     }
 
     getModel(name) {
-        return this.models.get(name) || null;
+        return this.get(name);
     }
 
-    async loadMultiple(assetsConfig) {
+    async loadMultiple(assetsConfig, options = {}) {
         const promises = [];
         if (assetsConfig.textures) {
             for (const [name, url] of Object.entries(assetsConfig.textures)) {
-                promises.push(this.loadTexture(name, url));
+                promises.push(this.loadTexture(name, url, options));
             }
         }
         if (assetsConfig.models) {
             for (const [name, url] of Object.entries(assetsConfig.models)) {
-                promises.push(this.loadModel(name, url));
+                promises.push(this.loadModel(name, url, options));
             }
         }
         await Promise.all(promises);
-    }
-
-    async _getGltfLoader() {
-        if (this.gltfLoader) {
-            return this.gltfLoader;
-        }
-
-        const { GLTFLoader } = await import('three/examples/jsm/loaders/GLTFLoader.js');
-        this.gltfLoader = new GLTFLoader();
-        return this.gltfLoader;
     }
 }

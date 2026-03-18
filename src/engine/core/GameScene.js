@@ -1,12 +1,35 @@
 import * as THREE from 'three';
 import { SystemManager } from './SystemManager.js';
 import { EventEmitter } from '../events/EventEmitter.js';
+import { PluginRegistry } from '../plugin/PluginRegistry.js';
+
+function createFallbackSceneHandle(nativeScene = null) {
+    return {
+        add(node) {
+            const nativeNode = node?.getNativeNode?.() || node?.group || node?.mesh || node;
+            nativeScene?.add?.(nativeNode);
+        },
+        remove(node) {
+            const nativeNode = node?.getNativeNode?.() || node?.group || node?.mesh || node;
+            nativeScene?.remove?.(nativeNode);
+        },
+        setBackground(background) {
+            if (nativeScene) {
+                nativeScene.background = background;
+            }
+        },
+        getNativeScene() {
+            return nativeScene;
+        }
+    };
+}
 
 export class GameScene {
     constructor(options = {}) {
         this.name = options.name || 'scene';
         this.background = options.background;
-        this.threeScene = options.threeScene || new THREE.Scene();
+        this.sceneHandle = options.sceneHandle || null;
+        this.threeScene = options.threeScene || this.sceneHandle?.getNativeScene?.() || new THREE.Scene();
         this.objects = [];
         this.systems = new SystemManager();
         this.engine = null;
@@ -15,10 +38,12 @@ export class GameScene {
         this.isSetup = false;
         this.events = new EventEmitter();
         this.objectFactories = new Map();
+        this.plugins = new PluginRegistry(this, {
+            scope: 'scene'
+        });
+        this.assetScope = `scene:${this.name}`;
 
-        if (this.background !== undefined) {
-            this.threeScene.background = this.background;
-        }
+        this.sceneHandle?.setBackground?.(this.background);
     }
 
     setup() {
@@ -39,6 +64,14 @@ export class GameScene {
 
     attach(engine) {
         this.engine = engine;
+        this.plugins.parent = engine.plugins;
+        if (!this.sceneHandle) {
+            this.sceneHandle = engine.renderAdapter?.createSceneHandle?.({
+                background: this.background,
+                nativeScene: this.threeScene
+            }) || createFallbackSceneHandle(this.threeScene);
+        }
+        this.threeScene = this.sceneHandle?.getNativeScene?.() || this.threeScene;
         this.systems.setContext({ engine, scene: this });
         engine.inspector?.registerScene?.(this);
 
@@ -48,10 +81,13 @@ export class GameScene {
         }
 
         this.onEnter();
+        this.events.emit('scene:entered', { name: this.name });
     }
 
     detach() {
         this.onExit();
+        this.releaseOwnedAssets();
+        this.events.emit('scene:exited', { name: this.name });
         this.systems.clearContext();
         this.engine = null;
     }
@@ -68,19 +104,23 @@ export class GameScene {
         this.events.emit(eventName, payload);
     }
 
+    use(plugin, options = {}) {
+        return this.plugins.use(plugin, options);
+    }
+
     add(object) {
         if (!object || this.objects.includes(object)) return object;
 
         this.objects.push(object);
 
         if (typeof object.attachToScene === 'function') {
-            object.attachToScene(this.threeScene, this);
+            object.attachToScene(this.sceneHandle || this.threeScene, this);
         } else if (object.mesh) {
-            this.threeScene.add(object.mesh);
+            this.sceneHandle?.add?.(object.mesh);
         } else if (object.group) {
-            this.threeScene.add(object.group);
-        } else if (object instanceof THREE.Object3D) {
-            this.threeScene.add(object);
+            this.sceneHandle?.add?.(object.group);
+        } else {
+            this.sceneHandle?.add?.(object);
         }
 
         if (typeof object.onAddedToScene === 'function') {
@@ -101,13 +141,13 @@ export class GameScene {
         if (!object) return;
 
         if (typeof object.detachFromScene === 'function') {
-            object.detachFromScene(this.threeScene, this);
+            object.detachFromScene(this.sceneHandle || this.threeScene, this);
         } else if (object.mesh) {
-            this.threeScene.remove(object.mesh);
+            this.sceneHandle?.remove?.(object.mesh);
         } else if (object.group) {
-            this.threeScene.remove(object.group);
-        } else if (object instanceof THREE.Object3D) {
-            this.threeScene.remove(object);
+            this.sceneHandle?.remove?.(object.group);
+        } else {
+            this.sceneHandle?.remove?.(object);
         }
 
         if (typeof object.onRemovedFromScene === 'function') {
@@ -135,6 +175,14 @@ export class GameScene {
 
     getObjectFactory(type) {
         return this.objectFactories.get(type) || null;
+    }
+
+    getSceneHandle() {
+        return this.sceneHandle;
+    }
+
+    getRenderScene() {
+        return this.sceneHandle?.getNativeScene?.() || this.threeScene || null;
     }
 
     setCamera(camera) {
@@ -175,7 +223,38 @@ export class GameScene {
 
     dispose() {
         [...this.objects].forEach(object => this.remove(object));
+        this.releaseOwnedAssets();
         this.systems.dispose();
+    }
+
+    async retainAsset(assetOrId, options = {}) {
+        if (!this.engine?.assets) return null;
+        const owner = options.owner || this.assetScope;
+        const handle = typeof assetOrId === 'string'
+            ? this.engine.assets.retain(assetOrId, owner)
+            : await this.engine.assets.load(assetOrId, { ...options, owner });
+
+        if (handle) {
+            this.events.emit('asset:retained', { id: handle.id, owner });
+        }
+        return handle;
+    }
+
+    releaseAsset(id, options = {}) {
+        if (!this.engine?.assets) return false;
+        const owner = options.owner || this.assetScope;
+        const released = this.engine.assets.release(id, {
+            owner,
+            dispose: options.dispose
+        });
+        if (released) {
+            this.events.emit('asset:released', { id, owner });
+        }
+        return released;
+    }
+
+    releaseOwnedAssets() {
+        this.engine?.assets?.releaseOwner?.(this.assetScope);
     }
 
     serializeState() {

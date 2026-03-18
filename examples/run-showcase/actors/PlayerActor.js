@@ -1,4 +1,4 @@
-import { HealthComponent, ModularCharacter } from 'zortengine/objects';
+import { HealthComponent, ModularCharacter } from 'zortengine/gameplay';
 
 export class PlayerActor extends ModularCharacter {
     constructor(scene, x, z, options = {}) {

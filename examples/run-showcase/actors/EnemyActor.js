@@ -1,4 +1,4 @@
-import { Enemy, HealthComponent } from 'zortengine/objects';
+import { Enemy, HealthComponent } from 'zortengine/gameplay';
 
 export class EnemyActor extends Enemy {
     constructor(scene, x, z, playerTarget, options = {}) {

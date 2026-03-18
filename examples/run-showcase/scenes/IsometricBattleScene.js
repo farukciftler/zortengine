@@ -5,15 +5,15 @@ import {
     GameScene,
 } from 'zortengine';
 import {
-    AudioManager,
     CameraManager,
     InputManager,
-    ParticleManager,
     UIManager
 } from 'zortengine/browser';
+import { AudioManager } from 'zortengine/audio';
 import { MemoryCleaner } from 'zortengine/devtools';
-import { Enemy, ModularCharacter } from 'zortengine/objects';
+import { Enemy, ModularCharacter } from 'zortengine/gameplay';
 import { PhysicsManager } from 'zortengine/physics';
+import { ParticleManager } from 'zortengine/render';
 import { DemoHud } from '../app/DemoHud.js';
 import { PlayerMovementController } from '../app/PlayerMovementController.js';
 import { ProjectileSystem } from '../app/ProjectileSystem.js';
@@ -37,7 +37,7 @@ export class IsometricBattleScene extends GameScene {
                 restitution: 0.02
             }
         }), { priority: 100 });
-        const cameraManager = this.registerSystem('camera', new CameraManager(this.threeScene), { priority: 10 });
+        const cameraManager = this.registerSystem('camera', new CameraManager(this.getRenderScene()), { priority: 10 });
         const input = this.registerSystem(
             'input',
             new InputManager({
@@ -48,7 +48,7 @@ export class IsometricBattleScene extends GameScene {
             }),
             { priority: 5 }
         );
-        const particles = this.registerSystem('particles', new ParticleManager(this.threeScene), { priority: 110 });
+        const particles = this.registerSystem('particles', new ParticleManager(this.getRenderScene()), { priority: 110 });
         const ui = this.registerSystem(
             'ui',
             new UIManager({

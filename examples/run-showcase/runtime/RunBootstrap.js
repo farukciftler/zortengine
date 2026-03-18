@@ -1,10 +1,10 @@
 import {
-    AudioManager,
     CameraManager,
     InputManager,
-    ParticleManager,
     UIManager
 } from 'zortengine/browser';
+import { AudioManager } from 'zortengine/audio';
+import { ParticleManager } from 'zortengine/render';
 import {
     DebugOverlaySystem,
     EventTraceSystem,
@@ -32,14 +32,14 @@ export class RunBootstrap {
                 restitution: 0.02
             }
         }), { priority: 100 });
-        const cameraManager = this.scene.registerSystem('camera', new CameraManager(this.scene.threeScene), { priority: 10 });
+        const cameraManager = this.scene.registerSystem('camera', new CameraManager(this.scene.getRenderScene()), { priority: 10 });
         const input = this.scene.registerSystem('input', new InputManager({
             platform,
             domElement: this.scene.engine.renderer?.domElement,
             pointerLockElement: this.scene.engine.renderer?.domElement,
             autoAttach: false
         }), { priority: 5 });
-        const particles = this.scene.registerSystem('particles', new ParticleManager(this.scene.threeScene), { priority: 110 });
+        const particles = this.scene.registerSystem('particles', new ParticleManager(this.scene.getRenderScene()), { priority: 110 });
         const damage = this.scene.registerSystem('damage', new DamageSystem(), { priority: 103 });
         this.scene.modifierSystem = this.scene.registerSystem('modifiers', new ModifierSystem(), { priority: 101 });
         const abilities = this.scene.registerSystem('abilities', new AbilitySystem(), { priority: 104 });

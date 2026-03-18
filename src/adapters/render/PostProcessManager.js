@@ -22,7 +22,7 @@ export class PostProcessManager {
     }
 
     setCamera(camera) {
-        this.renderPass.camera = camera;
+        this.renderPass.camera = camera?.getNativeCamera?.() || camera?.getThreeCamera?.() || camera;
     }
 
     setBloomOptions(strength, radius, threshold) {

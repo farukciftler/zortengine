@@ -6,7 +6,7 @@ export class AudioManager {
         try {
             this.listener = new THREE.AudioListener();
 
-            const threeCam = camera.getThreeCamera ? camera.getThreeCamera() : camera;
+            const threeCam = camera.getNativeCamera ? camera.getNativeCamera() : (camera.getThreeCamera ? camera.getThreeCamera() : camera);
             threeCam?.add?.(this.listener);
         } catch {
             this.listener = null;

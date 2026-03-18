@@ -3,7 +3,6 @@ import {
     GameScene
 } from 'zortengine';
 import {
-    AssetLoader,
     AssetManifest,
     AssetPipeline,
     PrefabFactory
@@ -11,6 +10,7 @@ import {
 import {
     MemoryCleaner
 } from 'zortengine/devtools';
+import { ThreeAssetLoader } from 'zortengine/render';
 import {
     CollectibleSystem,
     EncounterDirector,
@@ -22,7 +22,7 @@ import {
 import {
     CollectibleActor,
     ObjectiveZoneActor
-} from 'zortengine/objects';
+} from 'zortengine/gameplay';
 import { SaveManager } from 'zortengine/persistence';
 import { createDashAbility } from '../abilities/DashAbility.js';
 import { createPrimaryFireAbility } from '../abilities/PrimaryFireAbility.js';
@@ -79,10 +79,12 @@ export class RunScene extends GameScene {
             namespace: 'zortengine-run'
         });
         this.assetManifest = new AssetManifest();
-        this.assetLoader = new AssetLoader();
+        this.assetLoader = this.engine.assetLoader || new ThreeAssetLoader();
+        this.engine.setAssetLoader?.(this.assetLoader);
         this.assetPipeline = new AssetPipeline({
             manifest: this.assetManifest,
-            loader: this.assetLoader
+            loader: this.assetLoader,
+            store: this.engine.assets
         });
         this.effectRegistry = new EffectRegistry();
         registerRunEffects(this.effectRegistry);

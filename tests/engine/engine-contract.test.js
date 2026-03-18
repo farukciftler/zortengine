@@ -1,25 +1,32 @@
 import assert from 'node:assert/strict';
 import * as rootApi from 'zortengine';
 import { HeadlessHarness, GameObject, GameScene } from 'zortengine';
-import { AssetLoader, AssetManifest, AssetPipeline } from 'zortengine/assets';
+import { AssetLoader, AssetManifest, AssetPipeline, AssetStore } from 'zortengine/assets';
+import { AudioManager } from 'zortengine/audio';
 import { BrowserPlatform } from 'zortengine/browser';
 import { MemoryCleaner } from 'zortengine/devtools';
+import { ModularCharacter } from 'zortengine/gameplay';
 import { ObjectPool as RootPool } from 'zortengine';
 import { WebSocketTransport } from 'zortengine/networking';
 import { PhysicsManager } from 'zortengine/physics';
 import { SaveManager } from 'zortengine/persistence';
+import { ThreeRendererAdapter } from 'zortengine/render';
 
 assert.ok(rootApi.Engine, 'Engine root API icinde olmali');
 assert.ok(rootApi.GameScene, 'GameScene root API icinde olmali');
 assert.ok(rootApi.GameObject, 'GameObject root API icinde olmali');
 assert.equal(rootApi.PhysicsManager, undefined, 'PhysicsManager root API disinda kalmali');
 assert.equal(rootApi.UIManager, undefined, 'UIManager root API disinda kalmali');
+assert.equal(rootApi.AudioManager, undefined, 'AudioManager root API disinda kalmali');
 
-assert.ok(AssetLoader && AssetManifest && AssetPipeline, 'Asset entrypoint calismali');
+assert.ok(AssetLoader && AssetManifest && AssetPipeline && AssetStore, 'Asset entrypoint calismali');
+assert.ok(AudioManager, 'Audio entrypoint calismali');
 assert.ok(BrowserPlatform, 'Browser entrypoint calismali');
 assert.ok(MemoryCleaner, 'Devtools entrypoint calismali');
+assert.ok(ModularCharacter, 'Gameplay entrypoint calismali');
 assert.ok(WebSocketTransport, 'Networking transport entrypoint calismali');
 assert.ok(PhysicsManager, 'Physics entrypoint calismali');
+assert.ok(ThreeRendererAdapter, 'Render entrypoint calismali');
 assert.ok(SaveManager, 'Persistence entrypoint calismali');
 assert.ok(RootPool, 'Root API yardimcilari korunmali');
 
@@ -95,6 +102,7 @@ harness.step(1);
 
 assert.deepEqual(sceneA.log, ['early', 'late'], 'System priority sirasi korunmali');
 assert.equal(sceneA.enterCount, 1, 'Ilk scene attach olmali');
+assert.ok(sceneA.getSceneHandle(), 'Scene handle contract kurulmus olmali');
 
 const snapshot = sceneA.serializeState();
 sceneA.remove(sceneA.testObject);
@@ -104,6 +112,62 @@ const restoredObject = sceneA.objects.find(object => object instanceof TestObjec
 assert.ok(restoredObject, 'Object factory ile restore calismali');
 assert.equal(restoredObject.value, 9, 'Restore edilen object verisi korunmali');
 assert.deepEqual(sceneA.early.restoredSnapshot, { name: 'early', visits: 2 }, 'System restore snapshot almali');
+
+const pluginApi = harness.engine.use({
+    manifest: {
+        id: 'contract-plugin',
+        scope: 'engine',
+        capabilities: ['contract-test']
+    },
+    install(context) {
+        return {
+            scope: context.scope,
+            ready: true
+        };
+    }
+});
+
+assert.equal(pluginApi.ready, true, 'Engine plugin api donmeli');
+assert.equal(harness.engine.hasCapability('contract-test'), true, 'Engine capability kaydi olmali');
+
+const scenePluginApi = sceneA.use({
+    manifest: {
+        id: 'scene-contract-plugin',
+        scope: 'scene',
+        dependencies: ['contract-plugin']
+    },
+    install(context) {
+        return {
+            hasDependency: Boolean(context.getPlugin('contract-plugin'))
+        };
+    }
+});
+
+assert.equal(scenePluginApi.hasDependency, true, 'Scene plugin engine pluginlerine ulasabilmeli');
+
+const loader = new AssetLoader().registerCapability('text', {
+    load: definition => `loaded:${definition.url}`
+});
+harness.engine.setAssetLoader(loader);
+const assetManifest = new AssetManifest();
+const textAsset = assetManifest.register('contract-text', {
+    url: '/contract.txt',
+    type: 'text',
+    group: 'tests',
+    preload: true
+});
+const assetPipeline = new AssetPipeline({
+    manifest: assetManifest,
+    loader,
+    store: harness.engine.assets
+});
+await assetPipeline.preloadGroup('tests', {
+    owner: sceneA.assetScope
+});
+const assetHandle = harness.engine.assets.get('contract-text');
+assert.equal(assetHandle.resource, 'loaded:/contract.txt', 'Asset store resource saklamali');
+sceneA.releaseOwnedAssets();
+assert.equal(harness.engine.assets.has('contract-text'), false, 'Scene scope release dispose tetiklemeli');
 
 harness.engine.useScene('scene-b');
 assert.equal(sceneA.exitCount, 1, 'Aktif scene detach olmali');

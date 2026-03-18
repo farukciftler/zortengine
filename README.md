@@ -1,13 +1,14 @@
 # ZortEngine
 
-`ZortEngine`, Three.js ustune kurulu scene-centric bir oyun runtime/framework cekirdegidir. Repo artik tek bir karma barrel export yerine **minimal root API + amaca ozel alt entrypoint'ler** yaklasimini izler.
+`ZortEngine`, Three.js ustune kurulu scene-centric bir oyun runtime/framework cekirdegidir. V2 tabaniyla birlikte repo artik yalnizca klasor olarak degil, **contract-first platform** olarak organize edilir: cekirdek runtime soyut contract'lari korur, concrete Three.js/browser uygulamalari adapter katmaninda kalir.
 
 ## Framework Sinirlari
 
-- `src/engine/`: cekirdek runtime ve scene lifecycle
+- `src/engine/`: cekirdek runtime, plugin host, asset ownership ve scene lifecycle
 - `src/adapters/`: browser, audio, render ve physics baglantilari
 - `src/tooling/`: debug, inspector ve headless yardimcilari
 - `src/kits/`: opinionated ama tekrar kullanilabilir gameplay modulleri
+- `src/gameplay/`: sample ve kit actor facade'lari
 - `examples/run-showcase/`: sample uygulama
 - `server/lobby/`: showcase lobby sunucusu
 - `package.json` icindeki `exports`: public package girislerini dogrudan `src/...` altina baglar
@@ -19,10 +20,12 @@ Root `zortengine` export'u yalnizca su siniflari sunar:
 - `Engine`
 - `GameScene`
 - `SceneManager`
+- `System`
 - `SystemManager`
 - `GameObject`
 - `Component`
 - `EventEmitter`
+- `PluginRegistry`
 - `SeededRandom`
 - `ObjectPool`
 - `HeadlessHarness`
@@ -34,10 +37,13 @@ Opinionated veya platforma ozel moduller alt entrypoint'lerden alinmalidir.
 ```js
 import { Engine, GameScene } from 'zortengine';
 import { BrowserPlatform, InputManager, UIManager } from 'zortengine/browser';
+import { AudioManager } from 'zortengine/audio';
 import { PhysicsManager } from 'zortengine/physics';
-import { AssetLoader, AssetManifest, AssetPipeline } from 'zortengine/assets';
+import { AssetManifest, AssetPipeline, AssetStore } from 'zortengine/assets';
+import { ThreeAssetLoader, ThreeRendererAdapter } from 'zortengine/render';
 import { SaveManager, ReplayRecorder } from 'zortengine/persistence';
 import { WebSocketTransport } from 'zortengine/networking';
+import { ModularCharacter } from 'zortengine/gameplay';
 ```
 
 ## Browser Kurulumu
@@ -53,14 +59,17 @@ Bundler olmadan `importmap` ile calisacaksaniz root package ve kullandiginiz alt
     "three/examples/jsm/": "https://cdn.jsdelivr.net/npm/three@0.128.0/examples/jsm/",
     "cannon-es": "https://cdn.jsdelivr.net/npm/cannon-es@0.20.0/dist/cannon-es.js",
     "zortengine": "./src/engine/index.js",
+    "zortengine/audio": "./src/adapters/audio/index.js",
     "zortengine/assets": "./src/engine/assets/index.js",
     "zortengine/browser": "./src/adapters/browser/index.js",
     "zortengine/devtools": "./src/tooling/index.js",
+    "zortengine/gameplay": "./src/gameplay/index.js",
     "zortengine/kits": "./src/kits/index.js",
     "zortengine/networking": "./src/kits/networking/index.js",
     "zortengine/objects": "./src/objects/index.js",
     "zortengine/persistence": "./src/persistence/index.js",
-    "zortengine/physics": "./src/adapters/physics/index.js"
+    "zortengine/physics": "./src/adapters/physics/index.js",
+    "zortengine/render": "./src/adapters/render/index.js"
   }
 }
 </script>
@@ -79,7 +88,13 @@ class EmptyScene extends GameScene {
 
 export class MyGame extends Engine {
     constructor() {
-        super(document.body, { seed: 'daily-seed' });
+        const assetLoader = new ThreeAssetLoader();
+        super(document.body, {
+            seed: 'daily-seed',
+            rendererAdapter: new ThreeRendererAdapter(),
+            assets: new AssetStore({ loader: assetLoader }),
+            assetLoader
+        });
         this.addScene('main', new EmptyScene({ name: 'main' }));
         this.useScene('main');
         this.start();
@@ -108,6 +123,46 @@ Bu katman framework degil, engine'in ustune kurulu sample uygulamadir.
 
 Bu sayede save/load politikasi app tarafinda kalirken, snapshot restore mekanigi framework katmaninda tanimli olur.
 
+## Plugin ve Capability Contract
+
+`Engine` ve `GameScene` artik `use(plugin)` ile dependency-aware plugin kurabilir:
+
+```js
+engine.use({
+  manifest: {
+    id: 'inspector-tools',
+    scope: 'engine',
+    capabilities: ['inspect']
+  },
+  install(context) {
+    return {
+      hasInspectCapability: context.hasCapability('inspect')
+    };
+  }
+});
+```
+
+Scene plugin'leri engine plugin'lerini `dependencies` ile isteyebilir; capability kayitlari da host seviyesinde izlenir.
+
+## Renderer Boundary
+
+V2 tabaninda render akisinin yeni siniri:
+
+- `Engine` artik dogrudan `THREE.WebGLRenderer` yaratmak yerine `RendererAdapter` kullanir
+- `GameScene` `sceneHandle` ve `getRenderScene()` yuzeylerini sunar
+- `CameraManager` ve post-process katmani `getNativeCamera()` benzeri generic handle semantigine yaklastirildi
+- `ThreeRendererAdapter` first-party varsayilan implementasyondur
+
+## Asset Ownership
+
+Asset sistemi loader helper seviyesinden cikartilip retain/release/dispose sahipligine gecirildi:
+
+- `AssetLoader`: capability map tabanli generic loader dispatcher
+- `ThreeAssetLoader`: texture/model/audio loader'larini adapter katmaninda toplar
+- `AssetStore`: retain/release/dispose ve owner index'i tutar
+- `AssetPipeline`: preload group akisinda store ile scene-scope ownership kurar
+- `GameScene.retainAsset()` / `releaseAsset()`: scene ayrilirken owned asset'leri otomatik birakir
+
 ## Test
 
 ```bash
@@ -117,8 +172,16 @@ npm test
 Test paketi su ayri katmanlari dogrular:
 
 - `tests/engine/engine-contract.test.js`: root API, scene lifecycle, system priority, snapshot contract
+- `tests/types/engine-contracts.test.ts`: generic contract smoke test
 - `tests/examples/headless-smoke.test.js`: showcase run headless smoke
 - `tests/examples/network-smoke.test.js`: lobby/network smoke
+
+## Dokumantasyon
+
+- `docs/plugins.md`: plugin manifest ve capability modeli
+- `docs/adapters.md`: renderer/audio/browser adapter sinirlari
+- `docs/v2-migration.md`: v1 -> v2 gecis notlari
+- `docs/package-stability.md`: public API stabilite tablosu
 
 ## Mimari Not
 

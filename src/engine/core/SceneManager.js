@@ -28,6 +28,7 @@ export class SceneManager {
 
     setActive(name) {
         const currentScene = this.getActiveScene();
+        const previousName = this.activeSceneName;
         if (currentScene && typeof currentScene.detach === 'function') {
             currentScene.detach();
         }
@@ -35,6 +36,10 @@ export class SceneManager {
         if (name === null) {
             this.activeSceneName = null;
             this._syncEngine(null);
+            this.engine?.events?.emit?.('scene:changed', {
+                previous: previousName,
+                next: null
+            });
             return null;
         }
 
@@ -51,6 +56,10 @@ export class SceneManager {
         }
 
         this._syncEngine(nextScene);
+        this.engine?.events?.emit?.('scene:changed', {
+            previous: previousName,
+            next: name
+        });
         return nextScene;
     }
 
@@ -74,7 +83,8 @@ export class SceneManager {
             this.engine._syncConvenienceRefs(scene);
             return;
         }
-        this.engine.scene = scene ? scene.threeScene : null;
+        this.engine.sceneHandle = scene ? scene.getSceneHandle?.() || null : null;
+        this.engine.scene = scene ? scene.getRenderScene?.() || null : null;
         this.engine.objects = scene ? scene.objects : [];
         this.engine.camera = scene ? scene.getCamera() : null;
         this.engine.postProcessor = scene ? scene.getPostProcessor() : null;

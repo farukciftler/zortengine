@@ -9,6 +9,11 @@ export class GameObject {
         this.radius = radius;
         this.group = new THREE.Group();
         this.group.position.set(x, 0, z);
+        this.transform = {
+            position: this.group.position,
+            rotation: this.group.rotation,
+            scale: this.group.scale
+        };
         this.isDestroyed = false;
         this.hp = 1;
         this.maxHp = 1;
@@ -27,7 +32,16 @@ export class GameObject {
         }
     }
 
-    attachToScene(scene, sceneController = null) {
+    getRenderNodeHandle() {
+        return this.group;
+    }
+
+    getNativeNode() {
+        return this.group;
+    }
+
+    attachToScene(sceneOrHandle, sceneController = null) {
+        const scene = sceneOrHandle?.getNativeScene?.() || sceneOrHandle;
         if (this.scene === scene) return;
 
         if (this.scene) {
@@ -42,9 +56,10 @@ export class GameObject {
         }
     }
 
-    detachFromScene() {
-        if (this.scene) {
-            this.scene.remove(this.group);
+    detachFromScene(sceneOrHandle = this.scene) {
+        const scene = sceneOrHandle?.getNativeScene?.() || sceneOrHandle || this.scene;
+        if (scene) {
+            scene.remove(this.group);
         }
 
         this.scene = null;
@@ -118,20 +133,24 @@ export class GameObject {
             radius: this.radius,
             isDestroyed: this.isDestroyed,
             position: {
-                x: this.group.position.x,
-                y: this.group.position.y,
-                z: this.group.position.z
+                x: this.transform.position.x,
+                y: this.transform.position.y,
+                z: this.transform.position.z
             },
             rotation: {
-                x: this.group.rotation.x,
-                y: this.group.rotation.y,
-                z: this.group.rotation.z
+                x: this.transform.rotation.x,
+                y: this.transform.rotation.y,
+                z: this.transform.rotation.z
             }
         };
     }
 
     collidesWith(other) {
-        const dist = this.group.position.distanceTo(other.group.position);
+        const origin = this.transform.position;
+        const target = other.transform?.position || other.group?.position || other.position;
+        const dist = typeof origin.distanceTo === 'function'
+            ? origin.distanceTo(target)
+            : Math.hypot(origin.x - target.x, origin.y - target.y, origin.z - target.z);
         return dist < (this.radius + other.radius);
     }
 }

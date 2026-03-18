@@ -12,6 +12,7 @@ export class AssetManifest {
             type: definition.type || 'unknown',
             group: definition.group || 'default',
             preload: definition.preload ?? false,
+            loader: definition.loader || null,
             metadata: definition.metadata || {}
         };
 

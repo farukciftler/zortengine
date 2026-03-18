@@ -5,23 +5,28 @@
   "main": "src/engine/index.js",
   "files": [
     "README.md",
+    "docs",
     "src"
   ],
   "exports": {
     ".": "./src/engine/index.js",
+    "./audio": "./src/adapters/audio/index.js",
     "./assets": "./src/engine/assets/index.js",
     "./browser": "./src/adapters/browser/index.js",
     "./devtools": "./src/tooling/index.js",
+    "./gameplay": "./src/gameplay/index.js",
     "./kits": "./src/kits/index.js",
     "./networking": "./src/kits/networking/index.js",
     "./objects": "./src/objects/index.js",
     "./persistence": "./src/persistence/index.js",
     "./physics": "./src/adapters/physics/index.js",
+    "./render": "./src/adapters/render/index.js",
     "./package.json": "./package.json"
   },
   "type": "module",
   "scripts": {
-    "test": "node tests/engine/engine-contract.test.js && node tests/examples/headless-smoke.test.js && node tests/examples/network-smoke.test.js",
+    "typecheck": "tsc -p tsconfig.json",
+    "test": "npm run typecheck && node tests/engine/engine-contract.test.js && node tests/examples/headless-smoke.test.js && node tests/examples/network-smoke.test.js",
     "network": "node server/lobby/network-server.js"
   },
   "keywords": [
@@ -36,5 +41,9 @@
     "cannon-es": "^0.20.0",
     "three": "^0.128.0",
     "ws": "^8.19.0"
+  },
+  "devDependencies": {
+    "@types/node": "^25.5.0",
+    "typescript": "^5.9.3"
   }
 }

@@ -32,6 +32,14 @@ export class CameraManager {
         return this.activeCamera;
     }
 
+    getNativeCamera() {
+        return this.activeCamera;
+    }
+
+    getCameraHandle() {
+        return this.activeCamera;
+    }
+
     setMode(mode) {
         if (mode === 'ortho' || mode === 'isometric') {
             this.activeCamera = this.orthoCam;
