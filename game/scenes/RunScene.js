@@ -1,29 +1,29 @@
 import * as THREE from 'three';
 import {
-    AbilitySystem,
-    AudioManager,
-    CameraManager,
-    CollectibleActor,
-    CollectibleSystem,
-    DamageSystem,
-    DebugOverlaySystem,
-    EffectRegistry,
-    EncounterDirector,
-    GameScene,
-    InputManager,
-    MemoryCleaner,
-    ModifierSystem,
-    ObjectiveZoneActor,
-    ObjectiveZoneSystem,
-    ParticleManager,
-    PhysicsManager,
-    PrefabFactory,
-    ProjectileSystem,
-    SaveManager,
-    SpawnSystem,
-    StatusEffectSystem,
-    UIManager
+    GameScene
 } from 'zortengine';
+import {
+    AssetLoader,
+    AssetManifest,
+    AssetPipeline,
+    PrefabFactory
+} from 'zortengine/assets';
+import {
+    MemoryCleaner
+} from 'zortengine/devtools';
+import {
+    CollectibleSystem,
+    EncounterDirector,
+    ObjectiveZoneSystem,
+    ProjectileSystem,
+    SpawnSystem,
+    EffectRegistry
+} from 'zortengine/kits';
+import {
+    CollectibleActor,
+    ObjectiveZoneActor
+} from 'zortengine/objects';
+import { SaveManager } from 'zortengine/persistence';
 import { createDashAbility } from '../abilities/DashAbility.js';
 import { createPrimaryFireAbility } from '../abilities/PrimaryFireAbility.js';
 import { EnemyActor } from '../actors/EnemyActor.js';
@@ -35,6 +35,12 @@ import { getLoadoutDefinition, LOADOUT_DEFINITIONS } from '../data/LoadoutDefini
 import { WORLD_LAYOUT } from '../data/WorldLayout.js';
 import { registerRunEffects } from '../effects/registerRunEffects.js';
 import { getRandomRelic, RELIC_DEFINITIONS } from '../items/RelicDefinitions.js';
+import { RunReplicationController } from '../runtime/RunReplicationController.js';
+import { RunCheckpointController } from '../runtime/RunCheckpointController.js';
+import { RunCombatCoordinator } from '../runtime/RunCombatCoordinator.js';
+import { RunFlowController } from '../runtime/RunFlowController.js';
+import { RunHudPresenter } from '../runtime/RunHudPresenter.js';
+import { RunBootstrap } from '../runtime/RunBootstrap.js';
 import { MetaProgression } from '../runtime/MetaProgression.js';
 import { RunState } from '../runtime/RunState.js';
 import { RunHud } from '../ui/RunHud.js';
@@ -55,6 +61,8 @@ export class RunScene extends GameScene {
         this.choiceQueue = [];
         this.choiceActive = false;
         this.waveDirector = null;
+        this.networkPeers = new Map();
+        this.remotePlayers = new Map();
     }
 
     setup() {
@@ -70,57 +78,34 @@ export class RunScene extends GameScene {
         this.saveManager = new SaveManager({
             namespace: 'zortengine-run'
         });
+        this.assetManifest = new AssetManifest();
+        this.assetLoader = new AssetLoader();
+        this.assetPipeline = new AssetPipeline({
+            manifest: this.assetManifest,
+            loader: this.assetLoader
+        });
         this.effectRegistry = new EffectRegistry();
         registerRunEffects(this.effectRegistry);
         this.prefabs = new PrefabFactory();
-
-        const platform = this.engine.platform;
-        const physics = this.registerSystem('physics', new PhysicsManager({
-            gravity: { x: 0, y: -18, z: 0 },
-            defaultContactMaterial: {
-                friction: 0.45,
-                restitution: 0.02
-            }
-        }), { priority: 100 });
-        const cameraManager = this.registerSystem('camera', new CameraManager(this.threeScene), { priority: 10 });
-        const input = this.registerSystem('input', new InputManager({
-            platform,
-            domElement: this.engine.renderer?.domElement,
-            pointerLockElement: this.engine.renderer?.domElement,
-            autoAttach: false
-        }), { priority: 5 });
-        const particles = this.registerSystem('particles', new ParticleManager(this.threeScene), { priority: 110 });
-        const damage = this.registerSystem('damage', new DamageSystem(), { priority: 103 });
-        this.modifierSystem = this.registerSystem('modifiers', new ModifierSystem(), { priority: 101 });
-        const abilities = this.registerSystem('abilities', new AbilitySystem(), { priority: 104 });
-        this.statusSystem = this.registerSystem('statuses', new StatusEffectSystem({
-            effectRegistry: this.effectRegistry
-        }), { priority: 102 });
-        const ui = this.registerSystem('ui', new UIManager({
-            platform,
-            parent: this.engine.container
-        }), { priority: 200 });
-        this.registerSystem('audio', new AudioManager(cameraManager), { priority: 20 });
-        this.registerSystem('debugOverlay', new DebugOverlaySystem({ ui }), { priority: 300 });
-
-        cameraManager.setPreset('2.5d');
-        this.setCamera(cameraManager);
-
+        this.bootstrap = new RunBootstrap(this);
+        const {
+            physics,
+            cameraManager,
+            input,
+            particles,
+            damage,
+            abilities,
+            ui
+        } = this.bootstrap.registerCoreSystems();
         this.hud = new RunHud(ui);
-        this.hud.setup();
-        this.hud.hideChoicePanel();
-        this.hud.hideSummary();
-        this.hud.updateSeed(this.seed);
-        this.hud.updateHealth(100);
-        this.hud.updateRunState(this.runState.essence, this.runState.getRelicCount());
-        this.hud.updateMetaProgress(
-            this.metaProgression.bankEssence,
-            this.metaProgression.completedRuns,
-            this.metaProgression.failedRuns
-        );
-        this.hud.updateStatus('AKTIF');
-        this.hud.updateInfo('Run showcase aktif. WASD + mouse temel oyuncu, JIKL + Enter ikinci oyuncu (varsa).');
-
+        this.hudPresenter = new RunHudPresenter(this, this.hud);
+        this.hudPresenter.initialize();
+        this.checkpointController = new RunCheckpointController(this, this.saveManager);
+        this.combatCoordinator = new RunCombatCoordinator(this);
+        this.flowController = new RunFlowController(this);
+        this.replicationController = new RunReplicationController(this, this.options.network || null);
+        this._registerSnapshotFactories();
+        this._setupAssetPipeline();
         this.projectiles = this.registerSystem('projectiles', new ProjectileSystem({
             scene: this.threeScene,
             particleManager: particles,
@@ -140,12 +125,20 @@ export class RunScene extends GameScene {
         this._setupAbilities(abilities, input, particles, cameraManager);
         this._applyLoadoutModifiers();
         this._enterRoom(ROOM_GRAPH[0].id);
-        this._saveCheckpoint('setup');
+        this.checkpointController.save('setup');
+        this.replicationController.connect();
+
+        if (this.options.restoreCheckpoint) {
+            this.checkpointController.restoreLatest();
+        }
+        if (this.options.replayData) {
+            this.engine.playReplay(this.options.replayData, this.options.replayData.frames?.length || Infinity);
+        }
     }
 
     onExit() {
-        this.hud?.hideChoicePanel();
-        this.hud?.hideSummary();
+        this.replicationController?.disconnect();
+        this.hudPresenter?.dispose();
     }
 
     _resolveLoadoutId() {
@@ -154,6 +147,64 @@ export class RunScene extends GameScene {
             return 'duo-protocol';
         }
         return this.metaProgression.unlockedLoadouts.at(-1) || 'vanguard';
+    }
+
+    _setupAssetPipeline() {
+        this.assetManifest.register('showcase-favicon', {
+            url: './favicon.svg',
+            type: 'texture',
+            group: 'ui',
+            preload: false,
+            metadata: { purpose: 'demo-icon' }
+        });
+        this.assetManifest.register('player-model-placeholder', {
+            url: './assets/player.glb',
+            type: 'model',
+            group: 'characters',
+            preload: false
+        });
+
+        const validation = this.assetPipeline.validateManifest();
+        if (!validation.valid) {
+            this.hud.updateInfo(`Asset manifest uyarisi: ${validation.errors[0]}`);
+        }
+    }
+
+    _registerSnapshotFactories() {
+        this.registerObjectFactory('EnemyActor', serialized => new EnemyActor(
+            null,
+            serialized.position.x,
+            serialized.position.z,
+            this._getPrimaryTarget(),
+            {
+                ...(serialized.profile || {}),
+                maxHp: serialized.profile?.maxHp || 100,
+                hp: serialized.hp ?? serialized.profile?.maxHp ?? 100
+            }
+        ));
+        this.registerObjectFactory('Enemy', serialized => new EnemyActor(
+            null,
+            serialized.position.x,
+            serialized.position.z,
+            this._getPrimaryTarget(),
+            {
+                ...(serialized.profile || {}),
+                maxHp: serialized.profile?.maxHp || 100,
+                hp: serialized.hp ?? serialized.profile?.maxHp ?? 100
+            }
+        ));
+        this.registerObjectFactory('CollectibleActor', serialized => new CollectibleActor(
+            null,
+            serialized.position.x,
+            serialized.position.z,
+            {
+                type: serialized.collectibleType,
+                payload: serialized.payload,
+                label: serialized.label,
+                y: serialized.baseY,
+                radius: serialized.radius
+            }
+        ));
     }
 
     _setupPhysicsMaterials(physics) {
@@ -345,6 +396,8 @@ export class RunScene extends GameScene {
 
         actor.body = body;
         actor.controlProfile = config.profile;
+        actor.networkId = config.networkId || null;
+        actor.isRemote = config.isRemote || false;
         this.players.push(actor);
         this.playersByProfile[config.profile] = actor;
         return actor;
@@ -677,142 +730,61 @@ export class RunScene extends GameScene {
     }
 
     _processEnemyAttacks(delta) {
-        const livingEnemies = this.waveDirector ? this.waveDirector.getLivingEntities() : [];
-        for (const enemy of livingEnemies) {
-            if (!enemy || enemy.isDestroyed || enemy.fsm.getCurrentState() !== 'attack') continue;
-
-            const target = this._getClosestPlayer(enemy.group.position);
-            if (!target) continue;
-
-            const attackProfile = enemy.getAttackProfile();
-            if (attackProfile.style === 'support') {
-                const ally = livingEnemies.find(candidate => candidate !== enemy && candidate.group.position.distanceTo(enemy.group.position) < 6);
-                if (ally) {
-                    this.getSystem('damage')?.heal(ally, attackProfile.supportHeal * delta * 2, {
-                        type: 'support',
-                        source: enemy.entityId
-                    });
-                }
-                continue;
-            }
-
-            this.getSystem('damage')?.applyDamage(target, attackProfile.damage * delta, {
-                type: attackProfile.style,
-                source: enemy.entityId
-            });
-
-            if (this.rng.chance(0.2)) {
-                this.getSystem('particles')?.emit(target.group.position, 1, {
-                    color: attackProfile.style === 'ranged' ? 0xf59e0b : 0x900000,
-                    speed: 3,
-                    scale: 0.4,
-                    life: 0.4
-                });
-            }
-        }
+        this.combatCoordinator.processEnemyAttacks(delta);
     }
 
     _processHazards(delta) {
-        for (const player of this.players) {
-            if (player.isDestroyed) continue;
-            for (const hazard of this.hazards || []) {
-                const flatPlayer = new THREE.Vector3(player.group.position.x, 0, player.group.position.z);
-                const flatHazard = new THREE.Vector3(hazard.position.x, 0, hazard.position.z);
-                if (flatPlayer.distanceTo(flatHazard) <= hazard.radius) {
-                    this.getSystem('damage')?.applyDamage(player, hazard.damagePerSecond * delta, {
-                        type: 'hazard',
-                        source: hazard.id
-                    });
-                }
-            }
-        }
+        this.combatCoordinator.processHazards(delta);
     }
 
     _getClosestPlayer(position) {
-        const alivePlayers = this.players.filter(player => !player.isDestroyed);
-        let closest = null;
-        let closestDistance = Infinity;
-        for (const player of alivePlayers) {
-            const distance = position.distanceTo(player.group.position);
-            if (distance < closestDistance) {
-                closestDistance = distance;
-                closest = player;
-            }
-        }
-        return closest;
+        return this.combatCoordinator.getClosestPlayer(position);
     }
 
     _saveCheckpoint(reason) {
-        this.saveManager.save('last-checkpoint', {
-            reason,
-            snapshot: this.engine.snapshot(),
-            runState: this.runState.serialize(),
-            roomId: this.currentRoom?.id || null
-        });
+        return this.checkpointController.save(reason);
+    }
+
+    _restoreLatestCheckpoint() {
+        return this.checkpointController.restoreLatest();
+    }
+
+    _handlePeerJoined(peer) {
+        this.replicationController.handlePeerJoined(peer);
+    }
+
+    _handlePeerLeft(peer) {
+        this.replicationController.handlePeerLeft(peer);
+    }
+
+    _handleNetworkMessage(message) {
+        this.replicationController.handleMessage(message);
+    }
+
+    _applyRemoteState(payload) {
+        this.replicationController.applyRemoteState(payload);
     }
 
     _completeRun() {
-        if (this.runState.status !== 'active') return;
-        this.choiceActive = false;
-        this.choiceQueue = [];
-        this.hud.hideChoicePanel();
-        this.runState.complete();
-        this.metaProgression.recordRun(this.runState);
-        this.hud.updateStatus('TAMAMLANDI');
-        this.hud.updateMetaProgress(
-            this.metaProgression.bankEssence,
-            this.metaProgression.completedRuns,
-            this.metaProgression.failedRuns
-        );
-        this.hud.updateInfo('Run tamamlandi. R ile yeni seeded run baslat.');
-        this.hud.showSummary(this.runState.getSummary(), this.metaProgression);
-        this.extractionGate?.setActive(false);
-        this._saveCheckpoint('completed');
+        this.flowController.completeRun();
     }
 
     _failRun() {
-        if (this.runState.status !== 'active') return;
-        this.choiceActive = false;
-        this.choiceQueue = [];
-        this.hud.hideChoicePanel();
-        this.runState.fail();
-        this.metaProgression.recordRun(this.runState);
-        this.hud.updateStatus('BASARISIZ');
-        this.hud.updateMetaProgress(
-            this.metaProgression.bankEssence,
-            this.metaProgression.completedRuns,
-            this.metaProgression.failedRuns
-        );
-        this.hud.updateInfo('Takim dustu. R ile runi yeniden baslat.');
-        this.hud.showSummary(this.runState.getSummary(), this.metaProgression);
-        this.extractionGate?.setActive(false);
-        this._saveCheckpoint('failed');
+        this.flowController.failRun();
     }
 
     _requestRestart() {
-        if (this.runState.status !== 'active') {
-            this.pendingRestart = true;
-        }
+        this.flowController.requestRestart();
     }
 
     _restartRun() {
-        if (!this.engine) return;
-        const engine = this.engine;
-
-        this.pendingRestart = false;
-        engine.sceneManager.removeScene('run');
-        engine.addScene('run', new RunScene({
-            seed: this.metaProgression.dailySeed || this.metaProgression.generateDailySeed(),
-            loadoutId: this.loadout.id
-        }));
-        engine.useScene('run');
+        this.flowController.restartRun();
     }
 
     onUpdate(delta) {
         const input = this.getSystem('input');
 
-        if (this.pendingRestart) {
-            this._restartRun();
+        if (this.flowController.consumePendingRestart()) {
             return;
         }
 
@@ -862,6 +834,8 @@ export class RunScene extends GameScene {
 
         this._processEnemyAttacks(delta);
         this._processHazards(delta);
+
+        this.replicationController.syncLocalState();
     }
 
     toggleCameraMode() {
@@ -892,5 +866,43 @@ export class RunScene extends GameScene {
             loadout: this.loadout.id,
             seed: this.seed
         };
+    }
+
+    restoreState(snapshot) {
+        if (!snapshot) return false;
+
+        this.restoreSystemSnapshots(snapshot.systems || []);
+        this.runState.restore(snapshot.runState || {});
+        this.seed = snapshot.seed || this.seed;
+        this.currentRoom = snapshot.currentRoom ? getRoomDefinition(snapshot.currentRoom) : this.currentRoom;
+        this.hudPresenter.syncSnapshotState();
+
+        for (const object of [...this.activeEnemies, ...this.pickups]) {
+            this.remove(object);
+        }
+        this.activeEnemies = [];
+        this.pickups = [];
+
+        for (const player of this.players) {
+            const serialized = snapshot.objects?.find(item =>
+                item.type === player.constructor.name &&
+                (item.controlProfile || 'default') === player.controlProfile
+            );
+            if (serialized?.position) {
+                player.group.position.set(serialized.position.x, serialized.position.y, serialized.position.z);
+            }
+            const health = player.getComponent('health');
+            if (health && serialized?.hp !== undefined) {
+                health.maxHealth = serialized.maxHp ?? health.maxHealth;
+                health.setHealth(serialized.hp);
+            }
+        }
+
+        const restored = this.restoreObjects(snapshot.objects || [], {
+            filter: serialized => ['EnemyActor', 'Enemy', 'CollectibleActor'].includes(serialized.type)
+        });
+        this.activeEnemies = restored.filter(object => object instanceof EnemyActor);
+        this.pickups = restored.filter(object => object instanceof CollectibleActor);
+        return true;
     }
 }

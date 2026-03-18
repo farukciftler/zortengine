@@ -2,6 +2,7 @@ export class ReplayRecorder {
     constructor() {
         this.frames = [];
         this.isRecording = false;
+        this.playbackIndex = 0;
     }
 
     start() {
@@ -23,5 +24,19 @@ export class ReplayRecorder {
         return {
             frames: this.frames.slice()
         };
+    }
+
+    load(serialized = {}) {
+        this.frames = serialized.frames ? serialized.frames.slice() : [];
+        this.playbackIndex = 0;
+    }
+
+    resetPlayback() {
+        this.playbackIndex = 0;
+    }
+
+    nextFrame() {
+        if (this.playbackIndex >= this.frames.length) return null;
+        return this.frames[this.playbackIndex++];
     }
 }

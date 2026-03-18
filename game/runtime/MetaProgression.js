@@ -1,4 +1,4 @@
-import { SaveManager } from 'zortengine';
+import { SaveManager } from 'zortengine/persistence';
 
 export class MetaProgression {
     constructor(storageKey = 'meta') {

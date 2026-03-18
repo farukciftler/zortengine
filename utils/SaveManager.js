@@ -32,4 +32,17 @@ export class SaveManager {
         this.storage.removeItem(this.getKey(key));
         return true;
     }
+
+    keys() {
+        if (!this.storage) return [];
+        const prefix = `${this.namespace}:`;
+        const keys = [];
+        for (let i = 0; i < this.storage.length; i++) {
+            const key = this.storage.key(i);
+            if (key?.startsWith(prefix)) {
+                keys.push(key.slice(prefix.length));
+            }
+        }
+        return keys;
+    }
 }

@@ -101,4 +101,21 @@ export class RunState {
             modifiers: { ...this.modifiers }
         };
     }
+
+    restore(snapshot = {}) {
+        this.seed = snapshot.seed ?? this.seed;
+        this.loadoutId = snapshot.loadoutId ?? this.loadoutId;
+        this.elapsedTime = snapshot.elapsedTime ?? this.elapsedTime;
+        this.essence = snapshot.essence ?? this.essence;
+        this.relics = snapshot.relics ? snapshot.relics.slice() : this.relics;
+        this.roomsVisited = snapshot.roomsVisited ? snapshot.roomsVisited.slice() : this.roomsVisited;
+        this.currentRoomId = snapshot.currentRoomId ?? this.currentRoomId;
+        this.status = snapshot.status ?? this.status;
+        this.extractionUnlocked = snapshot.extractionUnlocked ?? this.extractionUnlocked;
+        this.modifiers = {
+            ...this.modifiers,
+            ...(snapshot.modifiers || {})
+        };
+        return this;
+    }
 }

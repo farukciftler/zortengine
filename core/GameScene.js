@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { SystemManager } from './SystemManager.js';
+import { EventEmitter } from '../utils/EventEmitter.js';
 
 export class GameScene {
     constructor(options = {}) {
@@ -12,6 +13,8 @@ export class GameScene {
         this.camera = null;
         this.postProcessor = null;
         this.isSetup = false;
+        this.events = new EventEmitter();
+        this.objectFactories = new Map();
 
         if (this.background !== undefined) {
             this.threeScene.background = this.background;
@@ -51,6 +54,18 @@ export class GameScene {
         this.onExit();
         this.systems.clearContext();
         this.engine = null;
+    }
+
+    on(eventName, listener) {
+        this.events.on(eventName, listener);
+    }
+
+    off(eventName, listener) {
+        this.events.off(eventName, listener);
+    }
+
+    emit(eventName, payload) {
+        this.events.emit(eventName, payload);
     }
 
     add(object) {
@@ -112,6 +127,16 @@ export class GameScene {
         return this.systems.get(name);
     }
 
+    registerObjectFactory(type, factory) {
+        if (!type || typeof factory !== 'function') return this;
+        this.objectFactories.set(type, factory);
+        return this;
+    }
+
+    getObjectFactory(type) {
+        return this.objectFactories.get(type) || null;
+    }
+
     setCamera(camera) {
         this.camera = camera;
     }
@@ -165,5 +190,50 @@ export class GameScene {
                     snapshot: typeof system.snapshot === 'function' ? system.snapshot() : null
                 }))
         };
+    }
+
+    restoreState(snapshot) {
+        if (!snapshot) return false;
+        this.restoreSystemSnapshots(snapshot.systems || []);
+        this.restoreObjects(snapshot.objects || []);
+        return true;
+    }
+
+    restoreSystemSnapshots(systemSnapshots = []) {
+        const context = { engine: this.engine, scene: this };
+        for (const entry of systemSnapshots) {
+            const system = this.getSystem(entry?.name);
+            if (system && typeof system.restore === 'function') {
+                system.restore(entry.snapshot, context);
+            }
+        }
+    }
+
+    restoreObjects(serializedObjects = [], options = {}) {
+        const {
+            clearExisting = false,
+            filter = null
+        } = options;
+
+        if (clearExisting) {
+            [...this.objects].forEach(object => this.remove(object));
+        }
+
+        const restored = [];
+        for (const snapshot of serializedObjects) {
+            if (!snapshot?.type) continue;
+            if (typeof filter === 'function' && !filter(snapshot)) continue;
+            const factory = this.getObjectFactory(snapshot.type);
+            if (!factory) continue;
+
+            const object = factory(snapshot, this);
+            if (!object) continue;
+            if (!this.objects.includes(object)) {
+                this.add(object);
+            }
+            restored.push(object);
+        }
+
+        return restored;
     }
 }

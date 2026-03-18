@@ -242,4 +242,11 @@ export class InputManager {
             commands
         };
     }
+
+    enqueueExternalCommands(commands = []) {
+        for (const command of commands) {
+            this.commandQueue.push(command);
+            this.events.emit(command.action, command);
+        }
+    }
 }

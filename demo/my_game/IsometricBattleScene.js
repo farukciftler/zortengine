@@ -2,17 +2,18 @@
 // Aktif showcase akisi artik game/scenes/RunScene.js uzerinden yurur.
 import * as THREE from 'three';
 import {
+    GameScene,
+} from 'zortengine';
+import {
     AudioManager,
     CameraManager,
-    Enemy,
-    GameScene,
     InputManager,
-    MemoryCleaner,
-    ModularCharacter,
     ParticleManager,
-    PhysicsManager,
     UIManager
-} from 'zortengine';
+} from 'zortengine/browser';
+import { MemoryCleaner } from 'zortengine/devtools';
+import { Enemy, ModularCharacter } from 'zortengine/objects';
+import { PhysicsManager } from 'zortengine/physics';
 import { DemoHud } from './DemoHud.js';
 import { PlayerMovementController } from './PlayerMovementController.js';
 import { ProjectileSystem } from './ProjectileSystem.js';

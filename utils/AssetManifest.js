@@ -36,4 +36,8 @@ export class AssetManifest {
             assets: [...this.assets.values()]
         };
     }
+
+    getPreloadGroups() {
+        return [...this.groups.keys()].filter(group => this.getGroup(group).some(asset => asset.preload));
+    }
 }

@@ -1,6 +1,4 @@
 import * as THREE from 'three';
-// Three.js nesnesi global gelmeli, GLTFLoader modülünü dinamik olarak import edeceğiz
-import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 
 export class AssetLoader {
     constructor() {
@@ -8,7 +6,7 @@ export class AssetLoader {
         this.models = new Map();
         
         this.textureLoader = new THREE.TextureLoader();
-        this.gltfLoader = new GLTFLoader();
+        this.gltfLoader = null;
     }
 
     loadTexture(name, url) {
@@ -39,17 +37,21 @@ export class AssetLoader {
                 return;
             }
 
-            this.gltfLoader.load(url,
-                (gltf) => {
-                    this.models.set(name, gltf);
-                    resolve(gltf);
-                },
-                undefined,
-                (err) => {
-                    console.error(`Model failed to load: ${url}`);
-                    reject(err);
-                }
-            );
+            this._getGltfLoader()
+                .then(loader => {
+                    loader.load(url,
+                        (gltf) => {
+                            this.models.set(name, gltf);
+                            resolve(gltf);
+                        },
+                        undefined,
+                        (err) => {
+                            console.error(`Model failed to load: ${url}`);
+                            reject(err);
+                        }
+                    );
+                })
+                .catch(reject);
         });
     }
 
@@ -75,5 +77,15 @@ export class AssetLoader {
             }
         }
         await Promise.all(promises);
+    }
+
+    async _getGltfLoader() {
+        if (this.gltfLoader) {
+            return this.gltfLoader;
+        }
+
+        const { GLTFLoader } = await import('three/examples/jsm/loaders/GLTFLoader.js');
+        this.gltfLoader = new GLTFLoader();
+        return this.gltfLoader;
     }
 }

@@ -99,6 +99,36 @@ export class UIManager {
         return button;
     }
 
+    addInput(id, value, x, y, options = {}) {
+        if (!this.document || !this.container) {
+            this.elements[id] = { value, style: {} };
+            return this.elements[id];
+        }
+        const input = this.document.createElement('input');
+        input.type = options.type || 'text';
+        input.value = value || '';
+        input.placeholder = options.placeholder || '';
+        input.style.position = 'absolute';
+        input.style.left = typeof x === 'number' ? x + 'px' : x;
+        input.style.top = typeof y === 'number' ? y + 'px' : y;
+        input.style.width = typeof options.width === 'number' ? `${options.width}px` : (options.width || '220px');
+        input.style.padding = options.padding || '8px 10px';
+        input.style.borderRadius = options.radius || '8px';
+        input.style.border = options.border || '1px solid rgba(255,255,255,0.25)';
+        input.style.background = options.background || 'rgba(15,23,42,0.95)';
+        input.style.color = options.color || '#fff';
+        input.style.pointerEvents = 'auto';
+        this.container.appendChild(input);
+        this.elements[id] = input;
+        return input;
+    }
+
+    updateHTML(id, html) {
+        if (this.elements[id]) {
+            this.elements[id].innerHTML = html;
+        }
+    }
+
     show(id, display = 'block') {
         if (this.elements[id]) {
             this.elements[id].style.display = display;

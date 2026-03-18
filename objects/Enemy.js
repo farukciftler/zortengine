@@ -140,4 +140,13 @@ export class Enemy extends GameObject {
             this.mesh.scale.y = 1 + Math.sin(time * 5) * 0.1;
         }
     }
+
+    serialize() {
+        return {
+            ...super.serialize(),
+            profile: { ...this.profile },
+            attackProfile: this.getAttackProfile(),
+            state: this.fsm.getCurrentState()
+        };
+    }
 }

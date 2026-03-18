@@ -1,4 +1,4 @@
-import { Enemy, HealthComponent } from 'zortengine';
+import { Enemy, HealthComponent } from 'zortengine/objects';
 
 export class EnemyActor extends Enemy {
     constructor(scene, x, z, playerTarget, options = {}) {
@@ -23,5 +23,13 @@ export class EnemyActor extends Enemy {
                 this.isDestroyed = true;
             }
         }));
+    }
+
+    serialize() {
+        return {
+            ...super.serialize(),
+            hp: this.getComponent('health')?.health ?? this.hp,
+            maxHp: this.getComponent('health')?.maxHealth ?? this.maxHp
+        };
     }
 }

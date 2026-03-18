@@ -1,4 +1,4 @@
-import { HealthComponent, ModularCharacter } from 'zortengine';
+import { HealthComponent, ModularCharacter } from 'zortengine/objects';
 
 export class PlayerActor extends ModularCharacter {
     constructor(scene, x, z, options = {}) {
@@ -23,5 +23,16 @@ export class PlayerActor extends ModularCharacter {
                 this.isDestroyed = true;
             }
         }));
+    }
+
+    serialize() {
+        return {
+            ...super.serialize(),
+            hp: this.getComponent('health')?.health ?? this.hp,
+            maxHp: this.getComponent('health')?.maxHealth ?? this.maxHp,
+            controlProfile: this.controlProfile || 'default',
+            networkId: this.networkId || null,
+            isRemote: this.isRemote || false
+        };
     }
 }

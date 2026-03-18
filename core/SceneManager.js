@@ -70,7 +70,10 @@ export class SceneManager {
 
     _syncEngine(scene) {
         if (!this.engine) return;
-
+        if (typeof this.engine._syncConvenienceRefs === 'function') {
+            this.engine._syncConvenienceRefs(scene);
+            return;
+        }
         this.engine.scene = scene ? scene.threeScene : null;
         this.engine.objects = scene ? scene.objects : [];
         this.engine.camera = scene ? scene.getCamera() : null;

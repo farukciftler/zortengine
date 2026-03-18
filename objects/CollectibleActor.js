@@ -35,4 +35,14 @@ export class CollectibleActor extends GameObject {
         this.mesh.castShadow = true;
         this.group.add(this.mesh);
     }
+
+    serialize() {
+        return {
+            ...super.serialize(),
+            collectibleType: this.type,
+            payload: this.payload,
+            label: this.label,
+            baseY: this.baseY
+        };
+    }
 }

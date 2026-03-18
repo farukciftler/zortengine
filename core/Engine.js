@@ -206,6 +206,34 @@ export class Engine {
         };
     }
 
+    restoreSnapshot(snapshot) {
+        if (!snapshot) return false;
+        this.tick = snapshot.tick ?? this.tick;
+        this.simulationTime = snapshot.simulationTime ?? this.simulationTime;
+        if (snapshot.random) {
+            this.random.restore(snapshot.random);
+        }
+        const activeScene = this.sceneManager.getActiveScene();
+        if (activeScene?.restoreState) {
+            activeScene.restoreState(snapshot.scene);
+        }
+        return true;
+    }
+
+    playReplay(serializedReplay, stepsLimit = Infinity) {
+        this.replayRecorder.load(serializedReplay);
+        const input = this.getSystem('input');
+        let processed = 0;
+        while (processed < stepsLimit) {
+            const frame = this.replayRecorder.nextFrame();
+            if (!frame) break;
+            input?.enqueueExternalCommands?.(frame.commands || []);
+            this.stepSimulation(this.fixedDelta);
+            processed += 1;
+        }
+        return processed;
+    }
+
     _syncConvenienceRefs(scene) {
         this.scene = scene ? scene.threeScene : this.scene;
         this.objects = scene ? scene.objects : this.objects;
