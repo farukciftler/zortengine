@@ -4,14 +4,13 @@
 
 ## Framework Sinirlari
 
-- `index.js`: yalnizca cekirdek framework yuzeyi
-- `browser.js`: browser, input, camera, UI ve render-yardimcilari
-- `physics.js`: fizik adaptoru
-- `assets.js`: asset/prefab yardimcilari
-- `persistence.js`: save/replay yardimcilari
-- `devtools.js`: debug ve inspector araclari
-- `networking.js`: low-level networking export'lari
-- `game/` ve `demo/my_game/`: showcase/example uygulama
+- `src/engine/`: cekirdek runtime ve scene lifecycle
+- `src/adapters/`: browser, audio, render ve physics baglantilari
+- `src/tooling/`: debug, inspector ve headless yardimcilari
+- `src/kits/`: opinionated ama tekrar kullanilabilir gameplay modulleri
+- `examples/run-showcase/`: sample uygulama
+- `server/lobby/`: showcase lobby sunucusu
+- `package.json` icindeki `exports`: public package girislerini dogrudan `src/...` altina baglar
 
 ## Root API
 
@@ -43,7 +42,7 @@ import { WebSocketTransport } from 'zortengine/networking';
 
 ## Browser Kurulumu
 
-Bundler olmadan `importmap` ile calisacaksaniz hem root package'i hem alt entrypoint'leri map etmeniz gerekir:
+Bundler olmadan `importmap` ile calisacaksaniz root package ve kullandiginiz alt entrypoint'leri acikca map etmeniz gerekir:
 
 ```html
 <script type="importmap">
@@ -53,8 +52,15 @@ Bundler olmadan `importmap` ile calisacaksaniz hem root package'i hem alt entryp
     "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.128.0/examples/jsm/",
     "three/examples/jsm/": "https://cdn.jsdelivr.net/npm/three@0.128.0/examples/jsm/",
     "cannon-es": "https://cdn.jsdelivr.net/npm/cannon-es@0.20.0/dist/cannon-es.js",
-    "zortengine": "./index.js",
-    "zortengine/": "./"
+    "zortengine": "./src/engine/index.js",
+    "zortengine/assets": "./src/engine/assets/index.js",
+    "zortengine/browser": "./src/adapters/browser/index.js",
+    "zortengine/devtools": "./src/tooling/index.js",
+    "zortengine/kits": "./src/kits/index.js",
+    "zortengine/networking": "./src/kits/networking/index.js",
+    "zortengine/objects": "./src/objects/index.js",
+    "zortengine/persistence": "./src/persistence/index.js",
+    "zortengine/physics": "./src/adapters/physics/index.js"
   }
 }
 </script>
@@ -67,7 +73,7 @@ import { Engine, GameScene } from 'zortengine';
 
 class EmptyScene extends GameScene {
     setup() {
-        // Kendi systems/objects katmaninizi buraya kurun.
+        // Kendi system ve object katmaninizi buraya kurun.
     }
 }
 
@@ -83,12 +89,12 @@ export class MyGame extends Engine {
 
 ## Example App
 
-Aktif showcase/example uygulama su dosyalarda yasiyor:
+Aktif showcase/example uygulama `examples/run-showcase/` altinda yasiyor:
 
-- `demo/my_game/MyGame.js`
-- `demo/my_game/main.js`
-- `game/scenes/MainMenuScene.js`
-- `game/scenes/RunScene.js`
+- `examples/run-showcase/app/MyGame.js`
+- `examples/run-showcase/app/main.js`
+- `examples/run-showcase/scenes/MainMenuScene.js`
+- `examples/run-showcase/scenes/RunScene.js`
 
 Bu katman framework degil, engine'in ustune kurulu sample uygulamadir.
 
@@ -110,9 +116,9 @@ npm test
 
 Test paketi su ayri katmanlari dogrular:
 
-- `tests/engine-contract.test.js`: root API, scene lifecycle, system priority, snapshot contract
-- `tests/headless-smoke.test.js`: showcase run headless smoke
-- `tests/network-smoke.test.js`: lobby/network smoke
+- `tests/engine/engine-contract.test.js`: root API, scene lifecycle, system priority, snapshot contract
+- `tests/examples/headless-smoke.test.js`: showcase run headless smoke
+- `tests/examples/network-smoke.test.js`: lobby/network smoke
 
 ## Mimari Not
 

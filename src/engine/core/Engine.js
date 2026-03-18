@@ -3,7 +3,7 @@ import { EventEmitter } from '../events/EventEmitter.js';
 import { BrowserPlatform } from '../../adapters/browser/BrowserPlatform.js';
 import { GameScene } from './GameScene.js';
 import { SceneManager } from './SceneManager.js';
-import { InspectorRegistry } from '../../../utils/InspectorRegistry.js';
+import { InspectorRegistry } from '../../tooling/inspector/InspectorRegistry.js';
 import { ReplayRecorder } from '../snapshot/ReplayRecorder.js';
 import { SeededRandom } from '../snapshot/SeededRandom.js';
 

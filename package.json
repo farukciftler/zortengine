@@ -3,6 +3,10 @@
   "version": "1.0.0",
   "description": "Mini, modular 3D game engine based on Three.js",
   "main": "src/engine/index.js",
+  "files": [
+    "README.md",
+    "src"
+  ],
   "exports": {
     ".": "./src/engine/index.js",
     "./assets": "./src/engine/assets/index.js",

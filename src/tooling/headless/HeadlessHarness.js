@@ -1,1 +1,1 @@
-export * from '../../../utils/HeadlessHarness.js';
+export * from '../../engine/snapshot/HeadlessHarness.js';

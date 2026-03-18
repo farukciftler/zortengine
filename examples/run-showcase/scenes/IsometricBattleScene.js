@@ -1,5 +1,5 @@
 // Legacy sample scene.
-// Aktif showcase akisi artik game/scenes/RunScene.js uzerinden yurur.
+// Aktif showcase akisi artik examples/run-showcase/scenes/RunScene.js uzerinden yurur.
 import * as THREE from 'three';
 import {
     GameScene,

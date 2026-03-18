@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
-import { AssetLoader, AssetManifest, AssetPipeline } from '../../assets.js';
-import { HeadlessHarness } from '../../utils/HeadlessHarness.js';
+import { HeadlessHarness } from 'zortengine';
+import { AssetLoader, AssetManifest, AssetPipeline } from 'zortengine/assets';
 import { RunScene } from '../../examples/run-showcase/scenes/RunScene.js';
 
 const harness = new HeadlessHarness({

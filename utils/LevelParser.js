@@ -1,1 +1,0 @@
-export * from '../src/adapters/browser/LevelParser.js';
