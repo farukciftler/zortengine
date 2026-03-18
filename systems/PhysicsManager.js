@@ -218,6 +218,25 @@ export class PhysicsManager {
         );
     }
 
+    isBodyGrounded(body, maxDistance = 0.2) {
+        if (!body) return false;
+
+        const halfHeight = body.userData?.halfHeight || 0;
+        const from = body.position.clone();
+        const to = new CANNON.Vec3(
+            body.position.x,
+            body.position.y - halfHeight - maxDistance,
+            body.position.z
+        );
+        const result = new CANNON.RaycastResult();
+
+        this.world.raycastClosest(from, to, {
+            skipBackfaces: true
+        }, result);
+
+        return result.hasHit && result.body && result.body !== body;
+    }
+
     update(delta) {
         for (const body of this.world.bodies) {
             const gravityScale = body.userData?.gravityScale;

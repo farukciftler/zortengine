@@ -12,7 +12,8 @@ export class InputManager {
             'backward': ['s', 'arrowdown'],
             'left': ['a', 'arrowleft'],
             'right': ['d', 'arrowright'],
-            'attack': [' ']
+            'attack': [],
+            'jump': [' ']
         };
         this.events = new EventEmitter();
 
@@ -64,6 +65,11 @@ export class InputManager {
         this.removeListeners.push(
             this.platform.addEventListener('window', 'keydown', event => {
                 const key = event.key.toLowerCase();
+
+                if (key === ' ' || key.startsWith('arrow')) {
+                    event.preventDefault();
+                }
+
                 this.keys[key] = true;
 
                 if (event.key === ' ' && this.onJump) {
@@ -71,7 +77,7 @@ export class InputManager {
                 }
 
                 if (event.key === ' ') {
-                    this.triggerAction('attack');
+                    this.triggerAction('jump');
                 }
 
                 if (key === 'v') {
@@ -131,6 +137,10 @@ export class InputManager {
 
         if (actionName === 'attack' && this.onAttack) {
             this.onAttack();
+        }
+
+        if (actionName === 'jump' && this.onJump) {
+            this.onJump();
         }
 
         if (actionName === 'viewToggle' && this.onViewToggle) {

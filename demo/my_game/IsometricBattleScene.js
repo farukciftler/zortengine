@@ -179,9 +179,11 @@ export class IsometricBattleScene extends GameScene {
             new PlayerMovementController({
                 input,
                 body: this.playerBody,
+                physics,
                 cameraManager,
                 particleManager: particles,
                 speed: 12,
+                jumpVelocity: 9.5,
                 mode: this.cameraMode === 'tps' ? 'tps' : 'isometric'
             })
         );
@@ -286,14 +288,14 @@ export class IsometricBattleScene extends GameScene {
             this.cameraMode = 'tps';
             camera.setPreset('tps');
             input.isFpsMode = true;
-            this.hud.updateInfo('TPS modu: ekrana tikla, fare kilitlensin. V ile tekrar 2.5D moda don.');
+            this.hud.updateInfo('TPS modu: ekrana tikla, mouse ile bak. Space ziplama, tik ates, V geri doner.');
             if (movement) movement.setMode('tps');
         } else {
             this.cameraMode = '2.5d';
             camera.setPreset('2.5d');
             input.isFpsMode = false;
             input.exitPointerLock();
-            this.hud.updateInfo('2.5D izometrik mod: WASD ile hareket et, tiklayarak veya Space ile ates et.');
+            this.hud.updateInfo('2.5D izometrik mod: WASD hareket, Space ziplama, tik ates, V kamera gecisi.');
             if (movement) movement.setMode('isometric');
         }
     }

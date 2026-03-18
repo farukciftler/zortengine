@@ -11,7 +11,7 @@ export class DemoHud {
         });
         this.ui.addText(
             'info',
-            '2.5D izometrik demo: WASD ile hareket et, V ile TPS/izometrik gecis yap.',
+            '2.5D izometrik demo: WASD hareket, Space ziplama, tik ates, V kamera gecisi.',
             20,
             60,
             { color: '#bdc3c7', size: 16 }

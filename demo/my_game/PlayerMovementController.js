@@ -9,14 +9,53 @@ export class PlayerMovementController extends Component {
         super();
         this.input = options.input;
         this.body = options.body;
+        this.physics = options.physics || null;
         this.particleManager = options.particleManager;
         this.cameraManager = options.cameraManager || null;
         this.speed = options.speed || 12;
         this.mode = options.mode || 'isometric';
+        this.jumpVelocity = options.jumpVelocity || 9;
+        this.jumpCooldown = options.jumpCooldown || 0.15;
+        this.jumpRequested = false;
+        this.jumpCooldownTimer = 0;
+        this._jumpListener = () => {
+            this.jumpRequested = true;
+        };
     }
 
-    update() {
+    onAttach(owner) {
+        super.onAttach(owner);
+
+        if (this.input) {
+            this.input.on('jump', this._jumpListener);
+        }
+    }
+
+    onDetach() {
+        if (this.input) {
+            this.input.off('jump', this._jumpListener);
+        }
+
+        super.onDetach();
+    }
+
+    update(delta = 1 / 60) {
         if (!this.owner || !this.input || !this.body) return;
+
+        if (this.jumpCooldownTimer > 0) {
+            this.jumpCooldownTimer = Math.max(0, this.jumpCooldownTimer - delta);
+        }
+
+        const isGrounded = this.physics
+            ? this.physics.isBodyGrounded(this.body, 0.18)
+            : false;
+
+        if (this.jumpRequested && isGrounded && this.jumpCooldownTimer <= 0) {
+            this.body.velocity.y = this.jumpVelocity;
+            this.jumpCooldownTimer = this.jumpCooldown;
+        }
+
+        this.jumpRequested = false;
 
         const move = this.input.getMovementVector();
         const moveDir = this.mode === 'tps'
