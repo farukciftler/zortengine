@@ -12,6 +12,8 @@ export class PlayerMovementController extends Component {
         this.physics = options.physics || null;
         this.particleManager = options.particleManager;
         this.cameraManager = options.cameraManager || null;
+        this.profile = options.profile || 'default';
+        this.rng = options.rng || null;
         this.speed = options.speed || 12;
         this.mode = options.mode || 'isometric';
         this.jumpVelocity = options.jumpVelocity || 9;
@@ -20,8 +22,10 @@ export class PlayerMovementController extends Component {
         this.dashTimer = 0;
         this.jumpRequested = false;
         this.jumpCooldownTimer = 0;
-        this._jumpListener = () => {
-            this.jumpRequested = true;
+        this._jumpListener = command => {
+            if ((command?.profile || 'default') === this.profile) {
+                this.jumpRequested = true;
+            }
         };
     }
 
@@ -64,7 +68,7 @@ export class PlayerMovementController extends Component {
             return;
         }
 
-        const move = this.input.getMovementVector();
+        const move = this.input.getMovementVector(this.profile);
         const moveDir = this.mode === 'tps'
             ? this._getThirdPersonMoveDirection(move)
             : this._getIsometricMoveDirection(move);
@@ -82,7 +86,8 @@ export class PlayerMovementController extends Component {
                 this.owner.fsm.setState('walk');
             }
 
-            if (this.particleManager && Math.random() > 0.7) {
+            const spawnDust = this.rng ? this.rng.chance(0.3) : Math.random() > 0.7;
+            if (this.particleManager && spawnDust) {
                 this.particleManager.emit(
                     new THREE.Vector3(this.owner.group.position.x, 0.1, this.owner.group.position.z),
                     1,

@@ -37,6 +37,7 @@ export class GameScene {
     attach(engine) {
         this.engine = engine;
         this.systems.setContext({ engine, scene: this });
+        engine.inspector?.registerScene?.(this);
 
         if (!this.isSetup) {
             this.setup();
@@ -71,6 +72,8 @@ export class GameScene {
             object.onAddedToScene(this);
         }
 
+        this.engine?.inspector?.registerObject?.(this.name, object);
+
         return object;
     }
 
@@ -95,10 +98,14 @@ export class GameScene {
         if (typeof object.onRemovedFromScene === 'function') {
             object.onRemovedFromScene(this);
         }
+
+        this.engine?.inspector?.unregisterObject?.(this.name, object);
     }
 
     registerSystem(name, system, options = {}) {
-        return this.systems.register(name, system, options);
+        const registered = this.systems.register(name, system, options);
+        this.engine?.inspector?.registerSystem?.(this.name, name);
+        return registered;
     }
 
     getSystem(name) {
@@ -144,5 +151,19 @@ export class GameScene {
     dispose() {
         [...this.objects].forEach(object => this.remove(object));
         this.systems.dispose();
+    }
+
+    serializeState() {
+        return {
+            name: this.name,
+            objects: this.objects
+                .filter(object => typeof object.serialize === 'function')
+                .map(object => object.serialize()),
+            systems: this.systems.entries
+                .map(({ name, system }) => ({
+                    name,
+                    snapshot: typeof system.snapshot === 'function' ? system.snapshot() : null
+                }))
+        };
     }
 }

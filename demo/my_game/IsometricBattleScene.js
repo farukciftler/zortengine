@@ -1,3 +1,5 @@
+// Legacy sample scene.
+// Aktif showcase akisi artik game/scenes/RunScene.js uzerinden yurur.
 import * as THREE from 'three';
 import {
     AudioManager,

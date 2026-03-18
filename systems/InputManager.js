@@ -8,16 +8,32 @@ export class InputManager {
         this.joystickDir = { x: 0, z: 0 };
         this.isAttacking = false;
         this.bindings = {
-            'forward': ['w', 'arrowup'],
-            'backward': ['s', 'arrowdown'],
-            'left': ['a', 'arrowleft'],
-            'right': ['d', 'arrowright'],
-            'attack': [],
-            'jump': [' '],
-            'skill1': ['q'],
-            'restart': ['r']
+            default: {
+                'forward': ['w', 'arrowup'],
+                'backward': ['s', 'arrowdown'],
+                'left': ['a', 'arrowleft'],
+                'right': ['d', 'arrowright'],
+                'attack': [],
+                'jump': [' '],
+                'skill1': ['q'],
+                'restart': ['r'],
+                'viewToggle': ['v']
+            },
+            coop: {
+                'forward': ['i'],
+                'backward': ['k'],
+                'left': ['j'],
+                'right': ['l'],
+                'attack': ['enter'],
+                'jump': ['p'],
+                'skill1': ['o'],
+                'restart': [],
+                'viewToggle': []
+            }
         };
         this.events = new EventEmitter();
+        this.commandQueue = [];
+        this.commandHistory = [];
 
         this.onAttack = null;
         this.onViewToggle = null;
@@ -78,24 +94,12 @@ export class InputManager {
                     return;
                 }
 
-                if (event.key === ' ' && this.onJump) {
-                    this.onJump();
-                }
-
-                if (event.key === ' ') {
-                    this.triggerAction('jump');
-                }
-
-                if (key === 'q') {
-                    this.triggerAction('skill1');
-                }
-
-                if (key === 'r') {
-                    this.triggerAction('restart');
-                }
-
-                if (key === 'v') {
-                    this.triggerAction('viewToggle');
+                for (const [profile, bindings] of Object.entries(this.bindings)) {
+                    for (const [actionName, keys] of Object.entries(bindings)) {
+                        if (keys.includes(key)) {
+                            this.triggerAction(actionName, { profile, key });
+                        }
+                    }
                 }
             })
         );
@@ -147,7 +151,19 @@ export class InputManager {
     }
 
     triggerAction(actionName) {
-        this.events.emit(actionName);
+        this.triggerAction(actionName, {});
+    }
+
+    triggerAction(actionName, payload = {}) {
+        const command = {
+            action: actionName,
+            profile: payload.profile || 'default',
+            key: payload.key || null,
+            time: Date.now()
+        };
+        this.commandQueue.push(command);
+        this.commandHistory.push(command);
+        this.events.emit(actionName, command);
 
         if (actionName === 'attack' && this.onAttack) {
             this.onAttack();
@@ -163,14 +179,17 @@ export class InputManager {
     }
 
     // Tuş atamasını değiştir (Örn: Ayarlar Menüsünden)
-    bind(action, keysArray) {
-        this.bindings[action] = keysArray;
+    bind(action, keysArray, profile = 'default') {
+        if (!this.bindings[profile]) {
+            this.bindings[profile] = {};
+        }
+        this.bindings[profile][action] = keysArray;
     }
 
     // Bir eylemin aktif olup olmadığını kontrol et
-    isActionActive(action) {
-        if (!this.bindings[action]) return false;
-        return this.bindings[action].some(k => this.keys[k.toLowerCase()]);
+    isActionActive(action, profile = 'default') {
+        if (!this.bindings[profile]?.[action]) return false;
+        return this.bindings[profile][action].some(k => this.keys[k.toLowerCase()]);
     }
 
     getRaycastIntersection(camera, objectsToTest) {
@@ -178,13 +197,13 @@ export class InputManager {
         return this.raycaster.intersectObjects(objectsToTest, true);
     }
 
-    getMovementVector() {
+    getMovementVector(profile = 'default') {
         let mx = 0, mz = 0;
 
-        if (this.isActionActive('forward')) mz -= 1;
-        if (this.isActionActive('backward')) mz += 1;
-        if (this.isActionActive('left')) mx -= 1;
-        if (this.isActionActive('right')) mx += 1;
+        if (this.isActionActive('forward', profile)) mz -= 1;
+        if (this.isActionActive('backward', profile)) mz += 1;
+        if (this.isActionActive('left', profile)) mx -= 1;
+        if (this.isActionActive('right', profile)) mx += 1;
 
         if (mx !== 0 || mz !== 0) {
             const len = Math.sqrt(mx * mx + mz * mz);
@@ -202,5 +221,29 @@ export class InputManager {
         this.mouseDelta.x = 0;
         this.mouseDelta.y = 0;
         return { x: dx, y: dy };
+    }
+
+    consumeCommands(profile = null) {
+        const remaining = [];
+        const consumed = [];
+
+        for (const command of this.commandQueue) {
+            if (!profile || command.profile === profile) {
+                consumed.push(command);
+            } else {
+                remaining.push(command);
+            }
+        }
+
+        this.commandQueue = remaining;
+        return consumed;
+    }
+
+    drainReplayFrame(tick) {
+        const commands = this.consumeCommands();
+        return {
+            tick,
+            commands
+        };
     }
 }

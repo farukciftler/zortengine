@@ -2,7 +2,7 @@ import { Enemy, HealthComponent } from 'zortengine';
 
 export class EnemyActor extends Enemy {
     constructor(scene, x, z, playerTarget, options = {}) {
-        super(scene, x, z, playerTarget);
+        super(scene, x, z, playerTarget, options);
 
         this.maxHp = options.maxHp ?? 100;
         this.hp = options.hp ?? this.maxHp;

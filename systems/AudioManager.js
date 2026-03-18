@@ -2,13 +2,17 @@ import * as THREE from 'three';
 
 export class AudioManager {
     constructor(camera) {
-        // Kameraya bir 'kulak' ekliyoruz
-        this.listener = new THREE.AudioListener();
-        
-        // Eğer camera bir wrapper ise, içindeki THREE kamerasını alalım
-        const threeCam = camera.getThreeCamera ? camera.getThreeCamera() : camera;
-        threeCam.add(this.listener);
-        
+        this.listener = null;
+        try {
+            this.listener = new THREE.AudioListener();
+
+            // Eğer camera bir wrapper ise, içindeki THREE kamerasını alalım
+            const threeCam = camera.getThreeCamera ? camera.getThreeCamera() : camera;
+            threeCam?.add?.(this.listener);
+        } catch {
+            this.listener = null;
+        }
+
         this.audioLoader = new THREE.AudioLoader();
         this.audioBuffers = new Map();
     }
@@ -29,6 +33,7 @@ export class AudioManager {
 
     // Nesnenin üzerine 3D ses ekler (uzaklaştıkça azalan ses)
     createPositionalAudio(name, object, options = {}) {
+        if (!this.listener) return null;
         if (!this.audioBuffers.has(name)) {
             console.warn(`Ses bulunamadı: ${name}. Önce loadSound ile yükleyin.`);
             return null;
@@ -51,6 +56,7 @@ export class AudioManager {
 
     // Sahneden bağımsız global ses (Arka plan müziği veya UI sesi)
     playGlobal(name, options = {}) {
+        if (!this.listener) return null;
         if (!this.audioBuffers.has(name)) return;
         
         const sound = new THREE.Audio(this.listener);

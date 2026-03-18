@@ -1,133 +1,85 @@
-# 🎮 Mini 3D Engine
+# ZortEngine
 
-Bu oyun motoru, **Three.js** üzerine inşa edilmiş; modüler, hafif ve esnek bir 3D oyun motorudur. 
-İster bir İzometrik RPG, ister FPS oyunu, isterseniz de bir Yarış oyunu yapın; motor içindeki sistemler projenizi hızlandırmak için tasarlandı.
+`ZortEngine`, **Three.js** uzerine kurulu moduler bir 3D runtime/gameplay engine denemesidir. Repo artik tek bir aktif showcase akisi uzerinden ilerler: `game/scenes/RunScene.js`.
 
-## 📁 Klasör Yapısı
+## Guncel Mimari
 
-Engine klasörünü yeni projenize kopyalayıp hemen çalışmaya başlayabilirsiniz.
-- `core/` -> Motorun kalbi (`Engine.js`, `SceneManager.js`)
-- `objects/` -> Temel oyun nesneleri (`GameObject.js`, `ModularCharacter.js`)
-- `systems/` -> Kamera, Giriş (Input), Ses ve Fizik sistemleri.
-- `utils/` -> Model ve Doku yükleyiciler (`AssetLoader.js`)
+- `core/`: `Engine`, `SceneManager`, `GameScene`, `SystemManager`, `BrowserPlatform`
+- `objects/`: `GameObject`, `Component`, karakter ve collectible/objective actor tabanlari
+- `systems/`: input, physics, camera, projectile, encounter, collectible, modifier, status, debug overlay
+- `utils/`: asset/save/random/replay/prefab/headless test yardimcilari
+- `game/`: showcase oyunun veri, actor, runtime ve scene katmani
+- `demo/my_game/`: aktif bootstrapping dosyalari ve legacy sample sahneler
 
-## 🚀 Hızlı Başlangıç
+## Aktif Showcase
 
-### 1. HTML Kurulumu
-Projenizin `index.html` dosyasında `Three.js`'i dahil ettiğinizden emin olun:
+Aktif demo girisi:
+
+- `demo/my_game/MyGame.js`
+- `demo/my_game/main.js`
+- `game/scenes/RunScene.js`
+
+`demo/my_game/IsometricBattleScene.js` artik sadece legacy sample olarak tutulur; aktif akista kullanilmaz.
+
+## Browser Kurulumu
+
+Bu repo bundler olmadan `importmap` ile calisir. Kendi `index.html` dosyanizda en az su import map tanimlari olmali:
+
 ```html
-<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-<script type="module" src="js/main.js"></script>
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.128.0/examples/jsm/",
+    "cannon-es": "https://cdn.jsdelivr.net/npm/cannon-es@0.20.0/dist/cannon-es.js",
+    "zortengine": "./index.js"
+  }
+}
+</script>
 ```
 
-### 2. Motoru Genişletmek
-Kendi oyununuzu oluştururken `Engine` sınıfından miras alırsınız:
+## Hızlı Başlangıç
 
-```javascript
-// js/MyGame.js
-import { Engine } from './engine/core/Engine.js';
-import { CameraManager } from './engine/systems/CameraManager.js';
-import { ModularCharacter } from './engine/objects/ModularCharacter.js';
+```js
+import { Engine } from 'zortengine';
+import { RunScene } from './game/scenes/RunScene.js';
 
 export class MyGame extends Engine {
     constructor() {
-        super(document.body); // Canvas'ı body'ye ekler
-
-        // Kamerayı hazır preset ile ayarla
-        this.cameraManager = new CameraManager(this.scene);
-        this.cameraManager.setPreset('isometric'); 
-        this.setCamera(this.cameraManager);
-
-        // Sahneye Işık Ekle
-        const light = new THREE.AmbientLight(0xffffff, 0.8);
-        this.scene.add(light);
-
-        // Modüler bir karakter oluştur ve oyuna ekle
-        this.player = new ModularCharacter(this.scene, 0, 0, { colorSuit: 0xff0000 });
-        this.add(this.player);
-
-        // Döngüyü başlat
+        super(document.body, {
+            seed: 'daily-seed'
+        });
+        this.addScene('run', new RunScene());
+        this.useScene('run');
         this.start();
     }
-
-    // Bu fonksiyon saniyede 60 kere otomatik çağrılır
-    update(delta, time) {
-        // Karakteri yürüme modunda hareket ettir
-        this.player.animateWalk(time, 1.5);
-        this.player.group.position.x += delta * 2;
-        
-        // Kamera karakteri takip etsin
-        this.cameraManager.updateFollow(this.player.group.position, 0, delta);
-    }
 }
 ```
 
-### 3. Oyunu Başlatma
-```javascript
-// js/main.js
-import { MyGame } from './MyGame.js';
-window.onload = () => new MyGame();
+## Engine Yetkinlikleri
+
+- Scene tabanli lifecycle ve system orchestration
+- Input command queue ve fixed-step simulation altyapisi
+- Physics body/material/contact helpers
+- Projectile, collectible, objective zone ve encounter director sistemleri
+- Modifier, status effect, seeded RNG, replay recorder ve save manager
+- Headless harness ve inspector/debug overlay baslangici
+
+## Showcase Oyunun Kanitladigi Alanlar
+
+- Data-driven room/encounter tanimlari
+- Relic/loadout secimleri ve run-based progression
+- Singleplayer + yerel coop denemesi
+- Restart/snapshot/save temelli run dongusu
+
+## Test
+
+Headless smoke test:
+
+```bash
+npm test
 ```
 
-## 🛠 Modüllerin Kullanımı
+## Kural
 
-**Modüler Karakter Giydirme:**
-`ModularCharacter` bir iskelet gibidir, eline kılıç veya kafasına şapka takabilirsiniz.
-```javascript
-const kılıçMesh = new THREE.Mesh(...);
-karakter.equip('rightHand', kılıçMesh); // Sağ ele kılıç tak
-karakter.unequip('rightHand'); // Kılıcı çıkar
-```
-
-**Kamera Presetleri:**
-Farklı oyun tarzları için tek satırda kameranızı ayarlayın:
-```javascript
-this.cameraManager.setPreset('top-down');
-this.cameraManager.setPreset('fps');
-this.cameraManager.setPreset('tps'); // Omuz üstü
-this.cameraManager.setPreset('isometric');
-```
-
-**Giriş (Input) Yöneticisi:**
-Klavye/Fare veya Joystick ile entegre çalışır.
-```javascript
-import { InputManager } from './engine/systems/InputManager.js';
-this.input = new InputManager();
-
-const move = this.input.getMovementVector(); // {x: 1, z: 0} gibi WASD/Ok tuşlarından yön döner
-if (this.input.isKeyDown('space')) {
-    // Zıpla
-}
-```
-
-**Fizik, Ağırlık ve Momentum:**
-`PhysicsManager` artık kütle, sürtünme, sekme, damping, gravity scale ve kuvvet/impulse yardımcılarını destekler.
-```javascript
-const physics = new PhysicsManager({
-    gravity: { x: 0, y: -9.81, z: 0 },
-    defaultContactMaterial: { friction: 0.45, restitution: 0.02 }
-});
-
-const groundMaterial = physics.createMaterial('ground', { friction: 0.9 });
-const crateMaterial = physics.createMaterial('crate', { friction: 0.6, restitution: 0.05 });
-
-physics.addContactMaterial(crateMaterial, groundMaterial, {
-    friction: 0.8,
-    restitution: 0.02
-});
-
-const crateBody = physics.createBox(2, 2, 2, 25, { x: 0, y: 5, z: 0 }, null, {
-    material: crateMaterial,
-    linearDamping: 0.35,
-    angularDamping: 0.4,
-    gravityScale: 1.0
-});
-
-physics.addBody(crateBody, crateMesh);
-physics.applyImpulse(crateBody, { x: 0, y: 0, z: -8 });
-
-const momentum = physics.getMomentum(crateBody);
-```
-
-## 📌 Kurallar
-Motor kodlarının (`engine/`) içine asla projenize özel (örn: `AltinSayisi`, `ZombiVur()`) kodlar yazmayın. Özel kodlarınızı her zaman `game/` klasöründe tutun. Motoru temiz tutarsanız, bir sonraki projenize saniyeler içinde kopyalayabilirsiniz!
+Game’e ozel mantik `game/` tarafinda kalmali; fakat reusable olan sistemler ve altyapi `core/`, `systems/`, `objects/`, `utils/` altina tasinmali. Bu repodaki ana hedef, oyun geliştirirken engine yetkinligini kanitlamaktir.

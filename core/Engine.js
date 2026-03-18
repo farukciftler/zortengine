@@ -3,6 +3,9 @@ import { EventEmitter } from '../utils/EventEmitter.js';
 import { BrowserPlatform } from './BrowserPlatform.js';
 import { GameScene } from './GameScene.js';
 import { SceneManager } from './SceneManager.js';
+import { InspectorRegistry } from '../utils/InspectorRegistry.js';
+import { ReplayRecorder } from '../utils/ReplayRecorder.js';
+import { SeededRandom } from '../utils/SeededRandom.js';
 
 export class Engine {
     constructor(container, options = {}) {
@@ -10,6 +13,9 @@ export class Engine {
         this.platform = options.platform || new BrowserPlatform();
         this.clock = new THREE.Clock();
         this.events = new EventEmitter();
+        this.random = options.random || new SeededRandom(options.seed || 'zortengine');
+        this.inspector = options.inspector || new InspectorRegistry();
+        this.replayRecorder = options.replayRecorder || new ReplayRecorder();
         this.objects = [];
         this.scene = null;
         this.camera = null;
@@ -17,6 +23,11 @@ export class Engine {
         this.postProcessor = null;
         this.sceneManager = new SceneManager(this);
         this.defaultScene = null;
+        this.fixedDelta = options.fixedDelta || 1 / 60;
+        this.maxSubSteps = options.maxSubSteps || 5;
+        this.accumulator = 0;
+        this.simulationTime = 0;
+        this.tick = 0;
 
         if (!this.isHeadless) {
             const viewport = this.platform.getViewportSize();
@@ -90,14 +101,28 @@ export class Engine {
 
     loop() {
         this.platform.requestAnimationFrame(() => this.loop());
-        const delta = this.clock.getDelta();
-        const time = this.clock.getElapsedTime();
-
-        this.update(delta, time);
-        this.sceneManager.update(delta, time);
-        this._syncConvenienceRefs(this.sceneManager.getActiveScene());
-
+        this.stepSimulation(this.clock.getDelta());
         this.render();
+    }
+
+    stepSimulation(delta) {
+        this.accumulator += delta;
+        let steps = 0;
+
+        while (this.accumulator >= this.fixedDelta && steps < this.maxSubSteps) {
+            this.simulationTime += this.fixedDelta;
+            this.tick += 1;
+            this.update(this.fixedDelta, this.simulationTime);
+            this.sceneManager.update(this.fixedDelta, this.simulationTime);
+            this._syncConvenienceRefs(this.sceneManager.getActiveScene());
+            steps += 1;
+            this.accumulator -= this.fixedDelta;
+
+            const input = this.getSystem('input');
+            if (input?.drainReplayFrame) {
+                this.replayRecorder.capture(input.drainReplayFrame(this.tick));
+            }
+        }
     }
 
     update(delta, time) {
@@ -161,6 +186,24 @@ export class Engine {
         if (this.renderer) {
             this.renderer.dispose();
         }
+    }
+
+    getSimulationStats() {
+        return {
+            tick: this.tick,
+            fixedDelta: this.fixedDelta,
+            simulationTime: this.simulationTime,
+            pendingTime: this.accumulator
+        };
+    }
+
+    snapshot() {
+        return {
+            tick: this.tick,
+            simulationTime: this.simulationTime,
+            random: this.random.snapshot(),
+            scene: this.sceneManager.getActiveScene()?.serializeState?.() || null
+        };
     }
 
     _syncConvenienceRefs(scene) {

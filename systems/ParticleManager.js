@@ -5,6 +5,7 @@ export class ParticleManager {
     constructor(scene) {
         this.scene = scene;
         this.particles = [];
+        this.rng = null;
         
         this.baseGeometry = new THREE.BoxGeometry(0.2, 0.2, 0.2);
         
@@ -16,11 +17,17 @@ export class ParticleManager {
         }, 100);
     }
 
+    onAttach(context) {
+        this.rng = context?.engine?.random || null;
+    }
+
     emit(position, count = 10, options = {}) {
         const color = options.color || 0xcccccc;
         const speed = options.speed || 5;
         const life = options.life || 1.0;
         const scale = options.scale || 1.0;
+        const random = () => this.rng ? this.rng.float(-0.5, 0.5) : (Math.random() - 0.5);
+        const randomPositive = () => this.rng ? this.rng.float(0, 1) : Math.random();
 
         for (let i = 0; i < count; i++) {
             // new THREE.Mesh yerine havuzdan çekiyoruz
@@ -28,17 +35,17 @@ export class ParticleManager {
             p.material.color.setHex(color);
             p.position.copy(position);
             
-            p.position.x += (Math.random() - 0.5) * 0.5;
-            p.position.y += (Math.random() - 0.5) * 0.5;
-            p.position.z += (Math.random() - 0.5) * 0.5;
+            p.position.x += random() * 0.5;
+            p.position.y += random() * 0.5;
+            p.position.z += random() * 0.5;
             
             p.scale.setScalar(scale);
 
             p.userData = {
                 velocity: new THREE.Vector3(
-                    (Math.random() - 0.5) * speed, 
-                    Math.random() * speed, 
-                    (Math.random() - 0.5) * speed
+                    random() * speed,
+                    randomPositive() * speed,
+                    random() * speed
                 ),
                 life: life,
                 maxLife: life

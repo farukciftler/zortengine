@@ -1,4 +1,4 @@
-import * as CANNON from 'https://cdn.jsdelivr.net/npm/cannon-es@0.20.0/dist/cannon-es.js';
+import * as CANNON from 'cannon-es';
 
 export class PhysicsManager {
     constructor(options = {}) {
@@ -263,6 +263,17 @@ export class PhysicsManager {
                 mesh.quaternion.copy(body.quaternion);
             }
         }
+    }
+
+    snapshot() {
+        return {
+            bodyCount: this.world.bodies.length,
+            gravity: {
+                x: this.world.gravity.x,
+                y: this.world.gravity.y,
+                z: this.world.gravity.z
+            }
+        };
     }
 
     _createBody(shape, position, options = {}) {

@@ -7,6 +7,7 @@ export class ProjectileSystem {
         this.particleManager = options.particleManager;
         this.damageSystem = options.damageSystem || null;
         this.onCountChanged = options.onCountChanged || options.onAmmoChanged || null;
+        this.onHit = options.onHit || null;
         this.projectiles = [];
         this.targetProvider = null;
         this.onTargetDestroyed = null;
@@ -65,6 +66,14 @@ export class ProjectileSystem {
                     this.damageSystem.applyDamage(hitTarget, projectile.userData.damage, {
                         type: 'projectile',
                         source: 'player'
+                    });
+                }
+
+                if (typeof this.onHit === 'function') {
+                    this.onHit({
+                        projectile,
+                        target: hitTarget,
+                        damage: projectile.userData.damage
                     });
                 }
 

@@ -3,14 +3,28 @@ import { GameObject } from './GameObject.js';
 import { StateMachine } from '../utils/StateMachine.js';
 
 export class Enemy extends GameObject {
-    constructor(scene, x, z, playerTarget) {
+    constructor(scene, x, z, playerTarget, options = {}) {
         super(scene, x, z, 1.0);
         this.player = playerTarget;
-        this.speed = 3.5;
-        this.attackRange = 2.0;
-        this.chaseRange = 15.0;
+        this.profile = {
+            color: options.color ?? 0x8e44ad,
+            speed: options.speed ?? 3.5,
+            attackRange: options.attackRange ?? 2.0,
+            chaseRange: options.chaseRange ?? 15.0,
+            attackDamage: options.attackDamage ?? 20,
+            attackStyle: options.attackStyle || 'melee',
+            supportHeal: options.supportHeal ?? 0,
+            elite: options.elite ?? false,
+            boss: options.boss ?? false
+        };
+        this.speed = this.profile.speed;
+        this.attackRange = this.profile.attackRange;
+        this.chaseRange = this.profile.chaseRange;
+        this.attackDamage = this.profile.attackDamage;
+        this.attackStyle = this.profile.attackStyle;
+        this.supportHeal = this.profile.supportHeal;
 
-        this.buildMesh();
+        this.buildMesh(options);
 
         // Yapay Zeka (AI) Durum Makinesi
         this.fsm = new StateMachine();
@@ -18,12 +32,15 @@ export class Enemy extends GameObject {
         this.fsm.setState('idle');
     }
 
-    buildMesh() {
+    buildMesh(options = {}) {
         // Basit mor bir düşman küpü
-        const geo = new THREE.BoxGeometry(1, 1, 1);
-        const mat = new THREE.MeshStandardMaterial({ color: 0x8e44ad });
+        const baseScale = this.profile.boss ? 1.7 : (this.profile.elite ? 1.25 : 1);
+        const geo = this.attackStyle === 'ranged'
+            ? new THREE.CylinderGeometry(0.45 * baseScale, 0.55 * baseScale, 1.2 * baseScale, 8)
+            : new THREE.BoxGeometry(1 * baseScale, 1 * baseScale, 1 * baseScale);
+        const mat = new THREE.MeshStandardMaterial({ color: this.profile.color });
         this.mesh = new THREE.Mesh(geo, mat);
-        this.mesh.position.y = 0.5;
+        this.mesh.position.y = 0.5 * baseScale;
         this.mesh.castShadow = true;
         this.group.add(this.mesh);
     }
@@ -42,7 +59,7 @@ export class Enemy extends GameObject {
 
         this.fsm.addState('chase', {
             onEnter: () => {
-                this.mesh.material.color.setHex(0xe74c3c); // Kızgın (Kırmızı) ol
+                this.mesh.material.color.setHex(this.profile.boss ? 0xffffff : 0xe74c3c); // Kızgın ol
             },
             onUpdate: (delta) => {
                 const dist = this.distanceToPlayer();
@@ -55,6 +72,11 @@ export class Enemy extends GameObject {
 
                 // Yeterince yakınsa saldır
                 if (dist <= this.attackRange) {
+                    this.fsm.setState('attack');
+                    return;
+                }
+
+                if (this.attackStyle === 'ranged' && dist <= this.attackRange * 1.4) {
                     this.fsm.setState('attack');
                     return;
                 }
@@ -74,7 +96,8 @@ export class Enemy extends GameObject {
         this.fsm.addState('attack', {
             onEnter: () => {
                 // Saldırı animasyonu efekti (Şişme)
-                this.mesh.scale.set(1.5, 1.5, 1.5);
+                const attackScale = this.profile.boss ? 1.9 : (this.profile.elite ? 1.65 : 1.5);
+                this.mesh.scale.set(attackScale, attackScale, attackScale);
                 this.attackTimer = 0;
             },
             onUpdate: (delta) => {
@@ -96,6 +119,16 @@ export class Enemy extends GameObject {
 
     distanceToPlayer() {
         return this.group.position.distanceTo(this.player.group.position);
+    }
+
+    getAttackProfile() {
+        return {
+            damage: this.attackDamage,
+            style: this.attackStyle,
+            supportHeal: this.supportHeal,
+            elite: this.profile.elite,
+            boss: this.profile.boss
+        };
     }
 
     update(delta, time) {

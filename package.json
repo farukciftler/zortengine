@@ -5,7 +5,7 @@
   "main": "index.js",
   "type": "module",
   "scripts": {
-    "test": "echo \"No test specified\" && exit 1"
+    "test": "node tests/headless-smoke.test.js"
   },
   "keywords": [
     "3d",

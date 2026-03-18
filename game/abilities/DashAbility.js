@@ -16,10 +16,11 @@ export function createDashAbility(options = {}) {
         execute: ({ owner }) => {
             const movement = owner?.getComponent?.('movement');
             if (!movement || !owner) return false;
+            const profile = owner.controlProfile || 'default';
 
             const direction = movement.mode === 'tps'
-                ? movement._getThirdPersonMoveDirection(options.input.getMovementVector())
-                : movement._getIsometricMoveDirection(options.input.getMovementVector());
+                ? movement._getThirdPersonMoveDirection(options.input.getMovementVector(profile))
+                : movement._getIsometricMoveDirection(options.input.getMovementVector(profile));
 
             if (direction.lengthSq() === 0) {
                 direction.set(0, 0, 1).applyAxisAngle(new THREE.Vector3(0, 1, 0), owner.group.rotation.y);

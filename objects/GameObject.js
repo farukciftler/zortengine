@@ -2,6 +2,8 @@ import * as THREE from 'three';
 
 export class GameObject {
     constructor(scene, x = 0, z = 0, radius = 1) {
+        GameObject._nextEntityId = (GameObject._nextEntityId || 1);
+        this.entityId = `entity-${GameObject._nextEntityId++}`;
         this.scene = null;
         this.sceneController = null;
         this.radius = radius;
@@ -108,6 +110,25 @@ export class GameObject {
         }
 
         this.detachFromScene();
+    }
+
+    serialize() {
+        return {
+            entityId: this.entityId,
+            type: this.constructor.name,
+            radius: this.radius,
+            isDestroyed: this.isDestroyed,
+            position: {
+                x: this.group.position.x,
+                y: this.group.position.y,
+                z: this.group.position.z
+            },
+            rotation: {
+                x: this.group.rotation.x,
+                y: this.group.rotation.y,
+                z: this.group.rotation.z
+            }
+        };
     }
 
     // Simple collision check against another game object
