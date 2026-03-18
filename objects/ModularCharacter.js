@@ -70,6 +70,9 @@ export class ModularCharacter extends GameObject {
         
         const bodyMat = new THREE.MeshStandardMaterial({ color: this.colorSkin });
         const clothMat = new THREE.MeshStandardMaterial({ color: this.colorSuit });
+        const eyeMat = new THREE.MeshStandardMaterial({ color: 0x1f1f1f });
+        const noseMat = new THREE.MeshStandardMaterial({ color: 0xe8c39e });
+        const mouthMat = new THREE.MeshStandardMaterial({ color: 0x8b3a3a });
 
         this.limbs = {
             rightArm: new THREE.Group(),
@@ -91,6 +94,19 @@ export class ModularCharacter extends GameObject {
         headMesh.position.y = 1.6;
         headMesh.castShadow = true;
         this.limbs.head.add(headMesh);
+
+        const leftEye = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.06, 0.02), eyeMat);
+        leftEye.position.set(-0.08, 1.64, 0.21);
+        const rightEye = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.06, 0.02), eyeMat);
+        rightEye.position.set(0.08, 1.64, 0.21);
+
+        const nose = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.06, 0.03), noseMat);
+        nose.position.set(0, 1.58, 0.215);
+
+        const mouth = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.025, 0.02), mouthMat);
+        mouth.position.set(0, 1.49, 0.21);
+
+        this.limbs.head.add(leftEye, rightEye, nose, mouth);
 
         // Limbs geometry
         const armGeo = new THREE.BoxGeometry(0.15, 0.6, 0.15);
