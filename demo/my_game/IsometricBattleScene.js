@@ -27,7 +27,13 @@ export class IsometricBattleScene extends GameScene {
 
     setup() {
         const platform = this.engine.platform;
-        const physics = this.registerSystem('physics', new PhysicsManager(), { priority: 100 });
+        const physics = this.registerSystem('physics', new PhysicsManager({
+            gravity: { x: 0, y: -18, z: 0 },
+            defaultContactMaterial: {
+                friction: 0.45,
+                restitution: 0.02
+            }
+        }), { priority: 100 });
         const cameraManager = this.registerSystem('camera', new CameraManager(this.threeScene), { priority: 10 });
         const input = this.registerSystem(
             'input',
@@ -71,6 +77,13 @@ export class IsometricBattleScene extends GameScene {
         input.on('viewToggle', () => this.toggleCameraMode());
         input.isFpsMode = false;
 
+        this.groundMaterial = physics.createMaterial('ground', { friction: 0.9, restitution: 0.0 });
+        this.playerMaterial = physics.createMaterial('player', { friction: 0.0, restitution: 0.0 });
+        this.propMaterial = physics.createMaterial('prop', { friction: 0.6, restitution: 0.08 });
+        physics.addContactMaterial(this.playerMaterial, this.groundMaterial, { friction: 0.0, restitution: 0.0 });
+        physics.addContactMaterial(this.playerMaterial, this.propMaterial, { friction: 0.15, restitution: 0.0 });
+        physics.addContactMaterial(this.propMaterial, this.groundMaterial, { friction: 0.8, restitution: 0.02 });
+
         this._createLights();
         this._createWorld(physics);
         this._createActors(physics, input, particles, cameraManager);
@@ -94,7 +107,9 @@ export class IsometricBattleScene extends GameScene {
         this.groundMesh.rotation.x = -Math.PI / 2;
         this.threeScene.add(this.groundMesh);
         this.environmentMeshes.push(this.groundMesh);
-        physics.addBody(physics.createGround(), this.groundMesh);
+        physics.addBody(physics.createGround(100, 100, {
+            material: this.groundMaterial
+        }), this.groundMesh);
 
         const rampGeo = new THREE.BoxGeometry(6, 1, 10);
         const rampMat = new THREE.MeshStandardMaterial({ color: 0xe67e22 });
@@ -106,7 +121,9 @@ export class IsometricBattleScene extends GameScene {
         this.threeScene.add(this.rampMesh);
         this.environmentMeshes.push(this.rampMesh);
         physics.addBody(
-            physics.createBox(6, 1, 10, 0, this.rampMesh.position, this.rampMesh.quaternion),
+            physics.createBox(6, 1, 10, 0, this.rampMesh.position, this.rampMesh.quaternion, {
+                material: this.groundMaterial
+            }),
             this.rampMesh
         );
 
@@ -119,7 +136,15 @@ export class IsometricBattleScene extends GameScene {
         this.physicsBoxMesh = new THREE.Mesh(boxGeo, boxMat);
         this.physicsBoxMesh.castShadow = true;
         this.threeScene.add(this.physicsBoxMesh);
-        physics.addBody(physics.createBox(2, 2, 2, 5, { x: 3, y: 20, z: -3 }), this.physicsBoxMesh);
+        this.boxBody = physics.createBox(2, 2, 2, 18, { x: 3, y: 20, z: -3 }, null, {
+            material: this.propMaterial,
+            linearDamping: 0.35,
+            angularDamping: 0.45,
+            friction: 0.6,
+            restitution: 0.02,
+            gravityScale: 1.0
+        });
+        physics.addBody(this.boxBody, this.physicsBoxMesh);
         this.environmentMeshes.push(this.physicsBoxMesh);
     }
 
@@ -130,7 +155,14 @@ export class IsometricBattleScene extends GameScene {
         });
         this.add(this.player);
 
-        this.playerBody = physics.createCharacterBody(0.6, { x: 0, y: 5, z: 0 });
+        this.playerBody = physics.createCharacterBody(0.6, { x: 0, y: 5, z: 0 }, 2.2, {
+            mass: 80,
+            material: this.playerMaterial,
+            friction: 0.0,
+            restitution: 0.0,
+            linearDamping: 0.82,
+            angularDamping: 1.0
+        });
         physics.addBody(this.playerBody, this.player.group);
         this.player.addComponent(
             'movement',

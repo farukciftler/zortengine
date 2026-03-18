@@ -100,5 +100,34 @@ if (this.input.isKeyDown('space')) {
 }
 ```
 
+**Fizik, Ağırlık ve Momentum:**
+`PhysicsManager` artık kütle, sürtünme, sekme, damping, gravity scale ve kuvvet/impulse yardımcılarını destekler.
+```javascript
+const physics = new PhysicsManager({
+    gravity: { x: 0, y: -9.81, z: 0 },
+    defaultContactMaterial: { friction: 0.45, restitution: 0.02 }
+});
+
+const groundMaterial = physics.createMaterial('ground', { friction: 0.9 });
+const crateMaterial = physics.createMaterial('crate', { friction: 0.6, restitution: 0.05 });
+
+physics.addContactMaterial(crateMaterial, groundMaterial, {
+    friction: 0.8,
+    restitution: 0.02
+});
+
+const crateBody = physics.createBox(2, 2, 2, 25, { x: 0, y: 5, z: 0 }, null, {
+    material: crateMaterial,
+    linearDamping: 0.35,
+    angularDamping: 0.4,
+    gravityScale: 1.0
+});
+
+physics.addBody(crateBody, crateMesh);
+physics.applyImpulse(crateBody, { x: 0, y: 0, z: -8 });
+
+const momentum = physics.getMomentum(crateBody);
+```
+
 ## 📌 Kurallar
 Motor kodlarının (`engine/`) içine asla projenize özel (örn: `AltinSayisi`, `ZombiVur()`) kodlar yazmayın. Özel kodlarınızı her zaman `game/` klasöründe tutun. Motoru temiz tutarsanız, bir sonraki projenize saniyeler içinde kopyalayabilirsiniz!
