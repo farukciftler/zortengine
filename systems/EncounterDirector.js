@@ -1,13 +1,13 @@
-export class WaveDirector {
+export class EncounterDirector {
     constructor(options = {}) {
         this.spawner = options.spawner;
         this.spawnPoints = options.spawnPoints || [];
         this.waves = options.waves || [];
         this.onWaveChanged = options.onWaveChanged || null;
-        this.onEnemySpawned = options.onEnemySpawned || null;
-        this.onEnemyDefeated = options.onEnemyDefeated || null;
+        this.onEntitySpawned = options.onEntitySpawned || null;
+        this.onEntityDefeated = options.onEntityDefeated || null;
         this.onCompleted = options.onCompleted || null;
-        this.activeEnemies = [];
+        this.activeEntities = [];
         this.pendingSpawns = [];
         this.currentWaveIndex = -1;
         this.spawnTimer = 0;
@@ -21,29 +21,29 @@ export class WaveDirector {
     update(delta) {
         if (this.completed) return;
 
-        this._syncActiveEnemies();
+        this._syncActiveEntities();
 
         if (this.pendingSpawns.length > 0) {
             this.spawnTimer -= delta;
             if (this.spawnTimer <= 0) {
-                this._spawnNextEnemy();
+                this._spawnNextEntity();
             }
             return;
         }
 
-        if (this.activeEnemies.length === 0) {
+        if (this.activeEntities.length === 0) {
             this._startNextWave();
         }
     }
 
-    getLivingEnemies() {
-        this._syncActiveEnemies();
-        return this.activeEnemies;
+    getLivingEntities() {
+        this._syncActiveEntities();
+        return this.activeEntities;
     }
 
     getAliveCount() {
-        this._syncActiveEnemies();
-        return this.activeEnemies.length;
+        this._syncActiveEntities();
+        return this.activeEntities.length;
     }
 
     getCurrentWaveNumber() {
@@ -83,21 +83,21 @@ export class WaveDirector {
         for (let i = 0; i < count; i++) {
             queue.push({
                 spawnPoint: this.spawnPoints[i % this.spawnPoints.length],
-                enemyOptions: wave.enemyOptions || {}
+                entityOptions: wave.entityOptions || wave.enemyOptions || {}
             });
         }
         return queue;
     }
 
-    _spawnNextEnemy() {
+    _spawnNextEntity() {
         const next = this.pendingSpawns.shift();
         if (!next) return;
 
-        const enemy = this.spawner.spawn(next.spawnPoint, next.enemyOptions);
-        if (enemy) {
-            this.activeEnemies.push(enemy);
-            if (typeof this.onEnemySpawned === 'function') {
-                this.onEnemySpawned(enemy, this.getCurrentWaveNumber());
+        const entity = this.spawner.spawn(next.spawnPoint, next.entityOptions);
+        if (entity) {
+            this.activeEntities.push(entity);
+            if (typeof this.onEntitySpawned === 'function') {
+                this.onEntitySpawned(entity, this.getCurrentWaveNumber());
             }
         }
 
@@ -105,21 +105,21 @@ export class WaveDirector {
         this.spawnTimer = wave.spawnInterval ?? 0.6;
     }
 
-    _syncActiveEnemies() {
+    _syncActiveEntities() {
         const stillAlive = [];
-        const defeatedEnemies = [];
-        for (const enemy of this.activeEnemies) {
-            if (!enemy || enemy.isDestroyed) {
-                defeatedEnemies.push(enemy);
+        const defeated = [];
+        for (const entity of this.activeEntities) {
+            if (!entity || entity.isDestroyed) {
+                defeated.push(entity);
                 continue;
             }
-            stillAlive.push(enemy);
+            stillAlive.push(entity);
         }
-        this.activeEnemies = stillAlive;
+        this.activeEntities = stillAlive;
 
-        if (typeof this.onEnemyDefeated === 'function') {
-            for (const enemy of defeatedEnemies) {
-                this.onEnemyDefeated(enemy, this.getCurrentWaveNumber());
+        if (typeof this.onEntityDefeated === 'function') {
+            for (const entity of defeated) {
+                this.onEntityDefeated(entity, this.getCurrentWaveNumber());
             }
         }
     }

@@ -4,6 +4,11 @@ export function createDashAbility(options = {}) {
     return {
         id: options.id || 'dash',
         cooldown: options.cooldown ?? 1.2,
+        getCooldown: () => {
+            const baseCooldown = options.cooldown ?? 1.2;
+            const scale = options.getCooldownScale ? options.getCooldownScale() : 1;
+            return baseCooldown * scale;
+        },
         canUse: ({ owner }) => {
             const movement = owner?.getComponent?.('movement');
             return !!movement;

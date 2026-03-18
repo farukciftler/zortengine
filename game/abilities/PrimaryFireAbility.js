@@ -4,6 +4,11 @@ export function createPrimaryFireAbility(options = {}) {
     return {
         id: options.id || 'primaryFire',
         cooldown: options.cooldown ?? 0.16,
+        getCooldown: () => {
+            const baseCooldown = options.cooldown ?? 0.16;
+            const fireRateScale = options.getFireRateScale ? options.getFireRateScale() : 1;
+            return baseCooldown * fireRateScale;
+        },
         execute: ({ owner, scene }) => {
             const projectileSystem = options.projectileSystem;
             const cameraManager = options.cameraManager;
@@ -36,7 +41,9 @@ export function createPrimaryFireAbility(options = {}) {
                 }
             }
 
-            projectileSystem.shoot(owner.group.position, direction);
+            projectileSystem.shoot(owner.group.position, direction, {
+                damage: options.getDamage ? options.getDamage() : undefined
+            });
 
             if (scene?.engine?.events) {
                 scene.engine.events.emit('ability:primaryFire', { owner });

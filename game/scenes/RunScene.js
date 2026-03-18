@@ -3,12 +3,19 @@ import {
     AbilitySystem,
     AudioManager,
     CameraManager,
+    CollectibleActor,
+    CollectibleSystem,
     DamageSystem,
+    EncounterDirector,
     GameScene,
     InputManager,
     MemoryCleaner,
+    ObjectiveZoneActor,
+    ObjectiveZoneSystem,
     ParticleManager,
     PhysicsManager,
+    ProjectileSystem,
+    SpawnSystem,
     UIManager
 } from 'zortengine';
 import { createDashAbility } from '../abilities/DashAbility.js';
@@ -16,9 +23,9 @@ import { createPrimaryFireAbility } from '../abilities/PrimaryFireAbility.js';
 import { EnemyActor } from '../actors/EnemyActor.js';
 import { PlayerActor } from '../actors/PlayerActor.js';
 import { PlayerMovementController } from '../actors/PlayerMovementController.js';
-import { EnemySpawner } from '../systems/EnemySpawner.js';
-import { ProjectileSystem } from '../systems/ProjectileSystem.js';
-import { WaveDirector } from '../systems/WaveDirector.js';
+import { getRandomRelic } from '../items/RelicDefinitions.js';
+import { MetaProgression } from '../runtime/MetaProgression.js';
+import { RunState } from '../runtime/RunState.js';
 import { RunHud } from '../ui/RunHud.js';
 
 export class RunScene extends GameScene {
@@ -29,6 +36,7 @@ export class RunScene extends GameScene {
         this.cameraMode = '2.5d';
         this.yaw = Math.PI;
         this.pitch = 0.35;
+        this.pendingRestart = false;
         this.spawnPoints = [
             new THREE.Vector3(8, 0, 8),
             new THREE.Vector3(-10, 0, 6),
@@ -56,6 +64,8 @@ export class RunScene extends GameScene {
         const particles = this.registerSystem('particles', new ParticleManager(this.threeScene), { priority: 110 });
         const damage = this.registerSystem('damage', new DamageSystem(), { priority: 103 });
         const abilities = this.registerSystem('abilities', new AbilitySystem(), { priority: 104 });
+        this.runState = new RunState();
+        this.metaProgression = new MetaProgression().load();
         const ui = this.registerSystem('ui', new UIManager({
             platform,
             parent: this.engine.container
@@ -67,7 +77,15 @@ export class RunScene extends GameScene {
 
         this.hud = new RunHud(ui);
         this.hud.setup();
-        this.engine.events.on('hp_changed', hp => this.hud.updateHealth(hp));
+        this._hpChangedListener = hp => this.hud.updateHealth(hp);
+        this.engine.events.on('hp_changed', this._hpChangedListener);
+        this.hud.updateRunState(this.runState.essence, this.runState.getRelicCount());
+        this.hud.updateStatus('AKTIF');
+        this.hud.updateMetaProgress(
+            this.metaProgression.bankEssence,
+            this.metaProgression.completedRuns,
+            this.metaProgression.failedRuns
+        );
 
         this.projectiles = this.registerSystem('projectiles', new ProjectileSystem({
             scene: this.threeScene,
@@ -79,6 +97,7 @@ export class RunScene extends GameScene {
         input.on('attack', () => this.useAbility('primaryFire'));
         input.on('skill1', () => this.useAbility('dash'));
         input.on('viewToggle', () => this.toggleCameraMode());
+        input.on('restart', () => this._requestRestart());
         input.isFpsMode = false;
 
         this.groundMaterial = physics.createMaterial('ground', { friction: 0.9, restitution: 0.0 });
@@ -91,8 +110,16 @@ export class RunScene extends GameScene {
         this._createLights();
         this._createWorld(physics);
         this._createActors(physics, input, particles, cameraManager);
+        this._setupExtraction();
+        this._setupPickups();
         this._setupAbilities(abilities, input, particles, cameraManager);
         this._setupWaves();
+    }
+
+    onExit() {
+        if (this._hpChangedListener) {
+            this.engine?.events?.off('hp_changed', this._hpChangedListener);
+        }
     }
 
     _createLights() {
@@ -160,6 +187,12 @@ export class RunScene extends GameScene {
         });
         physics.addBody(this.boxBody, this.physicsBoxMesh);
         this.environmentMeshes.push(this.physicsBoxMesh);
+
+        this.extractionGate = new ObjectiveZoneActor(null, 0, -6, {
+            isActive: false,
+            radius: 1.8
+        });
+        this.add(this.extractionGate);
     }
 
     _createActors(physics, input, particles, cameraManager) {
@@ -191,6 +224,7 @@ export class RunScene extends GameScene {
         }));
 
         this.activeEnemies = [];
+        this.pickups = [];
     }
 
     _setupAbilities(abilitySystem, input, particles, cameraManager) {
@@ -202,6 +236,8 @@ export class RunScene extends GameScene {
             input,
             obstacles: this.environmentMeshes,
             getCameraMode: () => this.cameraMode,
+            getDamage: () => 25 + this.runState.modifiers.projectileDamageBonus,
+            getFireRateScale: () => this.runState.modifiers.fireRateScale,
             cooldown: 0.16
         }));
 
@@ -210,8 +246,25 @@ export class RunScene extends GameScene {
             particleManager: particles,
             dashStrength: 16,
             dashDuration: 0.14,
+            getCooldownScale: () => this.runState.modifiers.dashCooldownScale,
             cooldown: 1.2
         }));
+    }
+
+    _setupPickups() {
+        this.pickupSystem = this.registerSystem('pickups', new CollectibleSystem({
+            collector: this.player,
+            getCollectibles: () => this.pickups,
+            onCollect: pickup => this._handlePickup(pickup)
+        }), { priority: 111 });
+    }
+
+    _setupExtraction() {
+        this.extractionSystem = this.registerSystem('extraction', new ObjectiveZoneSystem({
+            target: this.player,
+            actor: this.extractionGate,
+            onEnter: () => this._completeRun()
+        }), { priority: 112 });
     }
 
     useAbility(abilityId) {
@@ -220,26 +273,28 @@ export class RunScene extends GameScene {
     }
 
     _setupWaves() {
-        this.enemySpawner = new EnemySpawner({
+        this.enemySpawner = new SpawnSystem({
             scene: this,
-            player: this.player,
-            enemyFactory: (spawnPoint, enemyOptions) => {
+            spawnFactory: (spawnPoint, enemyOptions) => {
                 return new EnemyActor(null, spawnPoint.x, spawnPoint.z, this.player, enemyOptions);
             }
         });
 
-        this.waveDirector = new WaveDirector({
+        this.waveDirector = new EncounterDirector({
             spawner: this.enemySpawner,
             spawnPoints: this.spawnPoints,
             waves: [
-                { count: 2, spawnInterval: 0.45, enemyOptions: { maxHp: 60 } },
-                { count: 3, spawnInterval: 0.4, enemyOptions: { maxHp: 85 } },
-                { count: 4, spawnInterval: 0.35, enemyOptions: { maxHp: 110 } }
+                { count: 2, spawnInterval: 0.45, entityOptions: { maxHp: 60 } },
+                { count: 3, spawnInterval: 0.4, entityOptions: { maxHp: 85 } },
+                { count: 4, spawnInterval: 0.35, entityOptions: { maxHp: 110 } }
             ],
             onWaveChanged: info => {
+                if (info.waveNumber > 1) {
+                    this._spawnRelicPickup();
+                }
                 this.hud.updateWave(info.waveNumber, info.totalWaves, this.waveDirector?.getAliveCount() || 0);
             },
-            onEnemySpawned: enemy => {
+            onEntitySpawned: enemy => {
                 this.activeEnemies.push(enemy);
                 this.hud.updateWave(
                     this.waveDirector.getCurrentWaveNumber(),
@@ -247,8 +302,9 @@ export class RunScene extends GameScene {
                     this.waveDirector.getAliveCount()
                 );
             },
-            onEnemyDefeated: enemy => {
+            onEntityDefeated: enemy => {
                 if (!enemy) return;
+                this._spawnEssencePickup(enemy.group.position.clone(), 1);
                 MemoryCleaner.dispose(enemy.group);
                 this.remove(enemy);
                 this.activeEnemies = this.activeEnemies.filter(item => item && item !== enemy && !item.isDestroyed);
@@ -259,12 +315,16 @@ export class RunScene extends GameScene {
                 );
             },
             onCompleted: () => {
-                this.hud.updateInfo('Tum dalgalar temizlendi. Sonraki adim: extraction ve loot sistemi.');
+                this._spawnRelicPickup(new THREE.Vector3(0, 0, -6));
+                this.runState.unlockExtraction();
+                this.extractionGate?.setActive(true);
+                this.hud.updateStatus('EXTRACTION ACIK');
+                this.hud.updateInfo('Tum dalgalar temizlendi. Relic topla ve yesil extraction kapisina gir.');
             }
         });
 
         this.projectiles.setTargetProvider(
-            () => this.waveDirector.getLivingEnemies(),
+            () => this.waveDirector.getLivingEntities(),
             target => {
                 target.isDestroyed = true;
             }
@@ -273,9 +333,117 @@ export class RunScene extends GameScene {
         this.waveDirector.start();
     }
 
+    _spawnEssencePickup(position, amount = 1) {
+        const pickup = new CollectibleActor(null, position.x, position.z, {
+            type: 'essence',
+            y: 0.8,
+            radius: 0.7,
+            payload: { amount },
+            color: 0x7dd3fc
+        });
+        this.pickups.push(pickup);
+        this.add(pickup);
+    }
+
+    _spawnRelicPickup(position = new THREE.Vector3(0, 0, 6)) {
+        const relic = getRandomRelic(this.runState.relics);
+        if (!relic) return;
+
+        const pickup = new CollectibleActor(null, position.x, position.z, {
+            type: 'relic',
+            y: 1.0,
+            radius: 1.0,
+            payload: { relic },
+            label: relic.name,
+            color: 0xf8e16c
+        });
+        this.pickups.push(pickup);
+        this.add(pickup);
+        this.hud.updateInfo(`Yeni relic dustu: ${relic.name}. Uzerinden gecerek topla.`);
+    }
+
+    _handlePickup(pickup) {
+        this.pickups = this.pickups.filter(item => item && item !== pickup && !item.isDestroyed);
+        this.remove(pickup);
+
+        if (pickup.type === 'essence') {
+            this.runState.addEssence(pickup.payload.amount || 1);
+        }
+
+        if (pickup.type === 'relic' && pickup.payload.relic) {
+            const relic = this.runState.addRelic(pickup.payload.relic);
+            this._applyRunModifiers();
+            if (relic) {
+                this.hud.updateInfo(`Relic alindi: ${relic.name} - ${relic.description}`);
+            }
+        }
+
+        this.hud.updateRunState(this.runState.essence, this.runState.getRelicCount());
+    }
+
+    _applyRunModifiers() {
+        const movement = this.player?.getComponent('movement');
+        if (movement) {
+            movement.jumpVelocity = 9.5 + this.runState.modifiers.jumpBonus;
+        }
+    }
+
+    _completeRun() {
+        if (this.runState.status !== 'active') return;
+        this.runState.complete();
+        this.metaProgression.recordRun(this.runState);
+        this.hud.updateStatus('TAMAMLANDI');
+        this.hud.updateMetaProgress(
+            this.metaProgression.bankEssence,
+            this.metaProgression.completedRuns,
+            this.metaProgression.failedRuns
+        );
+        this.hud.updateInfo(`Run tamamlandi. Essence bankaya eklendi. R ile yeniden basla.`);
+        if (this.extractionGate) {
+            this.extractionGate.setActive(false);
+        }
+    }
+
+    _failRun() {
+        if (this.runState.status !== 'active') return;
+        this.runState.fail();
+        this.metaProgression.recordRun(this.runState);
+        this.hud.updateStatus('BASARISIZ');
+        this.hud.updateMetaProgress(
+            this.metaProgression.bankEssence,
+            this.metaProgression.completedRuns,
+            this.metaProgression.failedRuns
+        );
+        this.hud.updateInfo('Oyuncu dustu. R ile runi yeniden baslat.');
+        if (this.extractionGate) {
+            this.extractionGate.setActive(false);
+        }
+    }
+
+    _requestRestart() {
+        if (this.runState.status !== 'active') {
+            this.pendingRestart = true;
+        }
+    }
+
+    _restartRun() {
+        if (!this.engine) return;
+        const engine = this.engine;
+
+        this.pendingRestart = false;
+        engine.sceneManager.removeScene('run');
+        engine.addScene('run', new RunScene());
+        engine.useScene('run');
+    }
+
     onUpdate(delta) {
         const input = this.getSystem('input');
         const movement = this.player?.getComponent('movement');
+
+        if (this.pendingRestart) {
+            this._restartRun();
+            return;
+        }
 
         if (this.cameraMode === 'tps' && input?.isPointerLocked()) {
             const mouseDelta = input.getMouseDelta();
@@ -291,9 +459,12 @@ export class RunScene extends GameScene {
         const playerHealth = this.player?.getComponent('health');
         if (playerHealth) {
             this.engine.events.emit('hp_changed', playerHealth.health);
+            if (!playerHealth.isAlive()) {
+                this._failRun();
+            }
         }
 
-        if (this.waveDirector) {
+        if (this.waveDirector && this.runState.status === 'active') {
             this.waveDirector.update(delta);
         }
 
@@ -313,9 +484,9 @@ export class RunScene extends GameScene {
             }
         }
 
-        const livingEnemies = this.waveDirector ? this.waveDirector.getLivingEnemies() : [];
+        const livingEnemies = this.waveDirector ? this.waveDirector.getLivingEntities() : [];
         for (const enemy of livingEnemies) {
-            if (enemy && !enemy.isDestroyed && enemy.fsm.getCurrentState() === 'attack') {
+            if (this.runState.status === 'active' && enemy && !enemy.isDestroyed && enemy.fsm.getCurrentState() === 'attack') {
                 this.getSystem('damage')?.applyDamage(this.player, 20 * delta, {
                     type: 'melee',
                     source: 'enemy'

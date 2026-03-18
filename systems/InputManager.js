@@ -14,7 +14,8 @@ export class InputManager {
             'right': ['d', 'arrowright'],
             'attack': [],
             'jump': [' '],
-            'skill1': ['q']
+            'skill1': ['q'],
+            'restart': ['r']
         };
         this.events = new EventEmitter();
 
@@ -87,6 +88,10 @@ export class InputManager {
 
                 if (key === 'q') {
                     this.triggerAction('skill1');
+                }
+
+                if (key === 'r') {
+                    this.triggerAction('restart');
                 }
 
                 if (key === 'v') {

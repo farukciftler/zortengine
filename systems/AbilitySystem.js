@@ -88,7 +88,9 @@ export class AbilitySystem {
             return false;
         }
 
-        entry.cooldownRemaining = definition.cooldown ?? 0;
+        entry.cooldownRemaining = typeof definition.getCooldown === 'function'
+            ? definition.getCooldown(payload)
+            : (definition.cooldown ?? 0);
         this._emitLifecycleEvent('used', {
             owner,
             abilityId,
