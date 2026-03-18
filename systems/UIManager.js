@@ -69,4 +69,21 @@ export class UIManager {
             this.elements[id].style.width = p + '%';
         }
     }
+
+    // FPS / TPS oyunları için ekranın tam ortasına nişangah ekler
+    addCrosshair(id = 'crosshair') {
+        const el = document.createElement('div');
+        el.style.position = 'absolute';
+        el.style.top = '50%';
+        el.style.left = '50%';
+        el.style.width = '6px';
+        el.style.height = '6px';
+        el.style.backgroundColor = 'white';
+        el.style.border = '2px solid rgba(0,0,0,0.5)';
+        el.style.borderRadius = '50%';
+        el.style.transform = 'translate(-50%, -50%)';
+        el.style.pointerEvents = 'none'; // Fare tıklamalarını engellemesin
+        this.container.appendChild(el);
+        this.elements[id] = el;
+    }
 }

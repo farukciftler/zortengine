@@ -1,0 +1,22 @@
+{
+  "name": "zortengine",
+  "version": "1.0.0",
+  "description": "Mini, modular 3D game engine based on Three.js",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "test": "echo \"No test specified\" && exit 1"
+  },
+  "keywords": [
+    "3d",
+    "engine",
+    "three.js",
+    "game"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "cannon-es": "^0.20.0",
+    "three": "^0.128.0"
+  }
+}

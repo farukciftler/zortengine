@@ -20,16 +20,13 @@ export class LevelParser {
                 if (child.name.includes('_Collider')) {
                     child.visible = false;
                     
-                    // Boyutları hesapla (Bounding Box)
-                    child.geometry.computeBoundingBox();
-                    const box = child.geometry.boundingBox;
-                    const width = box.max.x - box.min.x;
-                    const height = box.max.y - box.min.y;
-                    const depth = box.max.z - box.min.z;
-
-                    // Fizik motoruna statik (mass:0) bir kutu olarak ekle
-                    const body = this.physics.createBox(width, height, depth, 0, child.position);
-                    this.physics.addBody(body); // Mesh vermiyoruz çünkü görünmez duvar olacak
+                    // -- YENİ: Objeyi üçgen ağı (Trimesh) olarak kopyala ve fiziğe tam uyumlu ekle --
+                    const cloneGeo = child.geometry.clone();
+                    cloneGeo.applyMatrix4(child.matrixWorld); // Blender'daki yerel büyüklüğü/rotasyonu merkeze uygula
+                    
+                    // Objeyi dünya merkezinde sıfırdan yarat (Trimesh olduğu için)
+                    const body = this.physics.createTrimesh(cloneGeo, 0, new THREE.Vector3(0, 0, 0));
+                    // this.physics.addBody(body); zaten createTrimesh içinde eklendi
                 }
 
                 // Özel eşya/düşman doğma noktaları (Örn: "Spawn_Enemy_1")
