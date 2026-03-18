@@ -1,11 +1,13 @@
 import * as THREE from 'three';
 import { PhysicsManager } from '../systems/PhysicsManager.js';
+import { EventEmitter } from '../utils/EventEmitter.js';
 
 export class Engine {
     constructor(container, options = {}) {
         this.isHeadless = options.headless || false;
         this.clock = new THREE.Clock();
         this.objects = [];
+        this.events = new EventEmitter(); // YENİ: Global Olay Yöneticisi (Event Bus)
         
         // Initialize Physics Manager
         this.physics = new PhysicsManager();

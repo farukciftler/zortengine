@@ -1,3 +1,5 @@
+import * as THREE from 'three';
+
 export class InputManager {
     constructor(config = {}) {
         this.keys = {};
@@ -11,6 +13,9 @@ export class InputManager {
         this.isFpsMode = false;
 
         this.mouseDelta = { x: 0, y: 0 };
+        // YENİ: Raycaster (Lazer) için mutlak fare pozisyonu (-1 ile +1 arası normalize edilmiş)
+        this.mousePos = new THREE.Vector2(0, 0); 
+        this.raycaster = new THREE.Raycaster();
         
         this.domElement = config.domElement || document.body;
         this.joystickZoneId = config.joystickZoneId || null;
@@ -21,6 +26,10 @@ export class InputManager {
                 this.mouseDelta.x += e.movementX;
                 this.mouseDelta.y += e.movementY;
             }
+            
+            // Farenin tarayıcıdaki gerçek koordinatlarını Raycast için Three.js diline çevir
+            this.mousePos.x = (e.clientX / window.innerWidth) * 2 - 1;
+            this.mousePos.y = -(e.clientY / window.innerHeight) * 2 + 1;
         });
 
         document.addEventListener('click', () => {
@@ -42,34 +51,12 @@ export class InputManager {
             const key = e.key.toLowerCase();
             this.keys[key] = false;
         });
+    }
 
-        // Optional Joystick setup if nipplejs is loaded
-        if (window.nipplejs && this.joystickZoneId) {
-            const zone = document.getElementById(this.joystickZoneId);
-            if (zone) {
-                const joystickManager = nipplejs.create({
-                    zone: zone,
-                    mode: 'static',
-                    position: { left: '50%', top: '50%' },
-                    color: 'white',
-                    size: 100
-                });
-                joystickManager.on('move', (evt, data) => {
-                    this.joystickDir.x = Math.cos(data.angle.radian);
-                    this.joystickDir.z = -Math.sin(data.angle.radian);
-                });
-                joystickManager.on('end', () => { this.joystickDir = { x: 0, z: 0 }; });
-            }
-        }
-
-        if (this.attackButtonId) {
-            const btn = document.getElementById(this.attackButtonId);
-            if (btn) {
-                btn.addEventListener('pointerdown', () => {
-                    if (this.onAttack) this.onAttack();
-                });
-            }
-        }
+    // YENİ: Kameradan farenin olduğu noktaya lazer (raycast) gönderip çarptığı objeleri bul
+    getRaycastIntersection(camera, objectsToTest) {
+        this.raycaster.setFromCamera(this.mousePos, camera);
+        return this.raycaster.intersectObjects(objectsToTest, true);
     }
 
     isKeyDown(key) {
