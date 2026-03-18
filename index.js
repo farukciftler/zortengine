@@ -1,8 +1,12 @@
 // Core
+export { BrowserPlatform } from './core/BrowserPlatform.js';
 export { Engine } from './core/Engine.js';
+export { GameScene } from './core/GameScene.js';
 export { SceneManager } from './core/SceneManager.js';
+export { SystemManager } from './core/SystemManager.js';
 
 // Objects
+export { Component } from './objects/Component.js';
 export { GameObject } from './objects/GameObject.js';
 export { ModularCharacter } from './objects/ModularCharacter.js';
 export { Enemy } from './objects/Enemy.js';

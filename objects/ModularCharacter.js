@@ -59,6 +59,7 @@ export class ModularCharacter extends GameObject {
 
     // Called automatically if added to engine.objects
     update(delta, time) {
+        super.update(delta, time);
         if (this.fsm) {
             this.fsm.update(delta, time);
         }

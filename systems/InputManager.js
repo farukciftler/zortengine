@@ -1,61 +1,141 @@
 import * as THREE from 'three';
+import { BrowserPlatform } from '../core/BrowserPlatform.js';
+import { EventEmitter } from '../utils/EventEmitter.js';
 
 export class InputManager {
     constructor(config = {}) {
         this.keys = {};
         this.joystickDir = { x: 0, z: 0 };
         this.isAttacking = false;
-        
-        // -- YENİ: Eylem Haritası (Action Mapping) --
         this.bindings = {
             'forward': ['w', 'arrowup'],
             'backward': ['s', 'arrowdown'],
             'left': ['a', 'arrowleft'],
             'right': ['d', 'arrowright'],
-            'attack': [' '] // İleride fare sol tık da eklenebilir
+            'attack': [' ']
         };
-        
-        // Callbacks
+        this.events = new EventEmitter();
+
         this.onAttack = null;
         this.onViewToggle = null;
         this.onJump = null;
         this.isFpsMode = false;
-
         this.mouseDelta = { x: 0, y: 0 };
-        this.mousePos = new THREE.Vector2(0, 0); 
+        this.mousePos = new THREE.Vector2(0, 0);
         this.raycaster = new THREE.Raycaster();
-        
-        this.domElement = config.domElement || document.body;
 
-        document.addEventListener('mousemove', e => {
-            if (document.pointerLockElement === document.body) {
-                this.mouseDelta.x += e.movementX;
-                this.mouseDelta.y += e.movementY;
-            }
-            this.mousePos.x = (e.clientX / window.innerWidth) * 2 - 1;
-            this.mousePos.y = -(e.clientY / window.innerHeight) * 2 + 1;
-        });
+        this.platform = config.platform || new BrowserPlatform();
+        this.domElement = config.domElement || this.platform.getBody();
+        this.pointerLockElement = config.pointerLockElement || this.domElement;
+        this.removeListeners = [];
 
-        document.addEventListener('click', () => {
-            if (this.isFpsMode && document.pointerLockElement !== document.body) {
-                document.body.requestPointerLock();
-            } else if (this.onAttack) {
-                this.onAttack();
-            }
-        });
+        if (config.autoAttach !== false) {
+            this.attach();
+        }
+    }
 
-        window.addEventListener('keydown', e => {
-            const key = e.key.toLowerCase();
-            this.keys[key] = true;
-            if (e.key === ' ' && this.onJump) this.onJump();
-            if (e.key === ' ' && this.onAttack) this.onAttack(); // Space tuşu için direkt tetik
-            if (key === 'v' && this.onViewToggle) this.onViewToggle();
-        });
+    attach() {
+        if (this.removeListeners.length > 0) return;
 
-        window.addEventListener('keyup', e => {
-            const key = e.key.toLowerCase();
-            this.keys[key] = false;
-        });
+        this.removeListeners.push(
+            this.platform.addEventListener('document', 'mousemove', event => {
+                if (this.isPointerLocked()) {
+                    this.mouseDelta.x += event.movementX;
+                    this.mouseDelta.y += event.movementY;
+                }
+
+                const viewport = this.platform.getViewportSize();
+                this.mousePos.x = (event.clientX / viewport.width) * 2 - 1;
+                this.mousePos.y = -(event.clientY / viewport.height) * 2 + 1;
+            })
+        );
+
+        this.removeListeners.push(
+            this.platform.addEventListener(this.domElement, 'click', () => {
+                if (this.isFpsMode && !this.isPointerLocked()) {
+                    this.requestPointerLock();
+                    return;
+                }
+
+                this.triggerAction('attack');
+            })
+        );
+
+        this.removeListeners.push(
+            this.platform.addEventListener('window', 'keydown', event => {
+                const key = event.key.toLowerCase();
+                this.keys[key] = true;
+
+                if (event.key === ' ' && this.onJump) {
+                    this.onJump();
+                }
+
+                if (event.key === ' ') {
+                    this.triggerAction('attack');
+                }
+
+                if (key === 'v') {
+                    this.triggerAction('viewToggle');
+                }
+            })
+        );
+
+        this.removeListeners.push(
+            this.platform.addEventListener('window', 'keyup', event => {
+                const key = event.key.toLowerCase();
+                this.keys[key] = false;
+            })
+        );
+    }
+
+    onAttach() {
+        this.attach();
+    }
+
+    detach() {
+        this.removeListeners.forEach(removeListener => removeListener());
+        this.removeListeners = [];
+    }
+
+    onDetach() {
+        this.detach();
+    }
+
+    dispose() {
+        this.detach();
+        this.keys = {};
+    }
+
+    on(eventName, listener) {
+        this.events.on(eventName, listener);
+    }
+
+    off(eventName, listener) {
+        this.events.off(eventName, listener);
+    }
+
+    isPointerLocked() {
+        return this.platform.getPointerLockElement() === this.pointerLockElement;
+    }
+
+    requestPointerLock() {
+        this.platform.requestPointerLock(this.pointerLockElement);
+    }
+
+    exitPointerLock() {
+        this.platform.exitPointerLock();
+    }
+
+    triggerAction(actionName) {
+        this.events.emit(actionName);
+
+        if (actionName === 'attack' && this.onAttack) {
+            this.onAttack();
+        }
+
+        if (actionName === 'viewToggle' && this.onViewToggle) {
+            this.onViewToggle();
+        }
     }
 
     // Tuş atamasını değiştir (Örn: Ayarlar Menüsünden)
@@ -76,8 +156,7 @@ export class InputManager {
 
     getMovementVector() {
         let mx = 0, mz = 0;
-        
-        // Artık harf yerine eylem soruyoruz
+
         if (this.isActionActive('forward')) mz -= 1;
         if (this.isActionActive('backward')) mz += 1;
         if (this.isActionActive('left')) mx -= 1;

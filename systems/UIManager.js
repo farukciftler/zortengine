@@ -1,7 +1,12 @@
+import { BrowserPlatform } from '../core/BrowserPlatform.js';
+
 export class UIManager {
-    constructor() {
-        // UI kapsayıcısını (Container) oluştur
-        this.container = document.createElement('div');
+    constructor(options = {}) {
+        this.platform = options.platform || new BrowserPlatform();
+        this.document = this.platform.getDocument();
+        this.parent = options.parent || this.platform.getBody();
+
+        this.container = this.document.createElement('div');
         this.container.id = 'zortengine-ui';
         this.container.style.position = 'absolute';
         this.container.style.top = '0';
@@ -10,14 +15,16 @@ export class UIManager {
         this.container.style.height = '100%';
         this.container.style.pointerEvents = 'none'; // Tıklamalar alttaki canvasa geçsin
         this.container.style.fontFamily = 'sans-serif';
-        document.body.appendChild(this.container);
+        if (this.parent) {
+            this.parent.appendChild(this.container);
+        }
 
         this.elements = {};
     }
 
     // Basit bir yazı (Skor vb.) ekler
     addText(id, text, x, y, options = {}) {
-        const el = document.createElement('div');
+        const el = this.document.createElement('div');
         el.style.position = 'absolute';
         el.style.left = typeof x === 'number' ? x + 'px' : x;
         el.style.top = typeof y === 'number' ? y + 'px' : y;
@@ -39,7 +46,7 @@ export class UIManager {
 
     // RPG tarzı Can Barı / Yükleme Barı ekler
     addProgressBar(id, x, y, width, height, color = '#e74c3c') {
-        const bg = document.createElement('div');
+        const bg = this.document.createElement('div');
         bg.style.position = 'absolute';
         bg.style.left = typeof x === 'number' ? x + 'px' : x;
         bg.style.top = typeof y === 'number' ? y + 'px' : y;
@@ -50,7 +57,7 @@ export class UIManager {
         bg.style.borderRadius = '5px';
         bg.style.overflow = 'hidden';
 
-        const fill = document.createElement('div');
+        const fill = this.document.createElement('div');
         fill.style.width = '100%';
         fill.style.height = '100%';
         fill.style.backgroundColor = color;
@@ -72,7 +79,7 @@ export class UIManager {
 
     // FPS / TPS oyunları için ekranın tam ortasına nişangah ekler
     addCrosshair(id = 'crosshair') {
-        const el = document.createElement('div');
+        const el = this.document.createElement('div');
         el.style.position = 'absolute';
         el.style.top = '50%';
         el.style.left = '50%';
@@ -85,5 +92,12 @@ export class UIManager {
         el.style.pointerEvents = 'none'; // Fare tıklamalarını engellemesin
         this.container.appendChild(el);
         this.elements[id] = el;
+    }
+
+    dispose() {
+        this.elements = {};
+        if (this.container && this.container.parentNode) {
+            this.container.parentNode.removeChild(this.container);
+        }
     }
 }

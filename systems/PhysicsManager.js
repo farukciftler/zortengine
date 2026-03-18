@@ -16,10 +16,13 @@ export class PhysicsManager {
     }
 
     addBody(body, mesh) {
-        this.world.addBody(body);
+        if (body.world !== this.world) {
+            this.world.addBody(body);
+        }
         if (mesh) {
             this.bodyMeshMap.set(body, mesh);
         }
+        return body;
     }
 
     removeBody(body) {
@@ -32,7 +35,6 @@ export class PhysicsManager {
         const groundBody = new CANNON.Body({ mass: 0 }); 
         groundBody.addShape(groundShape);
         groundBody.quaternion.setFromEuler(-Math.PI / 2, 0, 0); 
-        this.world.addBody(groundBody);
         return groundBody;
     }
 
@@ -60,7 +62,6 @@ export class PhysicsManager {
         });
         body.addShape(shape);
         body.linearDamping = 0.9; // Buzda kayıyormuş gibi durmamak için sürtünme
-        this.world.addBody(body);
         return body;
     }
 
@@ -83,7 +84,6 @@ export class PhysicsManager {
         }
         
         body.addShape(shape);
-        this.world.addBody(body);
         return body;
     }
 

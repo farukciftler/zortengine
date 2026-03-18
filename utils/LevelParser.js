@@ -26,7 +26,7 @@ export class LevelParser {
                     
                     // Objeyi dünya merkezinde sıfırdan yarat (Trimesh olduğu için)
                     const body = this.physics.createTrimesh(cloneGeo, 0, new THREE.Vector3(0, 0, 0));
-                    // this.physics.addBody(body); zaten createTrimesh içinde eklendi
+                    this.physics.addBody(body);
                 }
 
                 // Özel eşya/düşman doğma noktaları (Örn: "Spawn_Enemy_1")

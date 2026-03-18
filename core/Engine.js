@@ -1,60 +1,86 @@
 import * as THREE from 'three';
-import { PhysicsManager } from '../systems/PhysicsManager.js';
 import { EventEmitter } from '../utils/EventEmitter.js';
+import { BrowserPlatform } from './BrowserPlatform.js';
+import { GameScene } from './GameScene.js';
+import { SceneManager } from './SceneManager.js';
 
 export class Engine {
     constructor(container, options = {}) {
         this.isHeadless = options.headless || false;
+        this.platform = options.platform || new BrowserPlatform();
         this.clock = new THREE.Clock();
+        this.events = new EventEmitter();
         this.objects = [];
-        this.events = new EventEmitter(); // YENİ: Global Olay Yöneticisi (Event Bus)
-        
-        // Initialize Physics Manager
-        this.physics = new PhysicsManager();
+        this.scene = null;
+        this.camera = null;
+        this.renderer = null;
+        this.postProcessor = null;
+        this.sceneManager = new SceneManager(this);
+        this.defaultScene = null;
 
         if (!this.isHeadless) {
-            this.container = container || document.body;
-            this.scene = new THREE.Scene();
+            const viewport = this.platform.getViewportSize();
+            this.container = container || this.platform.getBody();
             this.renderer = new THREE.WebGLRenderer({ antialias: true });
-            this.renderer.setSize(window.innerWidth, window.innerHeight);
+            this.renderer.setSize(viewport.width, viewport.height);
             this.renderer.shadowMap.enabled = true;
             this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
             this.container.appendChild(this.renderer.domElement);
-            this.camera = null;
-            window.addEventListener('resize', () => this.onWindowResize());
+            this.removeResizeListener = this.platform.addEventListener(
+                'window',
+                'resize',
+                () => this.onWindowResize()
+            );
         } else {
-            // Sunucu (Node.js) tarafında çalışması için sahte sahne (Mock Scene)
-            this.scene = { add: () => {}, remove: () => {} }; 
+            this.container = null;
         }
+
+        this.defaultScene = new GameScene({ name: 'default' });
+        this.sceneManager.addScene('default', this.defaultScene);
+        this.sceneManager.setActive('default');
     }
 
     setCamera(camera) {
+        const activeScene = this.sceneManager.getActiveScene();
+        if (activeScene) {
+            activeScene.setCamera(camera);
+        }
         this.camera = camera;
     }
 
+    addScene(name, scene) {
+        return this.sceneManager.addScene(name, scene);
+    }
+
+    useScene(name) {
+        return this.sceneManager.setActive(name);
+    }
+
     add(object) {
-        this.objects.push(object);
-        if (object.mesh) {
-            this.scene.add(object.mesh);
-        } else if (object.group) {
-            this.scene.add(object.group);
-        } else if (object instanceof THREE.Object3D) {
-            this.scene.add(object);
+        const activeScene = this.sceneManager.getActiveScene();
+        if (activeScene) {
+            return activeScene.add(object);
         }
+        return object;
     }
 
     remove(object) {
-        const index = this.objects.indexOf(object);
-        if (index > -1) {
-            this.objects.splice(index, 1);
+        const activeScene = this.sceneManager.getActiveScene();
+        if (activeScene) {
+            activeScene.remove(object);
         }
-        if (object.mesh) {
-            this.scene.remove(object.mesh);
-        } else if (object.group) {
-            this.scene.remove(object.group);
-        } else if (object instanceof THREE.Object3D) {
-            this.scene.remove(object);
-        }
+    }
+
+    registerSystem(name, system, options = {}) {
+        const activeScene = this.sceneManager.getActiveScene();
+        if (!activeScene) return system;
+        const registered = activeScene.registerSystem(name, system, options);
+        this._syncConvenienceRefs(activeScene);
+        return registered;
+    }
+
+    getSystem(name) {
+        return this.sceneManager.getActiveScene()?.getSystem(name) || null;
     }
 
     start() {
@@ -63,23 +89,13 @@ export class Engine {
     }
 
     loop() {
-        requestAnimationFrame(() => this.loop());
+        this.platform.requestAnimationFrame(() => this.loop());
         const delta = this.clock.getDelta();
         const time = this.clock.getElapsedTime();
 
-        // Update Physics
-        if (this.physics) {
-            this.physics.update(delta);
-        }
-
         this.update(delta, time);
-        
-        // Update all objects automatically if they have an update method
-        for (let obj of this.objects) {
-            if (typeof obj.update === 'function') {
-                obj.update(delta, time);
-            }
-        }
+        this.sceneManager.update(delta, time);
+        this._syncConvenienceRefs(this.sceneManager.getActiveScene());
 
         this.render();
     }
@@ -89,29 +105,69 @@ export class Engine {
     }
 
     render() {
-        if (this.isHeadless) return; // Sunucuda render yapılmaz
-        
-        if (this.camera && this.scene) {
-            // If camera is a wrapper, get the internal THREE camera
-            const cam = this.camera.getThreeCamera ? this.camera.getThreeCamera() : this.camera;
-            
-            if (this.postProcessor) {
-                this.postProcessor.setCamera(cam);
-                this.postProcessor.render();
+        if (this.isHeadless || !this.renderer) return;
+
+        const activeScene = this.sceneManager.getActiveScene();
+        const renderScene = activeScene ? activeScene.threeScene : this.scene;
+        const activeCamera = activeScene ? activeScene.getCamera() : this.camera;
+        const activePostProcessor = activeScene ? activeScene.getPostProcessor() : this.postProcessor;
+
+        if (activeCamera && renderScene) {
+            const cam = activeCamera.getThreeCamera ? activeCamera.getThreeCamera() : activeCamera;
+
+            if (activePostProcessor) {
+                activePostProcessor.setCamera(cam);
+                activePostProcessor.render();
             } else {
-                this.renderer.render(this.scene, cam);
+                this.renderer.render(renderScene, cam);
             }
         }
     }
 
     onWindowResize() {
-        const aspect = window.innerWidth / window.innerHeight;
-        this.renderer.setSize(window.innerWidth, window.innerHeight);
-        if (this.camera && typeof this.camera.onResize === 'function') {
-            this.camera.onResize(aspect);
+        if (!this.renderer) return;
+
+        const viewport = this.platform.getViewportSize();
+        const aspect = viewport.width / viewport.height;
+        this.renderer.setSize(viewport.width, viewport.height);
+
+        const activeScene = this.sceneManager.getActiveScene();
+        if (activeScene) {
+            activeScene.onResize(viewport.width, viewport.height, aspect);
+            this._syncConvenienceRefs(activeScene);
+        } else if (this.camera && typeof this.camera.onResize === 'function') {
+            this.camera.onResize(aspect, viewport.width, viewport.height);
         }
-        if (this.postProcessor) {
-            this.postProcessor.onResize(window.innerWidth, window.innerHeight);
+
+        const activePostProcessor = activeScene ? activeScene.getPostProcessor() : this.postProcessor;
+        if (activePostProcessor && typeof activePostProcessor.onResize === 'function') {
+            activePostProcessor.onResize(viewport.width, viewport.height);
         }
+    }
+
+    destroy() {
+        if (this.removeResizeListener) {
+            this.removeResizeListener();
+            this.removeResizeListener = null;
+        }
+
+        if (this.sceneManager) {
+            const activeScene = this.sceneManager.getActiveScene();
+            if (activeScene && typeof activeScene.dispose === 'function') {
+                activeScene.dispose();
+            }
+        }
+
+        if (this.renderer) {
+            this.renderer.dispose();
+        }
+    }
+
+    _syncConvenienceRefs(scene) {
+        this.scene = scene ? scene.threeScene : this.scene;
+        this.objects = scene ? scene.objects : this.objects;
+        this.camera = scene ? scene.getCamera() : this.camera;
+        this.physics = scene ? scene.getSystem('physics') : null;
+        this.postProcessor = scene ? scene.getPostProcessor() : this.postProcessor;
     }
 }

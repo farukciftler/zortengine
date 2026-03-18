@@ -99,6 +99,7 @@ export class Enemy extends GameObject {
     }
 
     update(delta, time) {
+        super.update(delta, time);
         this.fsm.update(delta, time);
         
         // Nefes alma efekti
