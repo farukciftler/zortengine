@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 // Three.js nesnesi global gelmeli, GLTFLoader modülünü dinamik olarak import edeceğiz
-import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 
 export class AssetLoader {
     constructor() {

@@ -38,7 +38,7 @@ export const ENCOUNTER_DEFINITIONS = {
             { count: 2, spawnInterval: 0.4, archetypeId: 'artillery' }
         ]
     },
-    elite-forge: {
+    'elite-forge': {
         id: 'elite-forge',
         objective: 'Elite avla',
         waves: [
@@ -46,7 +46,7 @@ export const ENCOUNTER_DEFINITIONS = {
             { count: 1, spawnInterval: 0.6, archetypeId: 'eliteWarden' }
         ]
     },
-    support-pit: {
+    'support-pit': {
         id: 'support-pit',
         objective: 'Support duzeni boz',
         waves: [
@@ -54,7 +54,7 @@ export const ENCOUNTER_DEFINITIONS = {
             { count: 2, spawnInterval: 0.45, archetypeId: 'siphon' }
         ]
     },
-    boss-core: {
+    'boss-core': {
         id: 'boss-core',
         objective: 'Boss yok et',
         waves: [

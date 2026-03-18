@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "description": "Mini, modular 3D game engine based on Three.js",
   "main": "index.js",
+  "exports": "./index.js",
   "type": "module",
   "scripts": {
     "test": "node tests/headless-smoke.test.js"

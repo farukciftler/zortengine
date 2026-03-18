@@ -150,10 +150,6 @@ export class InputManager {
         this.platform.exitPointerLock();
     }
 
-    triggerAction(actionName) {
-        this.triggerAction(actionName, {});
-    }
-
     triggerAction(actionName, payload = {}) {
         const command = {
             action: actionName,
