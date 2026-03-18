@@ -3,51 +3,19 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Zortengine Demo Oyunu</title>
-    <style>
-        :root {
-            color-scheme: dark;
-        }
-        html, body {
-            width: 100%;
-            height: 100%;
-        }
-        body { 
-            margin: 0; 
-            padding: 0; 
-            overflow: hidden; 
-            background:
-                radial-gradient(circle at 12% 16%, rgba(39, 174, 96, 0.16), transparent 24%),
-                radial-gradient(circle at 84% 18%, rgba(52, 152, 219, 0.16), transparent 20%),
-                radial-gradient(circle at 60% 84%, rgba(34, 211, 238, 0.08), transparent 18%),
-                linear-gradient(180deg, #040812 0%, #060b16 52%, #0a101c 100%);
-        }
-        canvas { 
-            display: block; 
-            width: 100vw;
-            height: 100vh;
-        }
-    </style>
-    
-    <link rel="icon" href="favicon.svg" type="image/svg+xml">
-    
-    <!-- Modern İçe Aktarma Haritası (Import Map) -->
-    <!-- Bu sayede üç boyutlu objeler birbirinin modüllerini sorunsuz bulur -->
-    <script type="importmap">
-    {
-        "imports": {
-            "three": "https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.module.js",
-            "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.128.0/examples/jsm/",
-            "three/examples/jsm/": "https://cdn.jsdelivr.net/npm/three@0.128.0/examples/jsm/",
-            "cannon-es": "https://cdn.jsdelivr.net/npm/cannon-es@0.20.0/dist/cannon-es.js",
-            "zortengine": "../../index.js",
-            "zortengine/": "../../"
-        }
-    }
+    <title>Zortengine Demo Redirect</title>
+    <meta http-equiv="refresh" content="0; url=../../examples/run-showcase/app/index.html">
+    <script>
+        const target = new URL('../../examples/run-showcase/app/index.html', window.location.href);
+        target.search = window.location.search;
+        target.hash = window.location.hash;
+        window.location.replace(target.toString());
     </script>
 </head>
 <body>
-    <!-- Modüler giriş noktamız -->
-    <script type="module" src="main.js"></script>
+    <p>
+        Demo tasindi:
+        <a href="../../examples/run-showcase/app/index.html">examples/run-showcase/app/index.html</a>
+    </p>
 </body>
 </html>

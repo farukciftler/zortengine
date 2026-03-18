@@ -1,1 +1,1 @@
-export { PhysicsManager } from './systems/PhysicsManager.js';
+export * from './src/adapters/physics/index.js';

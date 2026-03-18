@@ -1,58 +1,9 @@
-// Browser barrel: aktif showcase akisinin ihtiyac duydugu moduller.
-// PostProcessManager gibi opsiyonel moduller burada eager yuklenmez.
-
-// Core
-export { BrowserPlatform } from './core/BrowserPlatform.js';
-export { Engine } from './core/Engine.js';
-export { GameScene } from './core/GameScene.js';
-export { SceneManager } from './core/SceneManager.js';
-export { SystemManager } from './core/SystemManager.js';
-
-// Objects
-export { CollectibleActor } from './objects/CollectibleActor.js';
-export { Component } from './objects/Component.js';
-export { ObjectiveZoneActor } from './objects/ObjectiveZoneActor.js';
-export { GameObject } from './objects/GameObject.js';
-export { HealthComponent } from './objects/HealthComponent.js';
-export { ModularCharacter } from './objects/ModularCharacter.js';
-export { Enemy } from './objects/Enemy.js';
-
-// Systems
-export { AudioManager } from './systems/AudioManager.js';
-export { AbilitySystem } from './systems/AbilitySystem.js';
-export { CameraManager } from './systems/CameraManager.js';
-export { CollectibleSystem } from './systems/CollectibleSystem.js';
-export { DamageSystem } from './systems/DamageSystem.js';
-export { DebugOverlaySystem } from './systems/DebugOverlaySystem.js';
-export { EncounterDirector } from './systems/EncounterDirector.js';
-export { EventTraceSystem } from './systems/EventTraceSystem.js';
-export { InputManager } from './systems/InputManager.js';
-export { InspectorPanelSystem } from './systems/InspectorPanelSystem.js';
-export { ModifierSystem } from './systems/ModifierSystem.js';
-export { NetworkClientSystem } from './systems/NetworkClientSystem.js';
-export { ObjectiveZoneSystem } from './systems/ObjectiveZoneSystem.js';
-export { ParticleManager } from './systems/ParticleManager.js';
-export { PhysicsManager } from './systems/PhysicsManager.js';
-export { ProjectileSystem } from './systems/ProjectileSystem.js';
-export { RoomClientSystem } from './systems/RoomClientSystem.js';
-export { SpawnSystem } from './systems/SpawnSystem.js';
-export { StatusEffectSystem } from './systems/StatusEffectSystem.js';
-export { UIManager } from './systems/UIManager.js';
-
-// Utils
-export { AnimationManager } from './utils/AnimationManager.js';
-export { AssetManifest } from './utils/AssetManifest.js';
-export { AssetPipeline } from './utils/AssetPipeline.js';
-export { AssetLoader } from './utils/AssetLoader.js';
-export { EffectRegistry } from './utils/EffectRegistry.js';
-export { EventEmitter } from './utils/EventEmitter.js';
-export { HeadlessHarness } from './utils/HeadlessHarness.js';
-export { InspectorRegistry } from './utils/InspectorRegistry.js';
-export { LevelParser } from './utils/LevelParser.js';
-export { MemoryCleaner } from './utils/MemoryCleaner.js';
-export { ObjectPool } from './utils/ObjectPool.js';
-export { PrefabFactory } from './utils/PrefabFactory.js';
-export { ReplayRecorder } from './utils/ReplayRecorder.js';
-export { SaveManager } from './utils/SaveManager.js';
-export { SeededRandom } from './utils/SeededRandom.js';
-export { StateMachine } from './utils/StateMachine.js';
+export * from './src/engine/index.js';
+export * from './src/adapters/browser/index.js';
+export * from './src/adapters/physics/index.js';
+export * from './src/tooling/index.js';
+export * from './src/kits/index.js';
+export * from './src/engine/assets/index.js';
+export * from './src/persistence/index.js';
+export * from './src/objects/index.js';
+export * from './src/kits/networking/index.js';

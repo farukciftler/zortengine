@@ -1,1 +1,1 @@
-export * from '../../../physics.js';
+export { PhysicsManager } from './PhysicsManager.js';

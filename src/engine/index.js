@@ -1,1 +1,10 @@
-export * from '../../index.js';
+export { Engine } from './core/Engine.js';
+export { GameScene } from './core/GameScene.js';
+export { SceneManager } from './core/SceneManager.js';
+export { SystemManager } from './core/SystemManager.js';
+export { GameObject } from './object/GameObject.js';
+export { Component } from './object/Component.js';
+export { EventEmitter } from './events/EventEmitter.js';
+export { SeededRandom } from './snapshot/SeededRandom.js';
+export { ObjectPool } from './object/ObjectPool.js';
+export { HeadlessHarness } from './snapshot/HeadlessHarness.js';
