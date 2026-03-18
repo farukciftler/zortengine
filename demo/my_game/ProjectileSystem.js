@@ -36,15 +36,6 @@ export class ProjectileSystem {
         this.scene.add(bullet);
         this.bullets.push(bullet);
 
-        if (this.particleManager) {
-            this.particleManager.emit(bullet.position, 5, {
-                color: 0xf1c40f,
-                speed: 5,
-                life: 0.2,
-                scale: 0.5
-            });
-        }
-
         this._notifyAmmo();
     }
 
@@ -56,7 +47,7 @@ export class ProjectileSystem {
 
             if (this.target && !this.target.isDestroyed && bullet.position.distanceTo(this.target.group.position) < 1.5) {
                 if (this.particleManager) {
-                    this.particleManager.emit(this.target.group.position, 10, { color: 0x8e44ad, speed: 5 });
+                    this.particleManager.emit(bullet.position, 10, { color: 0x8e44ad, speed: 5 });
                 }
 
                 bullet.userData.life = 0;

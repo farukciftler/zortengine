@@ -15,12 +15,15 @@ export class PhysicsManager {
         this.bodyMeshMap = new Map();
     }
 
-    addBody(body, mesh) {
+    addBody(body, mesh, options = {}) {
         if (body.world !== this.world) {
             this.world.addBody(body);
         }
         if (mesh) {
-            this.bodyMeshMap.set(body, mesh);
+            this.bodyMeshMap.set(body, {
+                mesh,
+                offset: options.offset || body.userData?.visualOffset || null
+            });
         }
         return body;
     }
@@ -38,10 +41,13 @@ export class PhysicsManager {
         return groundBody;
     }
 
-    createBox(width, height, depth, mass, position) {
+    createBox(width, height, depth, mass, position, quaternion = null) {
         const shape = new CANNON.Box(new CANNON.Vec3(width/2, height/2, depth/2));
         const body = new CANNON.Body({ mass: mass, position: new CANNON.Vec3(position.x, position.y, position.z) });
         body.addShape(shape);
+        if (quaternion) {
+            body.quaternion.set(quaternion.x, quaternion.y, quaternion.z, quaternion.w);
+        }
         return body;
     }
 
@@ -53,15 +59,20 @@ export class PhysicsManager {
     }
 
     // -- YENİ: Oyuncu için fiziksel beden (Yuvarlanmaz, devrilmez) --
-    createCharacterBody(radius, position) {
-        const shape = new CANNON.Sphere(radius); // Kapsül veya Küre idealdir
+    createCharacterBody(radius, position, height = radius * 3) {
+        const halfHeight = Math.max(radius, height * 0.5);
+        const shape = new CANNON.Box(new CANNON.Vec3(radius, halfHeight, radius));
         const body = new CANNON.Body({ 
             mass: 5, // 5kg kütle
             fixedRotation: true, // Asla fiziksel olarak takla atmasın veya yuvarlanmasın (dik dursun)
-            position: new CANNON.Vec3(position.x, position.y, position.z) 
+            position: new CANNON.Vec3(position.x, position.y + halfHeight, position.z) 
         });
         body.addShape(shape);
         body.linearDamping = 0.9; // Buzda kayıyormuş gibi durmamak için sürtünme
+        body.userData = {
+            visualOffset: new CANNON.Vec3(0, -halfHeight, 0),
+            halfHeight
+        };
         return body;
     }
 
@@ -90,8 +101,14 @@ export class PhysicsManager {
     update(delta) {
         this.world.step(1 / 60, delta, 3);
         
-        for (const [body, mesh] of this.bodyMeshMap.entries()) {
+        for (const [body, binding] of this.bodyMeshMap.entries()) {
+            const { mesh, offset } = binding;
             mesh.position.copy(body.position);
+            if (offset) {
+                mesh.position.x += offset.x;
+                mesh.position.y += offset.y;
+                mesh.position.z += offset.z;
+            }
             
             // Eğer body fixedRotation (karakter) ise Three.js mesh'inin rotasyonunu ezip bozma!
             if (!body.fixedRotation) {

@@ -11,12 +11,13 @@ export class DemoHud {
         });
         this.ui.addText(
             'info',
-            '2.5D izometrik demo: WASD ile hareket et, tıklayarak veya Space ile ateş et.',
+            '2.5D izometrik demo: WASD ile hareket et, V ile TPS/izometrik gecis yap.',
             20,
             60,
             { color: '#bdc3c7', size: 16 }
         );
         this.ui.addCrosshair('crosshair');
+        this.setCrosshairVisible(false);
     }
 
     updateAmmo(freeCount, totalCount = 20) {
@@ -25,5 +26,16 @@ export class DemoHud {
 
     updateHealth(health) {
         this.ui.updateProgressBar('hp', health);
+    }
+
+    updateInfo(text) {
+        this.ui.updateText('info', text);
+    }
+
+    setCrosshairVisible(visible) {
+        const crosshair = this.ui.elements['crosshair'];
+        if (crosshair) {
+            crosshair.style.display = visible ? 'block' : 'none';
+        }
     }
 }

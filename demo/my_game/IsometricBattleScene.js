@@ -9,7 +9,6 @@ import {
     ModularCharacter,
     ParticleManager,
     PhysicsManager,
-    PostProcessManager,
     UIManager
 } from 'zortengine';
 import { DemoHud } from './DemoHud.js';
@@ -21,6 +20,9 @@ export class IsometricBattleScene extends GameScene {
         super({ name: 'battle' });
         this.environmentMeshes = [];
         this.currentHp = 100;
+        this.cameraMode = '2.5d';
+        this.yaw = Math.PI;
+        this.pitch = 0.35;
     }
 
     setup() {
@@ -51,14 +53,6 @@ export class IsometricBattleScene extends GameScene {
         cameraManager.setPreset('2.5d');
         this.setCamera(cameraManager);
 
-        const postProcessor = new PostProcessManager(
-            this.engine.renderer,
-            this.threeScene,
-            cameraManager.getThreeCamera()
-        );
-        postProcessor.setBloomOptions(1.2, 0.5, 0.85);
-        this.setPostProcessor(postProcessor);
-
         this.hud = new DemoHud(ui);
         this.hud.setup();
         this.engine.events.on('hp_changed', hp => this.hud.updateHealth(hp));
@@ -74,10 +68,12 @@ export class IsometricBattleScene extends GameScene {
         );
 
         input.on('attack', () => this.shoot());
+        input.on('viewToggle', () => this.toggleCameraMode());
+        input.isFpsMode = false;
 
         this._createLights();
         this._createWorld(physics);
-        this._createActors(physics, input, particles);
+        this._createActors(physics, input, particles, cameraManager);
     }
 
     _createLights() {
@@ -110,7 +106,7 @@ export class IsometricBattleScene extends GameScene {
         this.threeScene.add(this.rampMesh);
         this.environmentMeshes.push(this.rampMesh);
         physics.addBody(
-            physics.createTrimesh(rampGeo, 0, this.rampMesh.position, this.rampMesh.quaternion),
+            physics.createBox(6, 1, 10, 0, this.rampMesh.position, this.rampMesh.quaternion),
             this.rampMesh
         );
 
@@ -127,7 +123,7 @@ export class IsometricBattleScene extends GameScene {
         this.environmentMeshes.push(this.physicsBoxMesh);
     }
 
-    _createActors(physics, input, particles) {
+    _createActors(physics, input, particles, cameraManager) {
         this.player = new ModularCharacter(null, 0, 0, {
             colorSuit: 0xe74c3c,
             speed: 8
@@ -141,8 +137,10 @@ export class IsometricBattleScene extends GameScene {
             new PlayerMovementController({
                 input,
                 body: this.playerBody,
+                cameraManager,
                 particleManager: particles,
-                speed: 12
+                speed: 12,
+                mode: this.cameraMode === 'tps' ? 'tps' : 'isometric'
             })
         );
 
@@ -163,27 +161,59 @@ export class IsometricBattleScene extends GameScene {
         const direction = new THREE.Vector3();
         const camera = this.getCamera().getThreeCamera();
         const input = this.getSystem('input');
-        const intersections = input.getRaycastIntersection(camera, this.environmentMeshes);
 
-        if (intersections.length > 0) {
-            const targetPoint = intersections[0].point.clone();
-            targetPoint.y = this.player.group.position.y + 1.2;
-            direction.subVectors(targetPoint, this.player.group.position).normalize();
+        if (this.cameraMode === 'tps') {
+            if (!input.isPointerLocked()) return;
+
+            camera.getWorldDirection(direction);
+            direction.y = 0;
+            direction.normalize();
             this.player.group.rotation.y = Math.atan2(direction.x, direction.z);
         } else {
-            direction.set(0, 0, 1).applyAxisAngle(new THREE.Vector3(0, 1, 0), this.player.group.rotation.y);
+            const intersections = input.getRaycastIntersection(camera, this.environmentMeshes);
+
+            if (intersections.length > 0) {
+                const targetPoint = intersections[0].point.clone();
+                targetPoint.y = this.player.group.position.y + 1.2;
+                direction.subVectors(targetPoint, this.player.group.position).normalize();
+                this.player.group.rotation.y = Math.atan2(direction.x, direction.z);
+            } else {
+                direction.set(0, 0, 1).applyAxisAngle(new THREE.Vector3(0, 1, 0), this.player.group.rotation.y);
+            }
         }
 
         this.projectiles.shoot(this.player.group.position, direction);
     }
 
     onUpdate(delta) {
+        const input = this.getSystem('input');
+        const movement = this.player?.getComponent('movement');
+
+        if (this.cameraMode === 'tps' && input?.isPointerLocked()) {
+            const mouseDelta = input.getMouseDelta();
+            this.yaw -= mouseDelta.x * 0.0025;
+            this.pitch += mouseDelta.y * 0.0015;
+            this.pitch = Math.max(-0.2, Math.min(0.75, this.pitch));
+        }
+
+        if (movement) {
+            movement.setMode(this.cameraMode === 'tps' ? 'tps' : 'isometric');
+        }
+
         if (this.player) {
-            this.getCamera().updateFollow(this.player.group.position, 0, delta, {
-                orthoOffset: new THREE.Vector3(18, 18, 18),
-                lookOffset: new THREE.Vector3(0, 1.5, 0),
-                smoothing: 6
-            });
+            if (this.cameraMode === 'tps') {
+                this.getCamera().updateFollow(this.player.group.position, this.yaw, delta, {
+                    backOffset: 5.5,
+                    heightOffset: 1.6,
+                    pitch: this.pitch
+                }, this.environmentMeshes);
+            } else {
+                this.getCamera().updateFollow(this.player.group.position, 0, delta, {
+                    orthoOffset: new THREE.Vector3(18, 18, 18),
+                    lookOffset: new THREE.Vector3(0, 1.5, 0),
+                    smoothing: 6
+                });
+            }
         }
 
         if (this.enemy && !this.enemy.isDestroyed && this.enemy.fsm.getCurrentState() === 'attack') {
@@ -200,6 +230,31 @@ export class IsometricBattleScene extends GameScene {
                     life: 0.4
                 });
             }
+        }
+    }
+
+    toggleCameraMode() {
+        const input = this.getSystem('input');
+        const movement = this.player?.getComponent('movement');
+        const camera = this.getCamera();
+
+        if (!input || !camera) return;
+
+        if (this.cameraMode === '2.5d') {
+            this.cameraMode = 'tps';
+            camera.setPreset('tps');
+            input.isFpsMode = true;
+            this.hud.setCrosshairVisible(true);
+            this.hud.updateInfo('TPS modu: ekrana tikla, fare kilitlensin. V ile tekrar 2.5D moda don.');
+            if (movement) movement.setMode('tps');
+        } else {
+            this.cameraMode = '2.5d';
+            camera.setPreset('2.5d');
+            input.isFpsMode = false;
+            input.exitPointerLock();
+            this.hud.setCrosshairVisible(false);
+            this.hud.updateInfo('2.5D izometrik mod: WASD ile hareket et, tiklayarak veya Space ile ates et.');
+            if (movement) movement.setMode('isometric');
         }
     }
 }

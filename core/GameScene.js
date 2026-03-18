@@ -122,8 +122,6 @@ export class GameScene {
     }
 
     update(delta, time) {
-        this.onUpdate(delta, time);
-
         for (const object of this.objects) {
             if (typeof object.update === 'function') {
                 object.update(delta, time);
@@ -131,6 +129,7 @@ export class GameScene {
         }
 
         this.systems.update(delta, time);
+        this.onUpdate(delta, time);
     }
 
     onResize(width, height, aspect) {

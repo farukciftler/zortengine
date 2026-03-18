@@ -17,7 +17,7 @@ export class CameraManager {
         this.orthoCam.position.set(18, 18, 18);
         if (this.scene) this.orthoCam.lookAt(this.scene.position);
         
-        this.perspCam = new THREE.PerspectiveCamera(75, aspect, 0.1, 1000);
+        this.perspCam = new THREE.PerspectiveCamera(60, aspect, 0.1, 1000);
 
         this.currentType = 'ortho'; 
         this.activeCamera = this.orthoCam;
@@ -62,7 +62,7 @@ export class CameraManager {
             this.presetOptions = { rightOffset: 0, backOffset: 0, heightOffset: 1.6 };
         } else if (presetName === 'tps' || presetName === 'over-shoulder') {
             this.setMode('persp');
-            this.presetOptions = { rightOffset: 0.8, backOffset: 4.0, heightOffset: 1.5 };
+            this.presetOptions = { rightOffset: 0, backOffset: 5.5, heightOffset: 1.6 };
         }
     }
 
@@ -95,11 +95,12 @@ export class CameraManager {
             const distance = options.backOffset !== undefined ? options.backOffset : 4.0;
             const pitch = customOptions.pitch || 0;
             const yaw = targetRotY;
+            const rightOffset = options.rightOffset || 0;
 
             const offset = new THREE.Vector3(
-                distance * Math.sin(yaw) * Math.cos(pitch),
+                distance * Math.sin(yaw) * Math.cos(pitch) + rightOffset * Math.cos(yaw),
                 distance * Math.sin(pitch),
-                distance * Math.cos(yaw) * Math.cos(pitch)
+                distance * Math.cos(yaw) * Math.cos(pitch) - rightOffset * Math.sin(yaw)
             );
 
             let desiredPos = lookTarget.clone().add(offset);
