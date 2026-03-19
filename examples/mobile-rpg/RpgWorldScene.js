@@ -10,6 +10,7 @@ import {
   worldToGrid,
   getTile,
 } from './mapData.js';
+import { createPortalMesh } from './PortalMesh.js';
 import {
   QUESTS,
   createQuestProgress,
@@ -25,7 +26,7 @@ const ENEMY_SPAWN_INTERVAL = 3.0;
 const ENEMY_MAX_COUNT = 8;
 const XP_PER_KILL = 15;
 const PICKUP_RADIUS = 1.8;
-const PORTAL_RADIUS = 2.0;
+const PORTAL_RADIUS = 2.5;
 
 function clamp(v, min, max) {
   return Math.max(min, Math.min(max, v));
@@ -196,26 +197,17 @@ export class RpgWorldScene extends GameScene {
       }
     }
 
-    const ringGeo = new THREE.TorusGeometry(1, 0.12, 12, 24);
     const portals = [
-      { gx: 1, gz: 1, target: 'hub', color: 0x9b59b6, emissive: 0x4a235a },
-      { gx: 18, gz: 18, target: 'dungeon', color: 0xe74c3c, emissive: 0x8b0000 },
+      { gx: 1, gz: 1, target: 'hub', type: 'hub' },
+      { gx: 18, gz: 18, target: 'dungeon', type: 'dungeon' },
     ];
     for (const p of portals) {
       const { x: px, z: pz } = gridToWorld(p.gx, p.gz);
       this._portals.push({ pos: new THREE.Vector3(px, 0, pz), target: p.target });
-      const ringMat = new THREE.MeshStandardMaterial({
-        color: p.color,
-        emissive: p.emissive,
-        emissiveIntensity: 0.4,
-        metalness: 0.5,
-        roughness: 0.4
-      });
-      const ring = new THREE.Mesh(ringGeo, ringMat);
-      ring.rotation.x = Math.PI / 2;
-      ring.position.set(px, 0.2, pz);
-      ring.castShadow = true;
-      this.threeScene.add(ring);
+      const portal = createPortalMesh(p.type);
+      portal.position.set(px, 0, pz);
+      portal.rotation.y = p.gx < 10 ? 0 : Math.PI;
+      this.threeScene.add(portal);
     }
   }
 

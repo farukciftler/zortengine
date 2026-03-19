@@ -12,6 +12,7 @@ import {
   dungeonWorldToGrid,
   getDungeonTile,
 } from './dungeonMapData.js';
+import { createPortalMesh } from './PortalMesh.js';
 
 const PLAYER_RADIUS = 0.6;
 const PLAYER_SPEED = 5.0;
@@ -21,7 +22,7 @@ const ENEMY_SPAWN_INTERVAL = 2.5;
 const ENEMY_MAX_COUNT = 6;
 const XP_PER_KILL = 20;
 const PICKUP_RADIUS = 1.8;
-const PORTAL_RADIUS = 2.0;
+const PORTAL_RADIUS = 2.5;
 
 function clamp(v, min, max) {
   return Math.max(min, Math.min(max, v));
@@ -148,19 +149,10 @@ export class DungeonScene extends GameScene {
 
     const { x: px, z: pz } = dungeonGridToWorld(DUNGEON_PORTAL.gx, DUNGEON_PORTAL.gz);
     this._portalPos = new THREE.Vector3(px, 0, pz);
-    const ringGeo = new THREE.TorusGeometry(1, 0.12, 12, 24);
-    const ringMat = new THREE.MeshStandardMaterial({
-      color: 0xe74c3c,
-      emissive: 0x8b0000,
-      emissiveIntensity: 0.5,
-      metalness: 0.5,
-      roughness: 0.4
-    });
-    const ring = new THREE.Mesh(ringGeo, ringMat);
-    ring.rotation.x = Math.PI / 2;
-    ring.position.set(px, 0.2, pz);
-    ring.castShadow = true;
-    this.threeScene.add(ring);
+    const portal = createPortalMesh('world');
+    portal.position.set(px, 0, pz);
+    portal.rotation.y = Math.atan2(-px, -pz);
+    this.threeScene.add(portal);
   }
 
   _spawnLoot(x, z, loot) {
