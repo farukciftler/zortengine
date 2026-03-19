@@ -21,12 +21,13 @@
     "./persistence": "./src/persistence/index.js",
     "./physics": "./src/adapters/physics/index.js",
     "./render": "./src/adapters/render/index.js",
+    "./react-native": "./src/adapters/react-native/index.js",
     "./package.json": "./package.json"
   },
   "type": "module",
   "scripts": {
     "typecheck": "tsc -p tsconfig.json",
-    "test": "npm run typecheck && node tests/engine/engine-contract.test.js && node tests/examples/headless-smoke.test.js && node tests/examples/zigzag-smoke.test.js && node tests/examples/network-smoke.test.js",
+    "test": "npm run typecheck && node tests/engine/engine-contract.test.js && node tests/adapters/rn-platform.test.js && node tests/adapters/rn-input-manager.test.js && node tests/examples/headless-smoke.test.js && node tests/examples/zigzag-smoke.test.js && node tests/examples/network-smoke.test.js",
     "network": "node examples/run-showcase/server/lobby/network-server.js",
     "serve": "npx serve . -l 3000"
   },
@@ -40,7 +41,7 @@
   "license": "MIT",
   "dependencies": {
     "cannon-es": "^0.20.0",
-    "three": "^0.128.0",
+    "three": "^0.166.0",
     "ws": "^8.19.0"
   },
   "devDependencies": {

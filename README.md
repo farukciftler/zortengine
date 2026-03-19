@@ -11,6 +11,7 @@
 - `src/gameplay/`: sample ve kit actor facade'lari
 - `examples/run-showcase/`: multiplayer lobby, combat, networking demo
 - `examples/zigzag-runner/`: endless runner, procedural spawn, path-based track
+- `examples/react-native-demo/`: React Native minimal demo (expo-gl, touch input)
 - `examples/run-showcase/server/lobby/`: showcase lobby sunucusu
 - `package.json` icindeki `exports`: public package girislerini dogrudan `src/...` altina baglar
 
@@ -190,6 +191,16 @@ Test paketi su ayri katmanlari dogrular:
 - `tests/examples/zigzag-smoke.test.js`: zigzag-runner smoke
 - `tests/examples/network-smoke.test.js`: lobby/network smoke
 
+## React Native
+
+ZortEngine React Native ortamında çalışır. Adapter'lar `zortengine/react-native` entrypoint'inden:
+
+```js
+import { RNPlatform, RNRendererAdapter, RNInputManager } from 'zortengine/react-native';
+```
+
+Örnek: `examples/react-native-demo/` — minimal Expo projesi. Detaylı kurulum için [docs/react-native.md](docs/react-native.md).
+
 ## Dokümantasyon
 
 | Belge | İçerik |
@@ -199,6 +210,7 @@ Test paketi su ayri katmanlari dogrular:
 | [docs/zigzag-runner.md](docs/zigzag-runner.md) | Zigzag Runner mimari ve kullanım |
 | [docs/plugins.md](docs/plugins.md) | Plugin manifest ve capability modeli |
 | [docs/adapters.md](docs/adapters.md) | Renderer, audio, browser adapter sınırları |
+| [docs/react-native.md](docs/react-native.md) | React Native kurulum ve kullanım |
 | [docs/v2-migration.md](docs/v2-migration.md) | V1 → V2 geçiş notları |
 | [docs/package-stability.md](docs/package-stability.md) | Public API stabilite tablosu |
 
