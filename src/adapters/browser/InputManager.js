@@ -7,7 +7,7 @@ export class InputManager {
         this.keys = {};
         this.joystickDir = { x: 0, z: 0 };
         this.isAttacking = false;
-        this.bindings = {
+        this.bindings = config.bindings || {
             default: {
                 'forward': ['w', 'arrowup'],
                 'backward': ['s', 'arrowdown'],
@@ -18,8 +18,10 @@ export class InputManager {
                 'skill1': ['q'],
                 'restart': ['r'],
                 'viewToggle': ['v']
-            },
-            coop: {
+            }
+        };
+        if (!config.bindings) {
+            this.bindings.coop = {
                 'forward': ['i'],
                 'backward': ['k'],
                 'left': ['j'],
@@ -29,8 +31,8 @@ export class InputManager {
                 'skill1': ['o'],
                 'restart': [],
                 'viewToggle': []
-            }
-        };
+            };
+        }
         this.events = new EventEmitter();
         this.commandQueue = [];
         this.commandHistory = [];
