@@ -10,6 +10,8 @@ import { Engine, GameScene } from 'zortengine/src/engine/index.js';
 // Bu demo monorepo/symlink kullandığı için deep import tercih ediyor.
 import { RNPlatform, RNRendererAdapter, RNInputManager } from 'zortengine/src/adapters/react-native/index.js';
 import * as THREE from 'three';
+import { TapArenaScene } from './scenes/TapArenaScene';
+import { SwipeRunnerScene } from './scenes/SwipeRunnerScene';
 
 if (typeof global !== 'undefined') {
   global.THREE = global.THREE || THREE;
@@ -96,7 +98,13 @@ class DemoScene extends GameScene {
   }
 }
 
-export function GameView({ style }) {
+function createSceneForMode(mode) {
+  if (mode === 'tap') return new TapArenaScene();
+  if (mode === 'run') return new SwipeRunnerScene();
+  return new DemoScene({ name: 'demo' });
+}
+
+export function GameView({ style, mode = 'menu' }) {
   const engineRef = useRef(null);
   const platformRef = useRef(null);
   const adapterRef = useRef(null);
@@ -128,9 +136,9 @@ export function GameView({ style }) {
     engine._rnInputManager = inputManager;
     engineRef.current = engine;
 
-    const scene = new DemoScene({ name: 'demo' });
-    engine.addScene('demo', scene);
-    engine.useScene('demo');
+    const scene = createSceneForMode(mode);
+    engine.addScene(scene.name, scene);
+    engine.useScene(scene.name);
 
     // İlk frame öncesi aspect/viewport senkronu
     const aspect = viewport.width / Math.max(1, viewport.height);
@@ -138,7 +146,7 @@ export function GameView({ style }) {
     adapter.resize?.(viewport.width, viewport.height);
 
     engine.start();
-  }, []);
+  }, [mode]);
 
   useEffect(() => {
     return () => {
