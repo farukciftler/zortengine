@@ -27,7 +27,7 @@
   "scripts": {
     "typecheck": "tsc -p tsconfig.json",
     "test": "npm run typecheck && node tests/engine/engine-contract.test.js && node tests/examples/headless-smoke.test.js && node tests/examples/zigzag-smoke.test.js && node tests/examples/network-smoke.test.js",
-    "network": "node server/lobby/network-server.js",
+    "network": "node examples/run-showcase/server/lobby/network-server.js",
     "serve": "npx serve . -l 3000"
   },
   "keywords": [

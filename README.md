@@ -1,6 +1,6 @@
 # ZortEngine
 
-`ZortEngine`, Three.js ustune kurulu scene-centric bir oyun runtime/framework cekirdegidir. V2 tabaniyla birlikte repo artik yalnizca klasor olarak degil, **contract-first platform** olarak organize edilir: cekirdek runtime soyut contract'lari korur, concrete Three.js/browser uygulamalari adapter katmaninda kalir.
+`ZortEngine`, Three.js ustune kurulu scene-centric bir oyun runtime/framework cekirdegidir. V2 tabaniyla birlikte repo artik yalnizca klasor olarak degil, **contract-first platform** olarak organize edilir: cekirdek runtime soyut contract'lari korur, concrete Three.js/browser uygulamalari adapter katmaninda kalir. Detayli dokumantasyon icin [docs/](docs/README.md) indeksine bakin.
 
 ## Framework Sinirlari
 
@@ -9,8 +9,9 @@
 - `src/tooling/`: debug, inspector ve headless yardimcilari
 - `src/kits/`: opinionated ama tekrar kullanilabilir gameplay modulleri
 - `src/gameplay/`: sample ve kit actor facade'lari
-- `examples/run-showcase/`: sample uygulama
-- `server/lobby/`: showcase lobby sunucusu
+- `examples/run-showcase/`: multiplayer lobby, combat, networking demo
+- `examples/zigzag-runner/`: endless runner, procedural spawn, path-based track
+- `examples/run-showcase/server/lobby/`: showcase lobby sunucusu
 - `package.json` icindeki `exports`: public package girislerini dogrudan `src/...` altina baglar
 
 ## Root API
@@ -102,16 +103,28 @@ export class MyGame extends Engine {
 }
 ```
 
-## Example App
+## Örnek Uygulamalar
 
-Aktif showcase/example uygulama `examples/run-showcase/` altinda yasiyor:
+Engine iki örnek oyunla birlikte gelir:
 
-- `examples/run-showcase/app/MyGame.js`
-- `examples/run-showcase/app/main.js`
-- `examples/run-showcase/scenes/MainMenuScene.js`
-- `examples/run-showcase/scenes/RunScene.js`
+| Örnek | Açıklama | Özellikler |
+|-------|----------|------------|
+| **[run-showcase](examples/run-showcase/)** | Multiplayer lobby, combat demo | Networking, odalar, savaş, meta progression |
+| **[zigzag-runner](examples/zigzag-runner/)** | Endless zigzag runner | Şerit değiştirme, procedural spawn, checkpoint |
 
-Bu katman framework degil, engine'in ustune kurulu sample uygulamadir.
+### run-showcase
+
+- `examples/run-showcase/app/MyGame.js`, `main.js`
+- `examples/run-showcase/scenes/MainMenuScene.js`, `RunScene.js`
+- Lobby sunucusu: `npm run network` → `examples/run-showcase/server/lobby/`
+
+### zigzag-runner
+
+- `examples/zigzag-runner/app/ZigzagGame.js`, `main.js`
+- `examples/zigzag-runner/scenes/MenuScene.js`, `RunScene.js`
+- Çalıştırma: Proje kökünden `npm run serve` veya `python3 -m http.server 3000` → **http://localhost:3000/examples/zigzag-runner/app/**
+
+Detaylı bilgi için → [docs/examples.md](docs/examples.md), [docs/zigzag-runner.md](docs/zigzag-runner.md)
 
 ## Snapshot Contract
 
@@ -173,15 +186,21 @@ Test paketi su ayri katmanlari dogrular:
 
 - `tests/engine/engine-contract.test.js`: root API, scene lifecycle, system priority, snapshot contract
 - `tests/types/engine-contracts.test.ts`: generic contract smoke test
-- `tests/examples/headless-smoke.test.js`: showcase run headless smoke
+- `tests/examples/headless-smoke.test.js`: run-showcase headless smoke
+- `tests/examples/zigzag-smoke.test.js`: zigzag-runner smoke
 - `tests/examples/network-smoke.test.js`: lobby/network smoke
 
-## Dokumantasyon
+## Dokümantasyon
 
-- `docs/plugins.md`: plugin manifest ve capability modeli
-- `docs/adapters.md`: renderer/audio/browser adapter sinirlari
-- `docs/v2-migration.md`: v1 -> v2 gecis notlari
-- `docs/package-stability.md`: public API stabilite tablosu
+| Belge | İçerik |
+|-------|--------|
+| [docs/README.md](docs/README.md) | Dokümantasyon indeksi |
+| [docs/examples.md](docs/examples.md) | Örnek uygulamalar rehberi |
+| [docs/zigzag-runner.md](docs/zigzag-runner.md) | Zigzag Runner mimari ve kullanım |
+| [docs/plugins.md](docs/plugins.md) | Plugin manifest ve capability modeli |
+| [docs/adapters.md](docs/adapters.md) | Renderer, audio, browser adapter sınırları |
+| [docs/v2-migration.md](docs/v2-migration.md) | V1 → V2 geçiş notları |
+| [docs/package-stability.md](docs/package-stability.md) | Public API stabilite tablosu |
 
 ## Mimari Not
 

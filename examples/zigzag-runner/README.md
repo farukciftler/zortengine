@@ -15,18 +15,20 @@ python3 -m http.server 3000
 
 # veya Node serve ile
 npm run serve
-# veya: npx serve . -l 3000
 ```
 
 Tarayıcıda açın: **http://localhost:3000/examples/zigzag-runner/app/**
 
-(`/app/` ile bitmeli; `index.html` otomatik yüklenir)
-
 ## Kontroller
 
 - **Sol/Sağ**: A / D veya ok tuşları
-- Oyun bittiğinde "Yeniden Oyna" ile tekrar başla
+- **Zıplama**: Space
+- **Yeniden Oyna**: Oyun bittiğinde buton
 
-## Klasör Yapısı
+## Dokümantasyon
 
-Detaylı plan için `PLAN.md` dosyasına bakın.
+| Belge | İçerik |
+|-------|--------|
+| [docs/zigzag-runner.md](../../docs/zigzag-runner.md) | Mimari, klasör yapısı, engine kullanımı |
+| [docs/examples.md](../../docs/examples.md) | Örnekler karşılaştırması |
+| [PLAN.md](PLAN.md) | Detaylı plan ve modül sorumlulukları |

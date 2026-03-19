@@ -4,7 +4,7 @@ import { setTimeout as wait } from 'node:timers/promises';
 import WebSocket from 'ws';
 
 const port = 27657;
-const server = spawn('node', ['server/lobby/network-server.js'], {
+const server = spawn('node', ['examples/run-showcase/server/lobby/network-server.js'], {
     cwd: process.cwd(),
     stdio: 'ignore',
     env: {
