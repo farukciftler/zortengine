@@ -49,6 +49,37 @@ input.attach();
 - **Tap** → `attack` action
 - **Swipe** → `left`, `right`, `forward`, `backward` actions
 
+### VirtualJoystick (Reusable)
+
+Sol/sağ ekran ayırma, deadzone, smoothing dahil hazır joystick bileşeni:
+
+```js
+import { VirtualJoystick } from 'zortengine/react-native';
+
+<VirtualJoystick
+  region="left"                    // 'left' | 'right' | { left, top, width, height } (0-1)
+  onDirectionChange={(x, z) => inputManager.setJoystickDir(x, z)}
+  onReleaseOutside={() => inputManager.triggerAction('attack')}  // parmak sağa kayınca
+  deadzone={0.12}
+  radius={80}
+  resetOnRelease={true}
+  showVisual={true}
+/>
+```
+
+### TouchRegion (createRegionChecker)
+
+Özel dokunma bölgeleri için yardımcı:
+
+```js
+import { createRegionChecker } from 'zortengine/react-native';
+
+const isLeft = createRegionChecker('left');
+const isRight = createRegionChecker('right');
+const isCustom = createRegionChecker({ left: 0, top: 0, width: 0.5, height: 1 });  // oran 0-1
+const isPx = createRegionChecker({ leftPx: 0, topPx: 0, widthPx: 100, heightPx: 200 });
+```
+
 ## Örnek
 
 `examples/react-native-demo/` — minimal Expo projesi:

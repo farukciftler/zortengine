@@ -2,7 +2,7 @@ import React, { useCallback } from 'react';
 import { StyleSheet, View, TouchableOpacity } from 'react-native';
 import { GameView } from './GameView';
 import { RpgWorldScene } from './RpgWorldScene';
-import { Joystick } from './Joystick';
+import { VirtualJoystick } from 'zortengine/src/adapters/react-native/index.js';
 import { getGameAPI } from './gameBridge.js';
 
 function createScene(engine) {
@@ -17,7 +17,11 @@ export default function App() {
       <GameView style={styles.game} createScene={createScene} pointerEvents="none" />
       <View style={styles.hud} pointerEvents="box-none">
         <View style={styles.left} pointerEvents="auto" collapsable={false}>
-          <Joystick />
+          <VirtualJoystick
+            region="left"
+            onDirectionChange={(x, z) => getGameAPI()?.setJoystickDir?.(x, z)}
+            onReleaseOutside={() => getGameAPI()?.triggerAttack?.()}
+          />
         </View>
         <View style={styles.rightOverlay} pointerEvents="auto">
           <TouchableOpacity style={styles.attackBtn} onPressIn={handleAttack} activeOpacity={0.8}>
