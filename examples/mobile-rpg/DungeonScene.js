@@ -2,28 +2,24 @@ import * as THREE from 'three';
 import { GameScene } from 'zortengine/src/engine/index.js';
 import { ModularCharacter } from 'zortengine/src/gameplay/index.js';
 import {
-  WORLD_MAP,
-  TILE,
-  TILE_SIZE,
-  isWalkable,
-  gridToWorld,
-  worldToGrid,
-  getTile,
-} from './mapData.js';
-import {
-  QUESTS,
-  createQuestProgress,
-  updateQuestProgress,
-  isQuestComplete,
-} from './questData.js';
+  DUNGEON_MAP,
+  DUNGEON_TILE,
+  DUNGEON_TILE_SIZE,
+  DUNGEON_SPAWN_POINTS,
+  DUNGEON_PORTAL,
+  isDungeonWalkable,
+  dungeonGridToWorld,
+  dungeonWorldToGrid,
+  getDungeonTile,
+} from './dungeonMapData.js';
 
 const PLAYER_RADIUS = 0.6;
 const PLAYER_SPEED = 5.0;
 const ENEMY_RADIUS = 0.6;
-const ENEMY_BASE_SPEED = 2.5;
-const ENEMY_SPAWN_INTERVAL = 3.0;
-const ENEMY_MAX_COUNT = 8;
-const XP_PER_KILL = 15;
+const ENEMY_BASE_SPEED = 2.8;
+const ENEMY_SPAWN_INTERVAL = 2.5;
+const ENEMY_MAX_COUNT = 6;
+const XP_PER_KILL = 20;
 const PICKUP_RADIUS = 1.8;
 const PORTAL_RADIUS = 2.0;
 
@@ -31,15 +27,13 @@ function clamp(v, min, max) {
   return Math.max(min, Math.min(max, v));
 }
 
-export class RpgWorldScene extends GameScene {
+export class DungeonScene extends GameScene {
   constructor() {
-    super({ name: 'rpg-world' });
+    super({ name: 'dungeon' });
     this._player = null;
     this._playerVel = new THREE.Vector3(0, 0, 0);
-
     this._enemies = [];
     this._enemySpawnTimer = 0;
-
     this._hp = 100;
     this._maxHp = 100;
     this._level = 1;
@@ -47,9 +41,7 @@ export class RpgWorldScene extends GameScene {
     this._gold = 0;
     this._lootItems = [];
     this._attackCooldown = 0;
-    this._portals = [];
-    this._questIndex = 0;
-    this._questProgress = null;
+    this._portalPos = null;
   }
 
   _xpForLevel(level) {
@@ -63,38 +55,7 @@ export class RpgWorldScene extends GameScene {
       this._level++;
       this._maxHp += 10;
       this._hp = Math.min(this._hp + 10, this._maxHp);
-      this._onQuestEvent({ type: 'level', level: this._level });
     }
-  }
-
-  _initQuest() {
-    if (this._questIndex >= QUESTS.length) return;
-    const quest = QUESTS[this._questIndex];
-    this._questProgress = createQuestProgress(quest);
-  }
-
-  _onQuestEvent(event) {
-    if (this._questIndex >= QUESTS.length || !this._questProgress) return;
-    const quest = QUESTS[this._questIndex];
-    updateQuestProgress(this._questProgress, quest, event);
-    if (isQuestComplete(this._questProgress, quest)) {
-      this._questIndex++;
-      this._initQuest();
-    }
-  }
-
-  getQuestForUI() {
-    if (this._questIndex >= QUESTS.length || !this._questProgress) return null;
-    const quest = QUESTS[this._questIndex];
-    return {
-      title: quest.title,
-      description: quest.description,
-      objectives: quest.objectives.map((obj, i) => ({
-        type: obj.type,
-        target: obj.target,
-        current: this._questProgress.current[i] ?? 0,
-      })),
-    };
   }
 
   setup() {
@@ -102,31 +63,29 @@ export class RpgWorldScene extends GameScene {
     const aspect = width / Math.max(1, height);
 
     const camera = new THREE.PerspectiveCamera(55, aspect, 0.1, 100);
-    // Önden bakış: joystick yukarı = ekranda yukarı (-Z), sağ = ekranda sağ (+X)
-    this._cameraOffset = new THREE.Vector3(0, 18, 18);
+    this._cameraOffset = new THREE.Vector3(0, 14, 14);
     camera.position.copy(this._cameraOffset);
     camera.lookAt(0, 0, 0);
     this.setCamera(camera);
 
-    this.threeScene.background = new THREE.Color(0x87ceeb);
+    this.threeScene.background = new THREE.Color(0x1a1a2e);
 
-    const ambient = new THREE.AmbientLight(0xffffff, 0.65);
+    const ambient = new THREE.AmbientLight(0x404060, 0.4);
     this.threeScene.add(ambient);
-    const dir = new THREE.DirectionalLight(0xffffff, 0.9);
-    dir.position.set(10, 20, 10);
+    const dir = new THREE.DirectionalLight(0xffffff, 0.7);
+    dir.position.set(8, 15, 8);
     dir.castShadow = true;
-    dir.shadow.mapSize.width = 1024;
-    dir.shadow.mapSize.height = 1024;
-    dir.shadow.camera.left = -30;
-    dir.shadow.camera.right = 30;
-    dir.shadow.camera.top = 30;
-    dir.shadow.camera.bottom = -30;
-    dir.shadow.bias = -0.0002;
+    dir.shadow.mapSize.width = 512;
+    dir.shadow.mapSize.height = 512;
     this.threeScene.add(dir);
+
+    const pointLight = new THREE.PointLight(0xffaa66, 0.5, 20);
+    pointLight.position.set(0, 4, 0);
+    this.threeScene.add(pointLight);
 
     this._createWorld();
 
-    const spawn = gridToWorld(10, 10);
+    const spawn = dungeonGridToWorld(2, 2);
     const player = new ModularCharacter(this, spawn.x, spawn.z, {
       colorSuit: 0xe74c3c,
       colorSkin: 0xffe4c4,
@@ -137,10 +96,7 @@ export class RpgWorldScene extends GameScene {
     this._player = player.group;
 
     const input = this.engine._rnInputManager;
-    if (input) {
-      this.registerSystem('input', input);
-    }
-    this._initQuest();
+    if (input) this.registerSystem('input', input);
   }
 
   onEnter() {
@@ -159,73 +115,52 @@ export class RpgWorldScene extends GameScene {
   }
 
   _createWorld() {
-    const tileGeo = new THREE.PlaneGeometry(TILE_SIZE, TILE_SIZE);
+    const tileGeo = new THREE.PlaneGeometry(DUNGEON_TILE_SIZE, DUNGEON_TILE_SIZE);
     const materials = {
-      [TILE.GRASS]: new THREE.MeshStandardMaterial({
-        color: 0x27ae60,
-        roughness: 0.9,
+      [DUNGEON_TILE.FLOOR]: new THREE.MeshStandardMaterial({
+        color: 0x3d3d5c,
+        roughness: 0.95,
         metalness: 0.05
       }),
-      [TILE.PATH]: new THREE.MeshStandardMaterial({
-        color: 0x95a5a6,
-        roughness: 0.95,
-        metalness: 0
+      [DUNGEON_TILE.WALL]: new THREE.MeshStandardMaterial({
+        color: 0x2d2d44,
+        roughness: 0.9,
+        metalness: 0.1
       }),
-      [TILE.WATER]: new THREE.MeshStandardMaterial({
-        color: 0x3498db,
-        roughness: 0.3,
-        metalness: 0.2
-      }),
-      [TILE.WALL]: new THREE.MeshStandardMaterial({
-        color: 0x4a4a4a,
-        roughness: 0.95,
+      [DUNGEON_TILE.CORRIDOR]: new THREE.MeshStandardMaterial({
+        color: 0x4a4a6a,
+        roughness: 0.9,
         metalness: 0.05
       })
     };
 
-    for (let gz = 0; gz < WORLD_MAP.length; gz++) {
-      for (let gx = 0; gx < WORLD_MAP[gz].length; gx++) {
-        const tile = getTile(gx, gz);
-        const { x, z } = gridToWorld(gx, gz);
-        const mesh = new THREE.Mesh(tileGeo, materials[tile]);
+    for (let gz = 0; gz < DUNGEON_MAP.length; gz++) {
+      for (let gx = 0; gx < DUNGEON_MAP[gz].length; gx++) {
+        const tile = getDungeonTile(gx, gz);
+        const { x, z } = dungeonGridToWorld(gx, gz);
+        const mesh = new THREE.Mesh(tileGeo, materials[tile] ?? materials[DUNGEON_TILE.WALL]);
         mesh.rotation.x = -Math.PI / 2;
         mesh.position.set(x, -0.5, z);
         mesh.receiveShadow = true;
-        mesh.userData = { gx, gz, tile };
         this.threeScene.add(mesh);
       }
     }
 
+    const { x: px, z: pz } = dungeonGridToWorld(DUNGEON_PORTAL.gx, DUNGEON_PORTAL.gz);
+    this._portalPos = new THREE.Vector3(px, 0, pz);
     const ringGeo = new THREE.TorusGeometry(1, 0.12, 12, 24);
-    const portals = [
-      { gx: 1, gz: 1, target: 'hub', color: 0x9b59b6, emissive: 0x4a235a },
-      { gx: 18, gz: 18, target: 'dungeon', color: 0xe74c3c, emissive: 0x8b0000 },
-    ];
-    for (const p of portals) {
-      const { x: px, z: pz } = gridToWorld(p.gx, p.gz);
-      this._portals.push({ pos: new THREE.Vector3(px, 0, pz), target: p.target });
-      const ringMat = new THREE.MeshStandardMaterial({
-        color: p.color,
-        emissive: p.emissive,
-        emissiveIntensity: 0.4,
-        metalness: 0.5,
-        roughness: 0.4
-      });
-      const ring = new THREE.Mesh(ringGeo, ringMat);
-      ring.rotation.x = Math.PI / 2;
-      ring.position.set(px, 0.2, pz);
-      ring.castShadow = true;
-      this.threeScene.add(ring);
-    }
-  }
-
-  onResize(width, height, aspect) {
-    const cam = this.getCamera();
-    const threeCam = cam?.getNativeCamera?.() || cam?.getThreeCamera?.() || cam;
-    if (threeCam?.isPerspectiveCamera) {
-      threeCam.aspect = aspect;
-      threeCam.updateProjectionMatrix();
-    }
+    const ringMat = new THREE.MeshStandardMaterial({
+      color: 0xe74c3c,
+      emissive: 0x8b0000,
+      emissiveIntensity: 0.5,
+      metalness: 0.5,
+      roughness: 0.4
+    });
+    const ring = new THREE.Mesh(ringGeo, ringMat);
+    ring.rotation.x = Math.PI / 2;
+    ring.position.set(px, 0.2, pz);
+    ring.castShadow = true;
+    this.threeScene.add(ring);
   }
 
   _spawnLoot(x, z, loot) {
@@ -235,7 +170,7 @@ export class RpgWorldScene extends GameScene {
     const mat = new THREE.MeshStandardMaterial({
       color: 0xffd700,
       emissive: 0xcc9900,
-      emissiveIntensity: 0.3,
+      emissiveIntensity: 0.4,
       metalness: 0.8,
       roughness: 0.3
     });
@@ -255,10 +190,7 @@ export class RpgWorldScene extends GameScene {
       const dist = item.position.distanceTo(pPos);
       if (dist <= PICKUP_RADIUS) {
         const loot = item.userData?.loot;
-        if (loot?.gold) {
-          this._gold += loot.gold;
-          this._onQuestEvent({ type: 'gold', amount: loot.gold });
-        }
+        if (loot?.gold) this._gold += loot.gold;
         this.threeScene.remove(item);
         item.children.forEach(c => {
           c.geometry?.dispose?.();
@@ -274,25 +206,24 @@ export class RpgWorldScene extends GameScene {
   _spawnEnemy() {
     if (!this._player || this._enemies.length >= ENEMY_MAX_COUNT) return;
 
-    const pPos = this._player.position;
-    const { gx: pgx, gz: pgz } = worldToGrid(pPos.x, pPos.z);
-    const minDist = 4;
-    let gx, gz, attempts = 0;
-    do {
-      gx = Math.floor(Math.random() * WORLD_MAP[0].length);
-      gz = Math.floor(Math.random() * WORLD_MAP.length);
-      attempts++;
-    } while ((!isWalkable(getTile(gx, gz)) || Math.abs(gx - pgx) + Math.abs(gz - pgz) < minDist) && attempts < 50);
-    if (!isWalkable(getTile(gx, gz))) return;
+    const idx = Math.floor(Math.random() * DUNGEON_SPAWN_POINTS.length);
+    const pt = DUNGEON_SPAWN_POINTS[idx];
+    if (!isDungeonWalkable(getDungeonTile(pt.gx, pt.gz))) return;
 
-    const { x, z } = gridToWorld(gx, gz);
+    const pPos = this._player.position;
+    const { gx: pgx, gz: pgz } = dungeonWorldToGrid(pPos.x, pPos.z);
+    const dist = Math.abs(pt.gx - pgx) + Math.abs(pt.gz - pgz);
+    if (dist < 3) return;
+
+    const { x, z } = dungeonGridToWorld(pt.gx, pt.gz);
 
     const group = new THREE.Group();
     group.position.set(x, 0, z);
     const geo = new THREE.BoxGeometry(1, 1, 1);
     const mat = new THREE.MeshStandardMaterial({
       color: 0x8e44ad,
-      emissive: 0x000000,
+      emissive: 0x4a235a,
+      emissiveIntensity: 0.2,
       roughness: 0.5,
       metalness: 0.1
     });
@@ -300,16 +231,14 @@ export class RpgWorldScene extends GameScene {
     mesh.position.y = 0.5;
     mesh.castShadow = true;
     group.add(mesh);
-    const gold = 3 + Math.floor(Math.random() * 8);
+    const gold = 5 + Math.floor(Math.random() * 12);
     group.userData = { hp: 1, alive: true, mesh, loot: { gold } };
     this.threeScene.add(group);
     this._enemies.push(group);
   }
 
   _tryAttack() {
-    if (!this._player) return;
-    if (this._attackCooldown > 0) return;
-
+    if (!this._player || this._attackCooldown > 0) return;
     this._attackCooldown = 0.4;
     this._player.scale.set(1.1, 0.9, 1.1);
 
@@ -323,7 +252,6 @@ export class RpgWorldScene extends GameScene {
       if (d <= attackRadius) {
         e.userData.alive = false;
         this._addXp(e.userData.xp ?? XP_PER_KILL);
-        this._onQuestEvent({ type: 'kill', count: 1 });
         const loot = e.userData?.loot;
         if (loot) this._spawnLoot(e.position.x, e.position.z, loot);
         const mesh = e.userData?.mesh;
@@ -344,9 +272,7 @@ export class RpgWorldScene extends GameScene {
     if (this._playerCharacter?.fsm) {
       this._playerCharacter.fsm.setState(isMoving ? 'walk' : 'idle');
     }
-    if (this._playerCharacter) {
-      this._playerCharacter.update(delta, time);
-    }
+    if (this._playerCharacter) this._playerCharacter.update(delta, time);
 
     this._playerVel.lerp(targetVel, 1 - Math.exp(-12 * delta));
 
@@ -355,27 +281,21 @@ export class RpgWorldScene extends GameScene {
     this._player.position.x += this._playerVel.x * delta;
     this._player.position.z += this._playerVel.z * delta;
 
-    const { gx, gz } = worldToGrid(this._player.position.x, this._player.position.z);
-    const tile = getTile(gx, gz);
-    if (!isWalkable(tile)) {
+    const { gx, gz } = dungeonWorldToGrid(this._player.position.x, this._player.position.z);
+    if (!isDungeonWalkable(getDungeonTile(gx, gz))) {
       this._player.position.x = prevX;
       this._player.position.z = prevZ;
     }
 
     const angle = Math.atan2(this._playerVel.x, this._playerVel.z);
-    if (this._playerVel.lengthSq() > 0.01) {
-      this._player.rotation.y = angle;
-    }
+    if (this._playerVel.lengthSq() > 0.01) this._player.rotation.y = angle;
 
-    const half = (WORLD_MAP[0]?.length ?? 20) * TILE_SIZE * 0.5 - TILE_SIZE;
+    const half = (DUNGEON_MAP[0]?.length ?? 15) * DUNGEON_TILE_SIZE * 0.5 - DUNGEON_TILE_SIZE;
     this._player.position.x = clamp(this._player.position.x, -half, half);
     this._player.position.z = clamp(this._player.position.z, -half, half);
 
-    for (const p of this._portals) {
-      if (this._player.position.distanceTo(p.pos) <= PORTAL_RADIUS) {
-        this.engine?.useScene?.(p.target);
-        break;
-      }
+    if (this._portalPos && this._player.position.distanceTo(this._portalPos) <= PORTAL_RADIUS) {
+      this.engine?.useScene?.('rpg-world');
     }
 
     if (this._player.scale) {
@@ -424,8 +344,8 @@ export class RpgWorldScene extends GameScene {
       e.position.x += dir.x * speed * delta;
       e.position.z += dir.z * speed * delta;
 
-      const { gx: egx, gz: egz } = worldToGrid(e.position.x, e.position.z);
-      if (!isWalkable(getTile(egx, egz))) {
+      const { gx: egx, gz: egz } = dungeonWorldToGrid(e.position.x, e.position.z);
+      if (!isDungeonWalkable(getDungeonTile(egx, egz))) {
         e.position.x = prevEx;
         e.position.z = prevEz;
       }
@@ -433,7 +353,7 @@ export class RpgWorldScene extends GameScene {
       e.lookAt(pPos.x, e.position.y, pPos.z);
 
       if (dist < PLAYER_RADIUS + ENEMY_RADIUS + 0.1) {
-        this._hp = clamp(this._hp - 10 * delta, 0, this._maxHp);
+        this._hp = clamp(this._hp - 12 * delta, 0, this._maxHp);
         e.position.x -= dir.x * speed * delta * 2;
         e.position.z -= dir.z * speed * delta * 2;
       }
@@ -446,12 +366,24 @@ export class RpgWorldScene extends GameScene {
     if (!threeCam || !this._player) return;
 
     const targetPos = this._player.position.clone().add(this._cameraOffset);
-    const followSpeed = 4.0;
-    const t = 1 - Math.exp(-followSpeed * delta);
+    const t = 1 - Math.exp(-4 * delta);
     threeCam.position.lerp(targetPos, t);
     const lookAt = this._player.position.clone();
     lookAt.y += 1.5;
     threeCam.lookAt(lookAt);
+  }
+
+  onResize(width, height, aspect) {
+    const cam = this.getCamera();
+    const threeCam = cam?.getNativeCamera?.() || cam?.getThreeCamera?.() || cam;
+    if (threeCam?.isPerspectiveCamera) {
+      threeCam.aspect = aspect;
+      threeCam.updateProjectionMatrix();
+    }
+  }
+
+  getQuestForUI() {
+    return null;
   }
 
   onUpdate(delta, time) {
@@ -460,8 +392,5 @@ export class RpgWorldScene extends GameScene {
     this._updateEnemies(delta);
     this._updateLoot(delta);
     this._updateCamera(delta);
-
-    // İleride HP değerini RN HUD’a aktarmak için scene events veya engine events kullanılabilir.
   }
 }
-

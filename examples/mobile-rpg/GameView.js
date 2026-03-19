@@ -5,7 +5,7 @@ import { Engine } from 'zortengine/src/engine/index.js';
 import { RNPlatform, RNRendererAdapter, RNInputManager } from 'zortengine/src/adapters/react-native/index.js';
 import { setGameAPI, clearGameAPI } from './gameBridge.js';
 
-export const GameView = React.memo(function GameView({ style, createScene, pointerEvents }) {
+export const GameView = React.memo(function GameView({ style, createScenes, pointerEvents }) {
   const engineRef = useRef(null);
   const inputManagerRef = useRef(null);
   const platformRef = useRef(null);
@@ -35,12 +35,12 @@ export const GameView = React.memo(function GameView({ style, createScene, point
       engine._rnInputManager = inputManager;
       engineRef.current = engine;
 
-      const scene = createScene(engine);
-      engine.addScene(scene.name, scene);
-      engine.useScene(scene.name);
+      const initialSceneName = createScenes(engine);
+      engine.useScene(initialSceneName);
 
+      const scene = engine.sceneManager.getActiveScene();
       const aspect = viewport.width / Math.max(1, viewport.height);
-      scene.onResize?.(viewport.width, viewport.height, aspect);
+      scene?.onResize?.(viewport.width, viewport.height, aspect);
       adapter.resize?.(viewport.width, viewport.height);
 
       engine.start();
@@ -48,9 +48,25 @@ export const GameView = React.memo(function GameView({ style, createScene, point
       setGameAPI({
         setJoystickDir: (x, z) => im.setJoystickDir(x, z),
         triggerAttack: () => im.triggerAction('attack', { profile: 'mobile' }),
+        getStats: () => {
+          const s = engine.sceneManager.getActiveScene();
+          if (!s || !('_hp' in s)) return null;
+          return {
+            hp: s._hp,
+            maxHp: s._maxHp,
+            level: s._level,
+            xp: s._xp,
+            xpForNext: s._xpForLevel?.(s._level) ?? 50,
+            gold: s._gold ?? 0,
+          };
+        },
+        getQuest: () => {
+          const s = engine.sceneManager.getActiveScene();
+          return s?.getQuestForUI?.() ?? null;
+        },
       });
     },
-    [createScene]
+    [createScenes]
   );
 
   useEffect(() => {
