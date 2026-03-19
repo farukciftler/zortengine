@@ -122,8 +122,7 @@ export class RNInputManager {
                     this._touchLast.time = Date.now();
 
                     // Basılıyken hareket: swipe aksiyonu yerine "drag" emit ediyoruz
-                    this.joystickDir.x = 0;
-                    this.joystickDir.z = 0;
+                    // joystickDir sıfırlanmaz - Joystick bileşeni setJoystickDir ile yönetir
                     this.events.emit('drag', { dx, dy, x: pageX, y: pageY, time: this._touchLast.time });
                     this.events.emit('pointerMove', { dx, dy, x: pageX, y: pageY, time: this._touchLast.time, pointerType: 'touch' });
                 }
@@ -144,8 +143,7 @@ export class RNInputManager {
                 if (dt < TAP_MAX_DURATION && Math.abs(dx) < SWIPE_THRESHOLD && Math.abs(dy) < SWIPE_THRESHOLD) {
                     this.triggerAction('attack', { profile: 'mobile' });
                 }
-                this.joystickDir.x = 0;
-                this.joystickDir.z = 0;
+                // joystickDir sıfırlanmaz - Joystick bileşeni setJoystickDir ile yönetir
                 this._touchStart = null;
                 this._touchLast = null;
 
