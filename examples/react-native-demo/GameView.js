@@ -17,8 +17,11 @@ if (typeof global !== 'undefined') {
 
 class DemoScene extends GameScene {
   setup() {
-    const camera = new THREE.PerspectiveCamera(60, 1, 0.1, 100);
-    camera.position.set(0, 2, 5);
+    const { width, height } = this.engine?.platform?.getViewportSize?.() || { width: 1, height: 1 };
+    const aspect = (width && height) ? (width / height) : 1;
+
+    const camera = new THREE.PerspectiveCamera(60, aspect, 0.1, 100);
+    camera.position.set(0, 1.6, 4);
     camera.lookAt(0, 0, 0);
     this.setCamera(camera);
 
@@ -30,11 +33,37 @@ class DemoScene extends GameScene {
 
     this.threeScene.add(new THREE.AmbientLight(0xffffff, 0.6));
 
+    this._isPressing = false;
+    // rad/s cinsinden açısal hız
+    this._angularVel = { x: 0, y: 0 };
+    this._lastDragTs = null;
+
     const input = this.engine._rnInputManager;
     if (input) {
       this.registerSystem('input', input);
-      input.on('attack', () => {
-        if (this._cube) this._cube.rotation.y += 0.5;
+      input.on('pressStart', () => {
+        this._isPressing = true;
+        this._lastDragTs = null;
+        if (this._cube) this._cube.scale.set(1.08, 1.08, 1.08);
+      });
+      input.on('pressEnd', () => {
+        this._isPressing = false;
+        this._lastDragTs = null;
+        if (this._cube) this._cube.scale.set(1, 1, 1);
+      });
+      input.on('drag', ({ dx, dy, time }) => {
+        if (!this._cube) return;
+        // Parmak sürükleme -> anlık dönme + momentum için hız örneklemesi
+        const sensitivity = 0.012; // rad / px
+        this._cube.rotation.y += dx * sensitivity;
+        this._cube.rotation.x += dy * sensitivity;
+
+        const dtMs = this._lastDragTs ? Math.max(8, time - this._lastDragTs) : 16;
+        this._lastDragTs = time;
+        const dt = dtMs / 1000;
+        // (rad/px * px) / s = rad/s
+        this._angularVel.y = (dx * sensitivity) / dt;
+        this._angularVel.x = (dy * sensitivity) / dt;
       });
     }
   }
@@ -49,9 +78,21 @@ class DemoScene extends GameScene {
   }
 
   onUpdate(delta) {
-    if (this._cube) {
-      this._cube.rotation.x += delta * 0.5;
-    }
+    if (!this._cube) return;
+    if (this._isPressing) return;
+
+    // Bırakınca momentum: sürtünmeyle yavaşlat
+    const dampingPerSecond = 7.5; // yüksekse daha hızlı durur
+    const k = Math.exp(-dampingPerSecond * Math.max(0, delta));
+    this._angularVel.x *= k;
+    this._angularVel.y *= k;
+
+    // Çok küçükse durdur (mikro jitter olmasın)
+    if (Math.abs(this._angularVel.x) < 0.01) this._angularVel.x = 0;
+    if (Math.abs(this._angularVel.y) < 0.01) this._angularVel.y = 0;
+
+    this._cube.rotation.x += this._angularVel.x * delta;
+    this._cube.rotation.y += this._angularVel.y * delta;
   }
 }
 
@@ -72,10 +113,11 @@ export function GameView({ style }) {
 
     const adapter = adapterRef.current || new RNRendererAdapter();
     adapterRef.current = adapter;
+    const viewport = { width: gl.drawingBufferWidth, height: gl.drawingBufferHeight };
     adapter.mount({
       gl,
       platform,
-      viewport: { width: gl.drawingBufferWidth, height: gl.drawingBufferHeight },
+      viewport,
     });
 
     const engine = new Engine(null, {
@@ -89,6 +131,12 @@ export function GameView({ style }) {
     const scene = new DemoScene({ name: 'demo' });
     engine.addScene('demo', scene);
     engine.useScene('demo');
+
+    // İlk frame öncesi aspect/viewport senkronu
+    const aspect = viewport.width / Math.max(1, viewport.height);
+    scene.onResize?.(viewport.width, viewport.height, aspect);
+    adapter.resize?.(viewport.width, viewport.height);
+
     engine.start();
   }, []);
 

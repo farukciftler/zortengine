@@ -33,6 +33,7 @@ export class RNInputManager {
         this.raycaster = new THREE.Raycaster();
         this.platform = config.platform || null;
         this._touchStart = null;
+        this._touchLast = null;
         this._panResponder = null;
         this._viewRef = config.viewRef ?? null;
 
@@ -99,24 +100,30 @@ export class RNInputManager {
             onMoveShouldSetPanResponder: () => true,
             onPanResponderGrant: (evt) => {
                 const { pageX, pageY } = evt.nativeEvent;
-                this._touchStart = { x: pageX, y: pageY, time: Date.now() };
+                const now = Date.now();
+                this._touchStart = { x: pageX, y: pageY, time: now };
+                this._touchLast = { x: pageX, y: pageY, time: now };
                 const ndc = this._touchToNDC(pageX, pageY);
                 this.touchPos.set(ndc.x, ndc.y);
+
+                // Anlık tepki için "down" event'i
+                this.events.emit('pressStart', { x: pageX, y: pageY, time: now });
             },
             onPanResponderMove: (evt) => {
                 const { pageX, pageY } = evt.nativeEvent;
-                if (this._touchStart) {
-                    const dx = pageX - this._touchStart.x;
-                    const dy = pageY - this._touchStart.y;
+                if (this._touchLast) {
+                    const dx = pageX - this._touchLast.x;
+                    const dy = pageY - this._touchLast.y;
                     this.mouseDelta.x += dx;
                     this.mouseDelta.y += dy;
-                    this._touchStart.x = pageX;
-                    this._touchStart.y = pageY;
-                    const len = Math.sqrt(dx * dx + dy * dy);
-                    if (len >= SWIPE_THRESHOLD) {
-                        this.joystickDir.x = dx / len;
-                        this.joystickDir.z = dy / len;
-                    }
+                    this._touchLast.x = pageX;
+                    this._touchLast.y = pageY;
+                    this._touchLast.time = Date.now();
+
+                    // Basılıyken hareket: swipe aksiyonu yerine "drag" emit ediyoruz
+                    this.joystickDir.x = 0;
+                    this.joystickDir.z = 0;
+                    this.events.emit('drag', { dx, dy, x: pageX, y: pageY, time: this._touchLast.time });
                 }
                 const ndc = this._touchToNDC(pageX, pageY);
                 this.touchPos.set(ndc.x, ndc.y);
@@ -129,25 +136,18 @@ export class RNInputManager {
                 if (!this._touchStart) return;
                 const dx = pageX - this._touchStart.x;
                 const dy = pageY - this._touchStart.y;
-                const dt = Date.now() - this._touchStart.time;
+                const now = Date.now();
+                const dt = now - this._touchStart.time;
 
                 if (dt < TAP_MAX_DURATION && Math.abs(dx) < SWIPE_THRESHOLD && Math.abs(dy) < SWIPE_THRESHOLD) {
                     this.triggerAction('attack', { profile: 'mobile' });
-                } else {
-                    const len = Math.sqrt(dx * dx + dy * dy);
-                    if (len >= SWIPE_THRESHOLD) {
-                        const nx = dx / len;
-                        const ny = dy / len;
-                        if (Math.abs(nx) > Math.abs(ny)) {
-                            this.triggerAction(nx > 0 ? 'right' : 'left', { profile: 'mobile' });
-                        } else {
-                            this.triggerAction(ny < 0 ? 'forward' : 'backward', { profile: 'mobile' });
-                        }
-                    }
                 }
                 this.joystickDir.x = 0;
                 this.joystickDir.z = 0;
                 this._touchStart = null;
+                this._touchLast = null;
+
+                this.events.emit('pressEnd', { x: pageX, y: pageY, time: now });
             }
         });
         return this;
