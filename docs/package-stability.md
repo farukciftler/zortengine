@@ -1,20 +1,21 @@
 # Package Stability
 
-| Entrypoint | Durum | Not |
+| Entrypoint | Status | Note |
 | --- | --- | --- |
-| `zortengine` | Stable | Cekirdek runtime primitive'leri |
-| `zortengine/assets` | Stable | Generic asset/store/pipeline yuzeyi |
+| `zortengine` | Stable | Core runtime primitives |
+| `zortengine/assets` | Stable | Generic asset/store/pipeline surface |
 | `zortengine/browser` | Stable | Browser-only API |
 | `zortengine/audio` | Stable | First-party audio adapter |
-| `zortengine/render` | Stable | First-party Three renderer ve render asset adapter'lari |
-| `zortengine/physics` | Stable | Physics adapter facade'i |
-| `zortengine/devtools` | Stable | Tooling ve inspector yardimcilari |
-| `zortengine/networking` | Stable | Networking transport/system surface'i |
-| `zortengine/gameplay` | Provisional | Naming yeni; actor facade'i stabil olmaya aday |
-| `zortengine/objects` | Deprecated | `gameplay` alias'i, yeni kodda kullanmayin |
+| `zortengine/render` | Stable | First-party Three renderer and render asset adapters |
+| `zortengine/physics` | Stable | Physics adapter facade |
+| `zortengine/devtools` | Stable | Tooling and inspector utilities |
+| `zortengine/networking` | Stable | Networking transport/system surface |
+| `zortengine/gameplay` | Provisional | Naming is new; actor facade is a candidate for stability |
+| `zortengine/objects` | Deprecated | Alias for `gameplay`, do not use in new code |
 
-## SemVer Politika Ozeti
+## SemVer Policy Summary
 
-- Stable entrypoint'lerde breaking degisiklikler yalnizca major release ile yapilir.
-- Provisional surface'ler minor release'te isim veya package boundary degisikligi alabilir.
-- Deprecated surface'ler bir sonraki major oncesi uyariyla kaldirilabilir.
+- Breaking changes in stable entrypoints are only made with major releases.
+- Provisional surfaces may receive name or package boundary changes in minor releases.
+- Deprecated surfaces may be removed with a warning before the next major release.
+

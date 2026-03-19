@@ -1,81 +1,82 @@
-# Örnek Uygulamalar Rehberi
+# Example Applications Guide
 
-ZortEngine iki örnek oyunla birlikte gelir. Her biri farklı engine özelliklerini sergiler.
+ZortEngine comes with two example games. Each showcases different engine features.
 
-## Karşılaştırma
+## Comparison
 
-| Özellik | run-showcase | zigzag-runner |
+| Feature | run-showcase | zigzag-runner |
 |---------|--------------|---------------|
-| **Tür** | Multiplayer lobby, combat | Endless zigzag runner |
-| **Networking** | Var (WebSocket lobby) | Yok |
-| **Combat** | Var | Yok |
-| **Şerit (lane) hareketi** | Yok | Var |
-| **Procedural spawn** | Kısmen | Tam (path-based) |
-| **Checkpoint / Save** | Var | Var |
-| **Karmaşıklık** | Yüksek | Düşük |
-| **Öğrenme eğrisi** | Orta–yüksek | Düşük |
+| **Type** | Multiplayer lobby, combat | Endless zigzag runner |
+| **Networking** | Yes (WebSocket lobby) | No |
+| **Combat** | Yes | No |
+| **Lane movement** | No | Yes |
+| **Procedural spawn** | Partial | Full (path-based) |
+| **Checkpoint / Save** | Yes | Yes |
+| **Complexity** | High | Low |
+| **Learning curve** | Medium–high | Low |
 
 ## run-showcase
 
-Multiplayer lobby, odalar, combat ve meta progression demo.
+Multiplayer lobby, rooms, combat and meta progression demo.
 
-### Çalıştırma
+### Running
 
-1. **Lobby sunucusu** (ayrı terminal):
+1. **Lobby server** (separate terminal):
    ```bash
    npm run network
    ```
-   Sunucu `ws://localhost:2567` üzerinde dinler.
+   The server listens on `ws://localhost:2567`.
 
-2. **Web sunucusu**:
+2. **Web server**:
    ```bash
    npm run serve
-   # veya: python3 -m http.server 3000
+   # or: python3 -m http.server 3000
    ```
 
-3. Tarayıcıda: **http://localhost:3000/examples/run-showcase/app/**
+3. In browser: **http://localhost:3000/examples/run-showcase/app/**
 
-### Önemli Dosyalar
+### Important Files
 
-- `app/MyGame.js` — Engine extend, scene akışı
-- `scenes/MainMenuScene.js` — Lobby UI, oda listesi
+- `app/MyGame.js` — Engine extend, scene flow
+- `scenes/MainMenuScene.js` — Lobby UI, room list
 - `scenes/RunScene.js` — Combat, replication
-- `server/lobby/network-server.js` — WebSocket lobby sunucusu
+- `server/lobby/network-server.js` — WebSocket lobby server
 
-### İlgili Dokümantasyon
+### Related Documentation
 
 - [adapters.md](adapters.md) — Renderer, input
-- [plugins.md](plugins.md) — Plugin kullanımı
+- [plugins.md](plugins.md) — Plugin usage
 
 ---
 
 ## zigzag-runner
 
-Endless zigzag runner: şerit değiştir, engellerden kaçın, toplanabilirleri topla.
+Endless zigzag runner: switch lanes, avoid obstacles, collect collectibles.
 
-### Çalıştırma
+### Running
 
-**Önemli:** Sunucuyu proje kökünden (`zortengine/`) başlatın.
+**Important:** Start the server from the project root (`zortengine/`).
 
 ```bash
-# Proje kökünden
+# From project root
 cd /path/to/zortengine
 
-# Python (genelde en sorunsuz)
+# Python (usually most seamless)
 python3 -m http.server 3000
 
-# veya Node serve
+# or Node serve
 npm run serve
 ```
 
-Tarayıcıda: **http://localhost:3000/examples/zigzag-runner/app/**
+In browser: **http://localhost:3000/examples/zigzag-runner/app/**
 
-### Kontroller
+### Controls
 
-- **Sol/Sağ**: A / D veya ok tuşları
-- **Zıplama**: Space
-- **Yeniden Oyna**: Oyun bittiğinde buton
+- **Left/Right**: A / D or arrow keys
+- **Jump**: Space
+- **Play Again**: Button when the game is over
 
-### Detaylı Dokümantasyon
+### Detailed Documentation
 
-→ [zigzag-runner.md](zigzag-runner.md) — Mimari, klasör yapısı, engine kullanımı
+→ [zigzag-runner.md](zigzag-runner.md) — Architecture, folder structure, engine usage
+

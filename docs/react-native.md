@@ -1,23 +1,23 @@
 # ZortEngine React Native
 
-Bu doküman, ZortEngine'ı React Native ortamında kullanmak için gerekli kurulum ve kullanım bilgilerini içerir.
+This document contains setup and usage information for using ZortEngine in a React Native environment.
 
-## Kurulum
+## Installation
 
 ```bash
 npm install zortengine expo-gl expo-three three react-native-gesture-handler
 ```
 
-## Kullanım
+## Usage
 
 ```js
 import { Engine, GameScene } from 'zortengine';
 import { RNPlatform, RNRendererAdapter, RNInputManager } from 'zortengine/react-native';
 ```
 
-### Mount Sırası
+### Mount Order
 
-GL context yalnızca `GLView`'ın `onContextCreate` callback'inde mevcut olduğundan, Engine oluşturulmadan önce adapter mount edilmelidir:
+Since the GL context is only available in the `onContextCreate` callback of `GLView`, the adapter should be mounted before the Engine is created:
 
 ```js
 const handleContextCreate = (gl) => {
@@ -36,7 +36,7 @@ const handleContextCreate = (gl) => {
 
 ### Input
 
-`RNInputManager` touch tabanlıdır. `getPanHandlers()` ile dönen handler'ları View'a spread edin:
+`RNInputManager` is touch-based. Spread the handlers returned by `getPanHandlers()` into your View:
 
 ```js
 const input = new RNInputManager({ platform });
@@ -51,7 +51,7 @@ input.attach();
 
 ### VirtualJoystick (Reusable)
 
-Sol/sağ ekran ayırma, deadzone, smoothing dahil hazır joystick bileşeni:
+A ready-to-use joystick component including left/right screen splitting, deadzone, and smoothing:
 
 ```js
 import { VirtualJoystick } from 'zortengine/react-native';
@@ -59,7 +59,7 @@ import { VirtualJoystick } from 'zortengine/react-native';
 <VirtualJoystick
   region="left"                    // 'left' | 'right' | { left, top, width, height } (0-1)
   onDirectionChange={(x, z) => inputManager.setJoystickDir(x, z)}
-  onReleaseOutside={() => inputManager.triggerAction('attack')}  // parmak sağa kayınca
+  onReleaseOutside={() => inputManager.triggerAction('attack')}  // when finger slides right
   deadzone={0.12}
   radius={80}
   resetOnRelease={true}
@@ -69,20 +69,20 @@ import { VirtualJoystick } from 'zortengine/react-native';
 
 ### TouchRegion (createRegionChecker)
 
-Özel dokunma bölgeleri için yardımcı:
+Helper for custom touch regions:
 
 ```js
 import { createRegionChecker } from 'zortengine/react-native';
 
 const isLeft = createRegionChecker('left');
 const isRight = createRegionChecker('right');
-const isCustom = createRegionChecker({ left: 0, top: 0, width: 0.5, height: 1 });  // oran 0-1
+const isCustom = createRegionChecker({ left: 0, top: 0, width: 0.5, height: 1 });  // ratio 0-1
 const isPx = createRegionChecker({ leftPx: 0, topPx: 0, widthPx: 100, heightPx: 200 });
 ```
 
-## Örnek
+## Example
 
-`examples/react-native-demo/` — minimal Expo projesi:
+`examples/react-native-demo/` — minimal Expo project:
 
 ```bash
 cd examples/react-native-demo
@@ -90,18 +90,19 @@ npm install
 npm start
 ```
 
-## Asset Yükleme
+## Asset Loading
 
-Metro config'de `glb`, `gltf`, `obj` asset formatları tanımlı. Asset path için `require()` kullanın:
+`glb`, `gltf`, `obj` asset formats are defined in Metro config. Use `require()` for asset paths:
 
 ```js
 const modelUrl = require('./assets/model.glb');
-// ThreeAssetLoader ile yükle
+// Load with ThreeAssetLoader
 ```
 
-## Bilinen Sınırlamalar
+## Known Limitations
 
-- Emülatörde WebGL sorunları olabilir; **gerçek cihazda** test önerilir.
-- Pointer lock mobilde desteklenmez.
-- Klavye input yok; touch/gesture tabanlı input kullanılmalı.
-- UIManager DOM tabanlı; RN'de alternatif UI gerekir.
+- There may be WebGL issues on the emulator; testing on a **real device** is recommended.
+- Pointer lock is not supported on mobile.
+- No keyboard input; touch/gesture-based input should be used.
+- UIManager is DOM-based; an alternative UI is required in RN.
+

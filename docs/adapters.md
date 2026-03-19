@@ -1,18 +1,18 @@
-# Adapter Rehberi
+# Adapter Guide
 
-V2 tabaninda engine ile concrete platformlar arasindaki ana sinir `adapter` katmanidir.
+In the V2 foundation, the main boundary between the engine and concrete platforms is the `adapter` layer.
 
-## Katmanlar
+## Layers
 
 - `src/engine/`: lifecycle, orchestration, plugin host, snapshot, asset ownership
 - `src/adapters/browser/`: input, UI, camera, browser platform
 - `src/adapters/render/`: `ThreeRendererAdapter`, particle, post-process, `ThreeAssetLoader`
 - `src/adapters/audio/`: `AudioManager`
-- `src/adapters/physics/`: physics binding'leri
+- `src/adapters/physics/`: physics bindings
 
 ## Renderer Contract
 
-Bir renderer adapter asgari olarak su yuzeyi saglamalidir:
+A renderer adapter must provide at least this surface:
 
 - `mount({ container, platform })`
 - `createSceneHandle({ background, nativeScene })`
@@ -20,23 +20,24 @@ Bir renderer adapter asgari olarak su yuzeyi saglamalidir:
 - `resize(width, height)`
 - `dispose()`
 
-`ThreeRendererAdapter`, `THREE.WebGLRenderer` olusturur ama bu concrete tip artik `Engine` tarafinda dogrudan yaratilmamaktadir.
+`ThreeRendererAdapter` creates `THREE.WebGLRenderer`, but this concrete type is no longer created directly by the `Engine`.
 
 ## Scene Handle
 
-`GameScene` artik `threeScene` alanina ek olarak su generic yuzeyi sunar:
+`GameScene` now provides this generic surface in addition to the `threeScene` field:
 
 - `getSceneHandle()`
 - `getRenderScene()`
 
-Bu sayede renderer-aware kod `getRenderScene()` ile concrete native scene'e, engine kodu ise `sceneHandle` ile generic boundary'ye oturur.
+In this way, renderer-aware code sits on the concrete native scene with `getRenderScene()`, and engine code sits on the generic boundary with `sceneHandle`.
 
-## Asset Loader Siniri
+## Asset Loader Boundary
 
-`AssetLoader` artik generic capability dispatcher'dir. `THREE.TextureLoader`, `AudioLoader`, `GLTFLoader` bilgisi `ThreeAssetLoader` icine tasinmistir.
+`AssetLoader` is now a generic capability dispatcher. Knowledge of `THREE.TextureLoader`, `AudioLoader`, and `GLTFLoader` has been moved into `ThreeAssetLoader`.
 
-Yeni adapter yazarken:
+When writing a new adapter:
 
-1. `AssetLoader` turevi olusturun.
-2. `registerCapability(type, { load, dispose })` ile type bazli loader'lari kaydedin.
-3. `AssetStore` ile ownership ve dispose akisina entegre edin.
+1. Create an `AssetLoader` derivative.
+2. Register type-based loaders with `registerCapability(type, { load, dispose })`.
+3. Integrate ownership and dispose flow with `AssetStore`.
+

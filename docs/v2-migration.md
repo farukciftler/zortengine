@@ -1,24 +1,24 @@
 # V1 -> V2 Migration
 
-Bu belge mevcut `zortengine` surface'inden contract-first v2 surface'ine gecisi ozetler.
+This document summarizes the transition from the existing `zortengine` surface to the contract-first v2 surface.
 
-## Public API Degisiklikleri
+## Public API Changes
 
-- `zortengine/browser` artik yalnizca browser-specific surface tasir.
-- `AudioManager` artik `zortengine/audio` altindadir.
-- `ParticleManager`, `PostProcessManager`, `ThreeRendererAdapter`, `ThreeAssetLoader` artik `zortengine/render` altindadir.
-- `zortengine/gameplay` yeni semantic facade'dir.
-- `zortengine/objects` halen compatibility alias olarak korunur ama yeni kod `gameplay` kullanmalidir.
+- `zortengine/browser` now only carries the browser-specific surface.
+- `AudioManager` is now under `zortengine/audio`.
+- `ParticleManager`, `PostProcessManager`, `ThreeRendererAdapter`, and `ThreeAssetLoader` are now under `zortengine/render`.
+- `zortengine/gameplay` is the new semantic facade.
+- `zortengine/objects` is still maintained as a compatibility alias, but new code should use `gameplay`.
 
-## Engine Kurulumu
+## Engine Setup
 
-Eski:
+Old:
 
 ```js
 const engine = new Engine(document.body, { seed: 'abc' });
 ```
 
-Yeni:
+New:
 
 ```js
 const assetLoader = new ThreeAssetLoader();
@@ -30,19 +30,20 @@ const engine = new Engine(document.body, {
 });
 ```
 
-## Scene ve Assetler
+## Scenes and Assets
 
-- `GameScene` icinde asset tutulacaksa `retainAsset()` / `releaseAsset()` kullanin.
-- `sceneHandle` ve `getRenderScene()` yeni renderer boundary yuzeyidir.
-- `threeScene` compatibility icin halen mevcuttur ancak yeni engine-level kod `sceneHandle` kullanmalidir.
+- Use `retainAsset()` / `releaseAsset()` if assets will be held within a `GameScene`.
+- `sceneHandle` and `getRenderScene()` are the new renderer boundary surfaces.
+- `threeScene` is still available for compatibility, but new engine-level code should use `sceneHandle`.
 
-## Plugin Sistemi
+## Plugin System
 
-Eski yapida moduller elle baglaniyordu. Yeni model:
+In the old structure, modules were connected manually. The new model:
 
 ```js
 engine.use(plugin);
 scene.use(plugin);
 ```
 
-Plugin'ler capability ve dependency bildirebilir.
+Plugins can declare capabilities and dependencies.
+

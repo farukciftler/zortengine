@@ -1,23 +1,23 @@
 # ZortEngine
 
-`ZortEngine`, Three.js ustune kurulu scene-centric bir oyun runtime/framework cekirdegidir. V2 tabaniyla birlikte repo artik yalnizca klasor olarak degil, **contract-first platform** olarak organize edilir: cekirdek runtime soyut contract'lari korur, concrete Three.js/browser uygulamalari adapter katmaninda kalir. Detayli dokumantasyon icin [docs/](docs/README.md) indeksine bakin.
+`ZortEngine` is a scene-centric game runtime/framework core built on top of Three.js. With the V2 foundation, the repo is now organized not just as a folder, but as a **contract-first platform**: the core runtime maintains abstract contracts, while concrete Three.js/browser implementations remain in the adapter layer. For detailed documentation, see the [docs/](docs/README.md) index.
 
-## Framework Sinirlari
+## Framework Boundaries
 
-- `src/engine/`: cekirdek runtime, plugin host, asset ownership ve scene lifecycle
-- `src/adapters/`: browser, audio, render ve physics baglantilari
-- `src/tooling/`: debug, inspector ve headless yardimcilari
-- `src/kits/`: opinionated ama tekrar kullanilabilir gameplay modulleri
-- `src/gameplay/`: sample ve kit actor facade'lari
-- `examples/run-showcase/`: multiplayer lobby, combat, networking demo
-- `examples/zigzag-runner/`: endless runner, procedural spawn, path-based track
+- `src/engine/`: Core runtime, plugin host, asset ownership, and scene lifecycle
+- `src/adapters/`: Browser, audio, render, and physics connections
+- `src/tooling/`: Debug, inspector, and headless utilities
+- `src/kits/`: Opinionated but reusable gameplay modules
+- `src/gameplay/`: Sample and kit actor facades
+- `examples/run-showcase/`: Multiplayer lobby, combat, networking demo
+- `examples/zigzag-runner/`: Endless runner, procedural spawn, path-based track
 - `examples/react-native-demo/`: React Native minimal demo (expo-gl, touch input)
-- `examples/run-showcase/server/lobby/`: showcase lobby sunucusu
-- `package.json` icindeki `exports`: public package girislerini dogrudan `src/...` altina baglar
+- `examples/run-showcase/server/lobby/`: Showcase lobby server
+- `exports` in `package.json`: Maps public package entries directly under `src/...`
 
 ## Root API
 
-Root `zortengine` export'u yalnizca su siniflari sunar:
+The root `zortengine` export provides only these classes:
 
 - `Engine`
 - `GameScene`
@@ -32,9 +32,9 @@ Root `zortengine` export'u yalnizca su siniflari sunar:
 - `ObjectPool`
 - `HeadlessHarness`
 
-Opinionated veya platforma ozel moduller alt entrypoint'lerden alinmalidir.
+Opinionated or platform-specific modules should be imported from sub-entrypoints.
 
-## Alt Entrypoint'ler
+## Sub-Entrypoints
 
 ```js
 import { Engine, GameScene } from 'zortengine';
@@ -48,9 +48,9 @@ import { WebSocketTransport } from 'zortengine/networking';
 import { ModularCharacter } from 'zortengine/gameplay';
 ```
 
-## Browser Kurulumu
+## Browser Setup
 
-Bundler olmadan `importmap` ile calisacaksaniz root package ve kullandiginiz alt entrypoint'leri acikca map etmeniz gerekir:
+If you are going to use `importmap` without a bundler, you need to explicitly map the root package and the sub-entrypoints you use:
 
 ```html
 <script type="importmap">
@@ -77,14 +77,14 @@ Bundler olmadan `importmap` ile calisacaksaniz root package ve kullandiginiz alt
 </script>
 ```
 
-## Hızlı Başlangıç
+## Quick Start
 
 ```js
 import { Engine, GameScene } from 'zortengine';
 
 class EmptyScene extends GameScene {
     setup() {
-        // Kendi system ve object katmaninizi buraya kurun.
+        // Set up your own system and object layers here.
     }
 }
 
@@ -104,42 +104,42 @@ export class MyGame extends Engine {
 }
 ```
 
-## Örnek Uygulamalar
+## Example Applications
 
-Engine iki örnek oyunla birlikte gelir:
+The Engine comes with two example games:
 
-| Örnek | Açıklama | Özellikler |
+| Example | Description | Features |
 |-------|----------|------------|
-| **[run-showcase](examples/run-showcase/)** | Multiplayer lobby, combat demo | Networking, odalar, savaş, meta progression |
-| **[zigzag-runner](examples/zigzag-runner/)** | Endless zigzag runner | Şerit değiştirme, procedural spawn, checkpoint |
+| **[run-showcase](examples/run-showcase/)** | Multiplayer lobby, combat demo | Networking, rooms, combat, meta progression |
+| **[zigzag-runner](examples/zigzag-runner/)** | Endless zigzag runner | Lane switching, procedural spawn, checkpoints |
 
 ### run-showcase
 
 - `examples/run-showcase/app/MyGame.js`, `main.js`
 - `examples/run-showcase/scenes/MainMenuScene.js`, `RunScene.js`
-- Lobby sunucusu: `npm run network` → `examples/run-showcase/server/lobby/`
+- Lobby server: `npm run network` → `examples/run-showcase/server/lobby/`
 
 ### zigzag-runner
 
 - `examples/zigzag-runner/app/ZigzagGame.js`, `main.js`
 - `examples/zigzag-runner/scenes/MenuScene.js`, `RunScene.js`
-- Çalıştırma: Proje kökünden `npm run serve` veya `python3 -m http.server 3000` → **http://localhost:3000/examples/zigzag-runner/app/**
+- Running: From project root `npm run serve` or `python3 -m http.server 3000` → **http://localhost:3000/examples/zigzag-runner/app/**
 
-Detaylı bilgi için → [docs/examples.md](docs/examples.md), [docs/zigzag-runner.md](docs/zigzag-runner.md)
+For detailed information → [docs/examples.md](docs/examples.md), [docs/zigzag-runner.md](docs/zigzag-runner.md)
 
 ## Snapshot Contract
 
-`GameScene` artik scene-level snapshot contract'i sunar:
+`GameScene` now provides a scene-level snapshot contract:
 
-- `serializeState()`: object ve system snapshot'larini toplar
-- `restoreState(snapshot)`: system restore + object factory restore akisina girer
-- `registerObjectFactory(type, factory)`: scene'e ait object restore registry
+- `serializeState()`: Collects object and system snapshots
+- `restoreState(snapshot)`: Enters system restore + object factory restore flow
+- `registerObjectFactory(type, factory)`: Object restore registry belonging to the scene
 
-Bu sayede save/load politikasi app tarafinda kalirken, snapshot restore mekanigi framework katmaninda tanimli olur.
+In this way, while the save/load policy remains on the app side, the snapshot restore mechanism is defined at the framework layer.
 
-## Plugin ve Capability Contract
+## Plugin and Capability Contract
 
-`Engine` ve `GameScene` artik `use(plugin)` ile dependency-aware plugin kurabilir:
+`Engine` and `GameScene` can now install dependency-aware plugins with `use(plugin)`:
 
 ```js
 engine.use({
@@ -156,26 +156,26 @@ engine.use({
 });
 ```
 
-Scene plugin'leri engine plugin'lerini `dependencies` ile isteyebilir; capability kayitlari da host seviyesinde izlenir.
+Scene plugins can request engine plugins with `dependencies`; capability registrations are also tracked at the host level.
 
 ## Renderer Boundary
 
-V2 tabaninda render akisinin yeni siniri:
+New boundary of the render flow in the V2 foundation:
 
-- `Engine` artik dogrudan `THREE.WebGLRenderer` yaratmak yerine `RendererAdapter` kullanir
-- `GameScene` `sceneHandle` ve `getRenderScene()` yuzeylerini sunar
-- `CameraManager` ve post-process katmani `getNativeCamera()` benzeri generic handle semantigine yaklastirildi
-- `ThreeRendererAdapter` first-party varsayilan implementasyondur
+- `Engine` now uses `RendererAdapter` instead of creating `THREE.WebGLRenderer` directly
+- `GameScene` provides `sceneHandle` and `getRenderScene()` surfaces
+- `CameraManager` and post-process layer are brought closer to generic handle semantics like `getNativeCamera()`
+- `ThreeRendererAdapter` is the first-party default implementation
 
 ## Asset Ownership
 
-Asset sistemi loader helper seviyesinden cikartilip retain/release/dispose sahipligine gecirildi:
+The asset system has been moved from loader helper level to retain/release/dispose ownership:
 
-- `AssetLoader`: capability map tabanli generic loader dispatcher
-- `ThreeAssetLoader`: texture/model/audio loader'larini adapter katmaninda toplar
-- `AssetStore`: retain/release/dispose ve owner index'i tutar
-- `AssetPipeline`: preload group akisinda store ile scene-scope ownership kurar
-- `GameScene.retainAsset()` / `releaseAsset()`: scene ayrilirken owned asset'leri otomatik birakir
+- `AssetLoader`: Generic loader dispatcher based on capability map
+- `ThreeAssetLoader`: Consolidates texture/model/audio loaders in the adapter layer
+- `AssetStore`: Holds retain/release/dispose and owner index
+- `AssetPipeline`: Establishes scene-scope ownership with the store in the preload group flow
+- `GameScene.retainAsset()` / `releaseAsset()`: Automatically releases owned assets when the scene is detached
 
 ## Test
 
@@ -183,44 +183,45 @@ Asset sistemi loader helper seviyesinden cikartilip retain/release/dispose sahip
 npm test
 ```
 
-Test paketi su ayri katmanlari dogrular:
+The test package verifies these separate layers:
 
-- `tests/engine/engine-contract.test.js`: root API, scene lifecycle, system priority, snapshot contract
-- `tests/types/engine-contracts.test.ts`: generic contract smoke test
+- `tests/engine/engine-contract.test.js`: Root API, scene lifecycle, system priority, snapshot contract
+- `tests/types/engine-contracts.test.ts`: Generic contract smoke test
 - `tests/examples/headless-smoke.test.js`: run-showcase headless smoke
 - `tests/examples/zigzag-smoke.test.js`: zigzag-runner smoke
 - `tests/examples/network-smoke.test.js`: lobby/network smoke
 
 ## React Native
 
-ZortEngine React Native ortamında çalışır. Adapter'lar `zortengine/react-native` entrypoint'inden:
+ZortEngine works in the React Native environment. Adapters are from the `zortengine/react-native` entrypoint:
 
 ```js
 import { RNPlatform, RNRendererAdapter, RNInputManager } from 'zortengine/react-native';
 ```
 
-Örnek: `examples/react-native-demo/` — minimal Expo projesi. Detaylı kurulum için [docs/react-native.md](docs/react-native.md).
+Example: `examples/react-native-demo/` — minimal Expo project. For detailed setup [docs/react-native.md](docs/react-native.md).
 
-## Dokümantasyon
+## Documentation
 
-| Belge | İçerik |
+| Document | Content |
 |-------|--------|
-| [docs/README.md](docs/README.md) | Dokümantasyon indeksi |
-| [docs/examples.md](docs/examples.md) | Örnek uygulamalar rehberi |
-| [docs/zigzag-runner.md](docs/zigzag-runner.md) | Zigzag Runner mimari ve kullanım |
-| [docs/plugins.md](docs/plugins.md) | Plugin manifest ve capability modeli |
-| [docs/adapters.md](docs/adapters.md) | Renderer, audio, browser adapter sınırları |
-| [docs/react-native.md](docs/react-native.md) | React Native kurulum ve kullanım |
-| [docs/v2-migration.md](docs/v2-migration.md) | V1 → V2 geçiş notları |
-| [docs/package-stability.md](docs/package-stability.md) | Public API stabilite tablosu |
+| [docs/README.md](docs/README.md) | Documentation index |
+| [docs/examples.md](docs/examples.md) | Example applications guide |
+| [docs/zigzag-runner.md](docs/zigzag-runner.md) | Zigzag Runner architecture and usage |
+| [docs/plugins.md](docs/plugins.md) | Plugin manifest and capability model |
+| [docs/adapters.md](docs/adapters.md) | Renderer, audio, browser adapter boundaries |
+| [docs/react-native.md](docs/react-native.md) | React Native setup and usage |
+| [docs/v2-migration.md](docs/v2-migration.md) | V1 → V2 migration notes |
+| [docs/package-stability.md](docs/package-stability.md) | Public API stability table |
 
-## Mimari Not
+## Architectural Note
 
-Hedef ayrim:
+Target separation:
 
-- `engine`: runtime primitive'leri
-- `adapters`: browser/physics gibi platform baglantilari
-- `tooling`: debug/inspector yardimcilari
-- `example`: showcase oyun, menu akisi, room/lobby semantigi
+- `engine`: Runtime primitives
+- `adapters`: Platform connections like browser/physics
+- `tooling`: Debug/inspector utilities
+- `example`: Showcase game, menu flow, room/lobby semantics
 
-Engine cekirdegi sample oyun kavramlarini bilmemeli; sample uygulama da root API yerine ihtiyac duydugu alt entrypoint'leri kullanmalidir.
+The engine core should not know about sample game concepts; the sample application should also use the sub-entrypoints it needs instead of the root API.
+ine ihtiyac duydugu alt entrypoint'leri kullanmalidir.

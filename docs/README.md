@@ -1,32 +1,33 @@
-# ZortEngine Dokümantasyonu
+# ZortEngine Documentation
 
-Bu klasör ZortEngine mimarisi, API'leri ve örnek uygulamalar için rehber içerir.
+This folder contains guides for the ZortEngine architecture, APIs, and example applications.
 
-## İçindekiler
+## Table of Contents
 
-### Başlangıç
+### Getting Started
 
-| Belge | Açıklama |
+| Document | Description |
 |-------|----------|
-| [examples.md](examples.md) | Örnek uygulamalar (run-showcase, zigzag-runner) — çalıştırma, karşılaştırma |
-| [zigzag-runner.md](zigzag-runner.md) | Zigzag Runner — mimari, klasör yapısı, engine kullanımı |
+| [examples.md](examples.md) | Example applications (run-showcase, zigzag-runner) — running, comparison |
+| [zigzag-runner.md](zigzag-runner.md) | Zigzag Runner — architecture, folder structure, engine usage |
 
-### Mimari ve API
+### Architecture and API
 
-| Belge | Açıklama |
+| Document | Description |
 |-------|----------|
-| [adapters.md](adapters.md) | Adapter katmanı — renderer contract, scene handle, asset loader sınırları |
-| [plugins.md](plugins.md) | Plugin sistemi — manifest, capability, dependency modeli |
+| [adapters.md](adapters.md) | Adapter layer — renderer contract, scene handle, asset loader boundaries |
+| [plugins.md](plugins.md) | Plugin system — manifest, capability, dependency model |
 
-### Referans
+### Reference
 
-| Belge | Açıklama |
+| Document | Description |
 |-------|----------|
-| [package-stability.md](package-stability.md) | Entrypoint stabilite tablosu, SemVer politikası |
-| [v2-migration.md](v2-migration.md) | V1 → V2 geçiş rehberi |
+| [package-stability.md](package-stability.md) | Entrypoint stability table, SemVer policy |
+| [v2-migration.md](v2-migration.md) | V1 → V2 migration guide |
 
-## Hızlı Bağlantılar
+## Quick Links
 
-- **Ana README**: [../README.md](../README.md)
+- **Main README**: [../README.md](../README.md)
 - **Zigzag Runner**: [../examples/zigzag-runner/](../examples/zigzag-runner/)
 - **run-showcase**: [../examples/run-showcase/](../examples/run-showcase/)
+

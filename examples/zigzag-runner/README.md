@@ -1,34 +1,35 @@
 # Zigzag Runner
 
-Endless zigzag runner örneği. Sol/sağ şerit değiştirerek engellerden kaçın, toplanabilirleri topla.
+Endless zigzag runner example. Avoid obstacles and collect collectibles by switching lanes left and right.
 
-## Çalıştırma
+## Running
 
-**Önemli:** Sunucuyu proje kökünden (`zortengine/`) başlatın.
+**Important:** Start the server from the project root (`zortengine/`).
 
 ```bash
-# Proje kökünden (zortengine klasöründe)
+# From project root (in zortengine folder)
 cd /path/to/zortengine
 
-# Python (genelde en sorunsuz)
+# Python (usually most seamless)
 python3 -m http.server 3000
 
-# veya Node serve ile
+# or with Node serve
 npm run serve
 ```
 
-Tarayıcıda açın: **http://localhost:3000/examples/zigzag-runner/app/**
+Open in browser: **http://localhost:3000/examples/zigzag-runner/app/**
 
-## Kontroller
+## Controls
 
-- **Sol/Sağ**: A / D veya ok tuşları
-- **Zıplama**: Space
-- **Yeniden Oyna**: Oyun bittiğinde buton
+- **Left/Right**: A / D or arrow keys
+- **Jump**: Space
+- **Play Again**: Button when the game is over
 
-## Dokümantasyon
+## Documentation
 
-| Belge | İçerik |
+| Document | Content |
 |-------|--------|
-| [docs/zigzag-runner.md](../../docs/zigzag-runner.md) | Mimari, klasör yapısı, engine kullanımı |
-| [docs/examples.md](../../docs/examples.md) | Örnekler karşılaştırması |
-| [PLAN.md](PLAN.md) | Detaylı plan ve modül sorumlulukları |
+| [docs/zigzag-runner.md](../../docs/zigzag-runner.md) | Architecture, folder structure, engine usage |
+| [docs/examples.md](../../docs/examples.md) | Comparison of examples |
+| [PLAN.md](PLAN.md) | Detailed plan and module responsibilities |
+

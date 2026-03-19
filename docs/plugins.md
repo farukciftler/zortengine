@@ -1,13 +1,13 @@
-# Plugin Rehberi
+# Plugin Guide
 
-`ZortEngine` plugin modeli iki host seviyesine ayrilir:
+The `ZortEngine` plugin model is divided into two host levels:
 
-- `engine` plugin'leri: global capability, tooling, networking, analytics, adapter koordinasyonu
-- `scene` plugin'leri: scene-local davranislar, HUD, encounter orchestration, feature pack'ler
+- `engine` plugins: global capability, tooling, networking, analytics, adapter coordination
+- `scene` plugins: scene-local behaviors, HUD, encounter orchestration, feature packs
 
 ## Manifest
 
-Her plugin su yapida bir `manifest` tasir:
+Each plugin carries a `manifest` in the following structure:
 
 ```js
 {
@@ -19,7 +19,7 @@ Her plugin su yapida bir `manifest` tasir:
 }
 ```
 
-## Kurulum
+## Installation
 
 ```js
 engine.use({
@@ -39,16 +39,18 @@ engine.use({
 });
 ```
 
-## Kurallar
+## Rules
 
-- `manifest.id` zorunludur.
-- `manifest.scope`, plugin'in hangi host'a kurulabilecegini belirler.
-- `dependencies`, daha once kurulmus plugin API'lerini talep eder.
-- Capability'ler host uzerinde toplanir; scene plugin'i engine capability'lerini gorebilir.
-- Ayni plugin ayni host'a ikinci kez kurulursa mevcut API geri doner.
+- `manifest.id` is mandatory.
+- `manifest.scope` determines which host the plugin can be installed on.
+- `dependencies` request previously installed plugin APIs.
+- Capabilities are collected on the host; scene plugins can see engine capabilities.
+- If the same plugin is installed on the same host for a second time, the existing API is returned.
 
-## Tasarim Notlari
+## Design Notes
 
-- Core plugin'ler renderer implementasyonu bilmemelidir.
-- Renderer plugin'leri capability ile kendini ilan etmelidir: `render:*`, `asset:*`, `audio:*`.
-- Gameplay kit'leri `scene.use(plugin)` ile install edilip `examples/` katmanindan bagimsiz kullanilabilmelidir.
+- Core plugins should not know about the renderer implementation.
+- Renderer plugins should declare themselves with capabilities: `render:*`, `asset:*`, `audio:*`.
+- Gameplay kits should be installed with `scene.use(plugin)` and be usable independently of the `examples/` layer.
+Refactoring: scene plugins no longer need to know engine internals, only capabilities.
+

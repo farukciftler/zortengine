@@ -1,61 +1,61 @@
-# Zigzag Runner — Mimari ve Dokümantasyon
+# Zigzag Runner — Architecture and Documentation
 
-Endless zigzag runner örneği. Path tabanlı kıvrımlı yol, şerit değiştirme, zıplama ve procedural spawn ile engine kullanımını gösterir.
+Endless zigzag runner example. Shows engine usage with path-based curved roads, lane switching, jumping, and procedural spawning.
 
-## Oyun Özeti
+## Game Summary
 
-- **Tür**: Endless zigzag runner
-- **Görünüm**: 2.5D / izometrik, tek şerit ileri hareket
-- **Mekanik**: Sol/sağ lane değiştirme, zıplama, engellerden kaçınma, toplanabilir toplama
-- **Progression**: Mesafe, skor, checkpoint, hız artışı
+- **Genre**: Endless zigzag runner
+- **View**: 2.5D / isometric, single-lane forward movement
+- **Mechanics**: Left/right lane switching, jumping, avoiding obstacles, collecting collectibles
+- **Progression**: Distance, score, checkpoints, speed increase
 
-## Klasör Yapısı
+## Folder Structure
 
 ```
 examples/zigzag-runner/
 ├── app/
-│   ├── index.html          # Giriş sayfası, importmap
+│   ├── index.html          # Entry page, importmap
 │   ├── main.js             # Bootstrap, URL params
-│   └── ZigzagGame.js       # Engine türevi, scene akışı
+│   └── ZigzagGame.js       # Engine derivative, scene flow
 │
 ├── scenes/
-│   ├── MenuScene.js        # Ana menü (oyna, skor)
-│   └── RunScene.js         # Ana oyun sahnesi
+│   ├── MenuScene.js        # Main menu (play, score)
+│   └── RunScene.js         # Main game scene
 │
 ├── runtime/
-│   ├── ZigzagBootstrap.js       # Sistem kayıtları (physics, input, camera)
-│   ├── ZigzagState.js           # Run state (skor, mesafe, lane, speed)
-│   ├── ZigzagFlowController.js  # Başlatma, game over, restart
-│   ├── ZigzagCheckpointController.js  # Checkpoint kayıt/geri yükleme
-│   ├── ZigzagHudPresenter.js    # HUD güncellemeleri
-│   └── PathGenerator.js         # Kıvrımlı path üretimi
+│   ├── ZigzagBootstrap.js       # System registrations (physics, input, camera)
+│   ├── ZigzagState.js           # Run state (score, distance, lane, speed)
+│   ├── ZigzagFlowController.js  # Starting, game over, restart
+│   ├── ZigzagCheckpointController.js  # Checkpoint save/restore
+│   ├── ZigzagHudPresenter.js    # HUD updates
+│   └── PathGenerator.js         # Curved path generation
 │
 ├── actors/
-│   ├── PlayerActor.js      # Oyuncu (lane, zıplama, collision)
-│   ├── ObstacleActor.js    # Engel (statik, collision)
-│   └── CollectibleActor.js # Toplanabilir
+│   ├── PlayerActor.js      # Player (lane, jumping, collision)
+│   ├── ObstacleActor.js    # Obstacle (static, collision)
+│   └── CollectibleActor.js # Collectible
 │
 ├── systems/
-│   ├── LaneSystem.js       # Lane geçiş mantığı (A/D)
-│   ├── SpawnSystem.js      # Engel/collectible spawn (procedural)
-│   └── CollisionSystem.js  # Player–obstacle/collectible çarpışma
+│   ├── LaneSystem.js       # Lane switching logic (A/D)
+│   ├── SpawnSystem.js      # Obstacle/collectible spawn (procedural)
+│   └── CollisionSystem.js  # Player–obstacle/collectible collision
 │
 ├── data/
-│   ├── LaneDefinitions.js      # Lane sayısı, pozisyonlar
-│   ├── ObstacleDefinitions.js  # Engel tipleri, spawn ağırlıkları
+│   ├── LaneDefinitions.js      # Lane count, positions
+│   ├── ObstacleDefinitions.js  # Obstacle types, spawn weights
 │   ├── CollectibleDefinitions.js
-│   └── TrackConfig.js          # Hız, spawn aralığı, zorluk
+│   └── TrackConfig.js          # Speed, spawn interval, difficulty
 │
 ├── ui/
-│   └── ZigzagHud.js        # Skor, mesafe, can, pause overlay
+│   └── ZigzagHud.js        # Score, distance, health, pause overlay
 │
 ├── README.md
-└── PLAN.md                 # Detaylı plan
+└── PLAN.md                 # Detailed plan
 ```
 
-## Engine Kullanımı
+## Engine Usage
 
-### ZigzagGame (Engine extend)
+### ZigzagGame (Engine derivative)
 
 ```js
 export class ZigzagGame extends Engine {
@@ -78,51 +78,51 @@ export class ZigzagGame extends Engine {
 }
 ```
 
-### ZigzagBootstrap — Sistem Kayıtları
+### ZigzagBootstrap — System Registrations
 
-`RunScene.setup()` içinde bootstrap kullanılır:
+Bootstrap is used within `RunScene.setup()`:
 
 - **PhysicsManager** — Cannon-es, gravity, collision
-- **CameraManager** — TPS preset, path takibi
-- **InputManager** — A/D, Space (zıplama)
+- **CameraManager** — TPS preset, path follow
+- **InputManager** — A/D, Space (jump)
 - **UIManager** — HUD container
 
-### RunScene — Ana Sahne
+### RunScene — Main Scene
 
 - `setup()`: Bootstrap, path generator, track ribbon, speed lines, player, systems
-- `onUpdate()`: Mesafe, spawn, collision, track/speed lines güncelleme, kamera takibi
-- Sistemler: LaneSystem, SpawnSystem, CollisionSystem (priority ile sıralı)
+- `onUpdate()`: Distance, spawn, collision, track/speed lines update, camera follow
+- Systems: LaneSystem, SpawnSystem, CollisionSystem (ordered by priority)
 
-### Path ve Track
+### Path and Track
 
-- **PathGenerator**: Segment tabanlı kıvrımlı path, `getInfoAtDistance(d)` → `{ position, rotation, tangent, curvature }`
-- **Track**: Ribbon mesh, path boyunca sol/sağ kenarlar
-- **Speed lines**: Path'e paralel hız çizgileri
-- Önden render: ~220m yol ve engeller önceden oluşturulur, geçince silinir
+- **PathGenerator**: Segment-based curved path, `getInfoAtDistance(d)` → `{ position, rotation, tangent, curvature }`
+- **Track**: Ribbon mesh, left/right edges along the path
+- **Speed lines**: Speed lines parallel to the path
+- Pre-rendering: ~220m of road and obstacles are pre-created, deleted after passing
 
-### Spawn Sistemi
+### Spawn System
 
-- **SPAWN_DISTANCE_AHEAD**: 100m — oyuncunun önünde spawn mesafesi
-- **Prefill**: Oyun başında 0–100m aralığı engellerle doldurulur
-- **Silme**: `pathDistance < playerDistance - 15` ile arkadaki objeler kaldırılır
+- **SPAWN_DISTANCE_AHEAD**: 100m — spawn distance ahead of the player
+- **Prefill**: The 0–100m range is filled with obstacles at the start of the game
+- **Deletion**: Objects behind are removed with `pathDistance < playerDistance - 15`
 
-## Engine Bağımlılıkları
+## Engine Dependencies
 
-| Kullanım | Kaynak |
+| Usage | Source |
 |----------|--------|
 | Engine, GameScene | zortengine |
 | PhysicsManager | zortengine/physics |
 | InputManager, UIManager, CameraManager | zortengine/browser |
 | SaveManager | zortengine/persistence |
 
-## Akış Özeti
+## Flow Summary
 
-1. **Başlangıç**: ZigzagGame → MenuScene
-2. **Oyna**: requestStartRun → RunScene oluştur, useScene('run')
+1. **Start**: ZigzagGame → MenuScene
+2. **Play**: requestStartRun → Create RunScene, useScene('run')
 3. **RunScene.setup()**: Bootstrap, state, flow, checkpoint, path, track, spawn, collision
-4. **Game loop**: Mesafe artışı, hız ramp, spawn, lane input, collision check
+4. **Game loop**: Distance increase, speed ramp, spawn, lane input, collision check
 5. **Game over**: FlowController → pause, HUD game over, restart/menu
-6. **Checkpoint**: Belirli mesafelerde otomatik kayıt
+6. **Checkpoint**: Automatic saves at certain distances
 
 ## Test
 
@@ -130,4 +130,5 @@ export class ZigzagGame extends Engine {
 npm test
 ```
 
-`tests/examples/zigzag-smoke.test.js` zigzag-runner'ı headless çalıştırır ve temel akışı doğrular.
+`tests/examples/zigzag-smoke.test.js` runs zigzag-runner headlessly and verifies the basic flow.
+

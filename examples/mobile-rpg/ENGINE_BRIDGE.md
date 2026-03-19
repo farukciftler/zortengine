@@ -1,8 +1,8 @@
-## React Native – ZortEngine Bridge (Referans)
+## React Native – ZortEngine Bridge (Reference)
 
-Bu dosya, mobile RPG projesinde **React Native (Expo) ile ZortEngine arasındaki en temel köprüyü** göstermek için hazırlanmıştır. Kodlar, `examples/react-native-demo/GameView.js` içinden sadeleştirilerek alınmıştır.
+This file is prepared to show the **most basic bridge between React Native (Expo) and ZortEngine** in the mobile RPG project. The codes have been simplified from `examples/react-native-demo/GameView.js`.
 
-### 1. RN tarafında temel GameView iskeleti
+### 1. Basic GameView skeleton on the RN side
 
 ```js
 import React, { useRef, useEffect, useCallback, useState } from 'react';
@@ -71,7 +71,7 @@ const styles = StyleSheet.create({
 });
 ```
 
-### 2. Sahne oluşturma örneği (RpgWorldScene)
+### 2. Scene creation example (RpgWorldScene)
 
 ```js
 import * as THREE from 'three';
@@ -92,17 +92,18 @@ export class RpgWorldScene extends GameScene {
     this.setCamera(camera);
 
     this.threeScene.add(new THREE.AmbientLight(0xffffff, 0.7));
-    // Buraya RPG dünyası (zemin, dekor, karakter, düşmanlar) eklenecek.
+    // RPG world (ground, decor, character, enemies) will be added here.
   }
 }
 ```
 
-### 3. Kullanım (örnek)
+### 3. Usage (example)
 
 ```js
-// RN tarafında:
+// On the RN side:
 // <GameView createScene={(engine) => new RpgWorldScene()} />
 ```
 
-Mobile RPG projesinde, bu köprü üzerinden farklı sahneler (Hub, World, Dungeon) üretilecek; RN tarafında ise UI, menüler ve envanter yönetimi React Native komponentleriyle sağlanacaktır.
+In the mobile RPG project, different scenes (Hub, World, Dungeon) will be produced via this bridge; on the RN side, UI, menus, and inventory management will be provided with React Native components.
+
 
