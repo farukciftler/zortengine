@@ -1,6 +1,9 @@
 import * as THREE from 'three';
 import { LANE_DEFINITIONS } from '../data/LaneDefinitions.js';
 
+const JUMP_VELOCITY = 7;
+const GRAVITY = -20;
+
 export class PlayerActor {
     constructor(scene, physics, input) {
         this.sceneRef = scene;
@@ -10,17 +13,23 @@ export class PlayerActor {
         this.currentLane = this.targetLane;
         this.laneLerp = 1;
         this.laneSpeed = 8;
+        this.vy = 0;
+        this._jumpListener = () => { this.jumpRequested = true; };
+        this.jumpRequested = false;
+
+        if (input) input.on('jump', this._jumpListener);
 
         this.group = new THREE.Group();
         this.group.position.set(
             LANE_DEFINITIONS.LANE_POSITIONS[this.currentLane],
-            0.5,
+            0,
             0
         );
 
         const geo = new THREE.BoxGeometry(1, 1, 1);
         const mat = new THREE.MeshStandardMaterial({ color: 0x27ae60 });
         this.mesh = new THREE.Mesh(geo, mat);
+        this.mesh.position.y = 0.5;
         this.group.add(this.mesh);
     }
 
@@ -32,6 +41,7 @@ export class PlayerActor {
     detachFromScene(sceneOrHandle) {
         const scene = sceneOrHandle?.getNativeScene?.() ?? sceneOrHandle;
         if (scene?.remove) scene.remove(this.group);
+        if (this.input) this.input.off('jump', this._jumpListener);
     }
 
     getLaneX() {
@@ -56,6 +66,19 @@ export class PlayerActor {
             if (this.laneLerp >= 1) {
                 this.currentLane = this.targetLane;
             }
+        }
+
+        const grounded = this.group.position.y <= 0;
+        if (this.jumpRequested && grounded) {
+            this.vy = JUMP_VELOCITY;
+        }
+        this.jumpRequested = false;
+
+        this.vy += GRAVITY * delta;
+        this.group.position.y += this.vy * delta;
+        if (this.group.position.y <= 0) {
+            this.group.position.y = 0;
+            this.vy = 0;
         }
     }
 

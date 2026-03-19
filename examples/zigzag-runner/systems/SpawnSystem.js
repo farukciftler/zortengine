@@ -28,12 +28,12 @@ export class SpawnSystem {
 
     _spawn() {
         if (!this.scene) return;
-        const rng = this.scene.rng?.float?.(0, 1) ?? Math.random();
+        const rand = () => this.scene?.rng?.float?.(0, 1) ?? Math.random();
         const lanePositions = LANE_DEFINITIONS.LANE_POSITIONS;
-        const laneCount = LANE_DEFINITIONS.LANE_COUNT
-        const lane = Math.floor((rng * laneCount) % laneCount);
+        const laneCount = LANE_DEFINITIONS.LANE_COUNT;
+        const lane = Math.min(Math.floor(rand() * laneCount), laneCount - 1);
 
-        if (rng < 0.6) {
+        if (rand() < 0.6) {
             const def = this._pickWeighted(OBSTACLE_DEFINITIONS);
             const obj = new ObstacleActor(def.id, lane, this.lastSpawnZ, lanePositions);
             this.scene.threeScene.add(obj.group);

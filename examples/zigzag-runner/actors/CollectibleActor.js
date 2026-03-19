@@ -13,13 +13,14 @@ export class ZigzagCollectibleActor {
         this.group = new THREE.Group();
         this.group.position.set(
             lanePositions[laneIndex] ?? 0,
-            0.5,
+            0,
             z
         );
 
         const geo = new THREE.SphereGeometry(0.4, 12, 12);
         const mat = new THREE.MeshStandardMaterial({ color: def.color ?? 0xf1c40f });
         this.mesh = new THREE.Mesh(geo, mat);
+        this.mesh.position.y = 0.4;
         this.group.add(this.mesh);
     }
 

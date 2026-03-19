@@ -27,7 +27,10 @@ export class RunScene extends GameScene {
 
         this.runState = new ZigzagState({
             seed: this.seed,
-            laneCount: LANE_DEFINITIONS.LANE_COUNT
+            laneCount: LANE_DEFINITIONS.LANE_COUNT,
+            baseSpeed: TRACK_CONFIG.BASE_SPEED,
+            speedRampPerMeter: TRACK_CONFIG.SPEED_RAMP_PER_METER,
+            maxSpeed: TRACK_CONFIG.MAX_SPEED ?? 20
         });
         this.saveManager = new SaveManager({ namespace: 'zortengine-zigzag' });
 
@@ -85,6 +88,7 @@ export class RunScene extends GameScene {
 
     onUpdate(delta, time) {
         this.runState.distance += this.runState.speed * delta;
+        this.runState.updateSpeedFromDistance();
         this.spawnSystem?.update?.(delta, time, { engine: this.engine, scene: this });
         this.collisionSystem?.update?.(delta, time, { engine: this.engine, scene: this });
         this.hudPresenter?.update?.();
