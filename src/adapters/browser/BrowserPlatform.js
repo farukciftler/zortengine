@@ -23,6 +23,15 @@ export class BrowserPlatform {
         };
     }
 
+    getViewportRect() {
+        const { width, height } = this.getViewportSize();
+        return { x: 0, y: 0, width, height };
+    }
+
+    resolveAsset(ref) {
+        return ref;
+    }
+
     requestAnimationFrame(callback) {
         if (this.window && typeof this.window.requestAnimationFrame === 'function') {
             return this.window.requestAnimationFrame(callback);

@@ -41,17 +41,17 @@ class DemoScene extends GameScene {
     const input = this.engine._rnInputManager;
     if (input) {
       this.registerSystem('input', input);
-      input.on('pressStart', () => {
+      input.on('pointerDown', () => {
         this._isPressing = true;
         this._lastDragTs = null;
         if (this._cube) this._cube.scale.set(1.08, 1.08, 1.08);
       });
-      input.on('pressEnd', () => {
+      input.on('pointerUp', () => {
         this._isPressing = false;
         this._lastDragTs = null;
         if (this._cube) this._cube.scale.set(1, 1, 1);
       });
-      input.on('drag', ({ dx, dy, time }) => {
+      input.on('pointerMove', ({ dx, dy, time }) => {
         if (!this._cube) return;
         // Parmak sürükleme -> anlık dönme + momentum için hız örneklemesi
         const sensitivity = 0.012; // rad / px

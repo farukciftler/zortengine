@@ -31,6 +31,15 @@ export class RNPlatform {
         return { width: 1, height: 1 };
     }
 
+    getViewportRect() {
+        const { width, height } = this.getViewportSize();
+        return { x: 0, y: 0, width, height };
+    }
+
+    resolveAsset(ref) {
+        return ref;
+    }
+
     getBody() {
         return this._containerRef;
     }

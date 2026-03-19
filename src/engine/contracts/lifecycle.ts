@@ -18,6 +18,8 @@ export interface Snapshot {
 
 export interface PlatformContract {
     getViewportSize(): { width: number; height: number };
+    getViewportRect?(): { x: number; y: number; width: number; height: number };
+    resolveAsset?(ref: unknown): unknown;
     getBody(): unknown;
     requestAnimationFrame(callback: () => void): unknown;
     addEventListener(target: unknown, eventName: string, handler: (...args: unknown[]) => void, options?: unknown): () => void;

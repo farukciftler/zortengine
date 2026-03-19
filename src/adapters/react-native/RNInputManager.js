@@ -108,6 +108,7 @@ export class RNInputManager {
 
                 // Anlık tepki için "down" event'i
                 this.events.emit('pressStart', { x: pageX, y: pageY, time: now });
+                this.events.emit('pointerDown', { x: pageX, y: pageY, time: now, pointerType: 'touch' });
             },
             onPanResponderMove: (evt) => {
                 const { pageX, pageY } = evt.nativeEvent;
@@ -124,6 +125,7 @@ export class RNInputManager {
                     this.joystickDir.x = 0;
                     this.joystickDir.z = 0;
                     this.events.emit('drag', { dx, dy, x: pageX, y: pageY, time: this._touchLast.time });
+                    this.events.emit('pointerMove', { dx, dy, x: pageX, y: pageY, time: this._touchLast.time, pointerType: 'touch' });
                 }
                 const ndc = this._touchToNDC(pageX, pageY);
                 this.touchPos.set(ndc.x, ndc.y);
@@ -148,6 +150,7 @@ export class RNInputManager {
                 this._touchLast = null;
 
                 this.events.emit('pressEnd', { x: pageX, y: pageY, time: now });
+                this.events.emit('pointerUp', { x: pageX, y: pageY, time: now, pointerType: 'touch' });
             }
         });
         return this;

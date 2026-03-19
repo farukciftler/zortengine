@@ -39,9 +39,11 @@ export interface RendererFrame {
 }
 
 export interface RendererAdapter {
-    mount(options: { container: unknown; platform: unknown }): void;
+    mount(options: { container?: unknown; platform: unknown; viewport?: { width: number; height: number } }): void;
     createSceneHandle(options?: { background?: unknown; nativeScene?: unknown }): SceneHandle;
     render(frame: RendererFrame): void;
     resize(width: number, height: number): void;
+    setSize?(width: number, height: number): void;
+    setPixelRatio?(ratio: number): void;
     dispose(): void;
 }

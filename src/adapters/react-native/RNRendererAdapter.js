@@ -123,7 +123,19 @@ export class RNRendererAdapter {
     }
 
     resize(width, height) {
+        if (this.gl?.canvas) {
+            this.gl.canvas.width = width;
+            this.gl.canvas.height = height;
+        }
         this.renderer?.setSize?.(width, height);
+    }
+
+    setSize(width, height) {
+        this.resize(width, height);
+    }
+
+    setPixelRatio(ratio) {
+        this.renderer?.setPixelRatio?.(ratio);
     }
 
     dispose() {

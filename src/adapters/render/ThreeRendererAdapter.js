@@ -92,6 +92,14 @@ export class ThreeRendererAdapter {
         this.renderer?.setSize?.(width, height);
     }
 
+    setSize(width, height) {
+        this.resize(width, height);
+    }
+
+    setPixelRatio(ratio) {
+        this.renderer?.setPixelRatio?.(ratio);
+    }
+
     dispose() {
         this.renderer?.dispose?.();
         this.renderer = null;
