@@ -13,6 +13,7 @@ import { SpawnSystem } from '../systems/SpawnSystem.js';
 import { CollisionSystem } from '../systems/CollisionSystem.js';
 import { LANE_DEFINITIONS } from '../data/LaneDefinitions.js';
 import { TRACK_CONFIG } from '../data/TrackConfig.js';
+import { PathGenerator } from '../runtime/PathGenerator.js';
 
 export class RunScene extends GameScene {
     constructor(options = {}) {
@@ -45,6 +46,7 @@ export class RunScene extends GameScene {
         this.checkpointController = new ZigzagCheckpointController(this, this.saveManager);
 
         this.threeScene.background = new THREE.Color(0x000011);
+        this.pathGenerator = new PathGenerator(this.rng);
         this._createLights();
         this._createTrack(physics);
         this._createSpeedLines();
@@ -75,69 +77,97 @@ export class RunScene extends GameScene {
     }
 
     _createTrack(physics) {
-        const groundGeo = new THREE.PlaneGeometry(TRACK_CONFIG.TRACK_WIDTH, 500);
-        const groundMat = new THREE.MeshStandardMaterial({ color: 0x1a1a2e });
-        this.groundMesh = new THREE.Mesh(groundGeo, groundMat);
+        this.trackMesh = this._createTrackRibbon(-20, 220);
+        this.threeScene.add(this.trackMesh);
+        const groundGeo = new THREE.PlaneGeometry(TRACK_CONFIG.TRACK_WIDTH * 4, 1000);
+        this.groundMesh = new THREE.Mesh(groundGeo, new THREE.MeshStandardMaterial({ color: 0x0a0a12, visible: false }));
         this.groundMesh.rotation.x = -Math.PI / 2;
         this.threeScene.add(this.groundMesh);
-        physics.addBody(physics.createGround(TRACK_CONFIG.TRACK_WIDTH, 500, {}), this.groundMesh);
+        physics.addBody(physics.createGround(TRACK_CONFIG.TRACK_WIDTH * 4, 1000, {}), this.groundMesh);
+    }
+
+    _createTrackRibbon(fromDist, toDist) {
+        const halfWidth = TRACK_CONFIG.TRACK_WIDTH / 2;
+        const step = 2.5;
+        const positions = [];
+        const indices = [];
+        let idx = 0;
+        for (let d = fromDist; d <= toDist; d += step) {
+            const info = this.pathGenerator.getInfoAtDistance(Math.max(0, d));
+            const perp = new THREE.Vector3(-info.tangent.z, 0, info.tangent.x);
+            const left = info.position.clone().add(perp.clone().multiplyScalar(-halfWidth));
+            const right = info.position.clone().add(perp.multiplyScalar(halfWidth));
+            positions.push(left.x, left.y, left.z, right.x, right.y, right.z);
+            if (idx >= 4) {
+                const a = idx - 4, b = idx - 3, c = idx - 2, d_ = idx - 1;
+                indices.push(a, b, d_, a, d_, c);
+            }
+            idx += 2;
+        }
+        const geo = new THREE.BufferGeometry();
+        geo.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+        geo.setIndex(indices);
+        geo.computeVertexNormals();
+        const mat = new THREE.MeshStandardMaterial({ color: 0x1a1a2e, side: THREE.DoubleSide });
+        return new THREE.Mesh(geo, mat);
+    }
+
+    _updateTrackRibbon() {
+        if (!this.trackMesh || !this.pathGenerator) return;
+        const d = this.runState.distance;
+        const fromDist = Math.max(0, d - 25);
+        const toDist = d + 130;
+        this.threeScene.remove(this.trackMesh);
+        this.trackMesh.geometry.dispose();
+        this.trackMesh = this._createTrackRibbon(fromDist, toDist);
+        this.threeScene.add(this.trackMesh);
     }
 
     _createSpeedLines() {
+        this.speedLinesMesh = this._createSpeedLinesPath(-20, 220);
+        this.threeScene.add(this.speedLinesMesh);
+    }
+
+    _createSpeedLinesPath(fromDist, toDist) {
         const lineColor = 0x5599ff;
         const material = new THREE.LineBasicMaterial({ color: lineColor, transparent: true, opacity: 0.5 });
         const halfWidth = TRACK_CONFIG.TRACK_WIDTH / 2;
-        const lineLength = 20;
-        const zSpan = 200;
-        this.speedLinesZSpan = zSpan;
+        const lineLength = 18;
+        const step = 3;
+        const positions = [];
 
-        const buildPositions = () => {
-            const positions = [];
-            for (let i = 0; i < 60; i++) {
-                const side = i % 2 === 0 ? 1 : -1;
-                const x = side * (halfWidth + 1.5 + (i % 6) * 1.8);
-                const y = 2.5 + (i % 10) * 1.5;
-                const z = (i / 60) * zSpan;
-                positions.push(x, y, z, x, y, z + lineLength);
-            }
-            for (let i = 0; i < 40; i++) {
-                const x = -halfWidth - 3 - (i % 4) * 2;
-                const y = 2 + (i % 12) * 1.2;
-                const z = (i / 40) * zSpan;
-                positions.push(x, y, z, x, y, z + lineLength);
-            }
-            for (let i = 0; i < 40; i++) {
-                const x = halfWidth + 3 + (i % 4) * 2;
-                const y = 2 + (i % 12) * 1.2;
-                const z = (i / 40) * zSpan;
-                positions.push(x, y, z, x, y, z + lineLength);
-            }
-            for (let i = 0; i < 25; i++) {
-                const x = (Math.random() - 0.5) * TRACK_CONFIG.TRACK_WIDTH;
-                const y = 6 + Math.random() * 10;
-                const z = (i / 25) * zSpan;
-                positions.push(x, y, z, x, y, z + lineLength);
-            }
-            return positions;
-        };
+        for (let d = fromDist; d <= toDist; d += step) {
+            const info = this.pathGenerator.getInfoAtDistance(Math.max(0, d));
+            const perp = new THREE.Vector3(-info.tangent.z, 0, info.tangent.x);
+            const tangent = info.tangent.clone().multiplyScalar(lineLength);
 
-        const createLineChunk = () => {
-            const geometry = new THREE.BufferGeometry();
-            geometry.setAttribute('position', new THREE.Float32BufferAttribute(buildPositions(), 3));
-            geometry.computeBoundingSphere();
-            return new THREE.LineSegments(geometry, material.clone());
-        };
+            const leftBase = info.position.clone().add(perp.clone().multiplyScalar(-halfWidth - 2 - (Math.abs(d) % 15)));
+            const rightBase = info.position.clone().add(perp.multiplyScalar(halfWidth + 2 + (Math.abs(d) % 12)));
+            const y = 2.5 + (Math.abs(d) % 20) * 0.3;
+            leftBase.y = y;
+            rightBase.y = y;
 
-        this.speedLinesChunks = [
-            { group: new THREE.Group() },
-            { group: new THREE.Group() },
-            { group: new THREE.Group() }
-        ];
-        this.speedLinesChunks.forEach((chunk, i) => {
-            chunk.group.add(createLineChunk());
-            chunk.group.position.z = i * zSpan;
-            this.threeScene.add(chunk.group);
-        });
+            const leftEnd = leftBase.clone().add(tangent);
+            const rightEnd = rightBase.clone().add(tangent);
+            positions.push(leftBase.x, leftBase.y, leftBase.z, leftEnd.x, leftEnd.y, leftEnd.z);
+            positions.push(rightBase.x, rightBase.y, rightBase.z, rightEnd.x, rightEnd.y, rightEnd.z);
+        }
+
+        const geo = new THREE.BufferGeometry();
+        geo.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+        geo.computeBoundingSphere();
+        return new THREE.LineSegments(geo, material);
+    }
+
+    _updateSpeedLines() {
+        if (!this.speedLinesMesh || !this.pathGenerator) return;
+        const d = this.runState.distance;
+        const fromDist = Math.max(0, d - 30);
+        const toDist = d + 220;
+        this.threeScene.remove(this.speedLinesMesh);
+        this.speedLinesMesh.geometry.dispose();
+        this.speedLinesMesh = this._createSpeedLinesPath(fromDist, toDist);
+        this.threeScene.add(this.speedLinesMesh);
     }
 
     _createPlayer(physics, input) {
@@ -152,29 +182,23 @@ export class RunScene extends GameScene {
         this.collisionSystem?.update?.(delta, time, { engine: this.engine, scene: this });
         this.hudPresenter?.update?.();
 
-        if (this.speedLinesChunks && this.runState?.isAlive) {
-            const span = this.speedLinesZSpan ?? 200;
-            const speed = this.runState.speed * delta;
-            for (const chunk of this.speedLinesChunks) {
-                chunk.group.position.z -= speed;
-            }
-            for (const chunk of this.speedLinesChunks) {
-                if (chunk.group.position.z + span < 0) {
-                    const others = this.speedLinesChunks.filter(c => c !== chunk);
-                    const frontZ = others.length > 0
-                        ? Math.max(...others.map(c => c.group.position.z))
-                        : 0;
-                    chunk.group.position.z = frontZ + span;
-                }
+        if (this.trackMesh && this.pathGenerator && this.runState?.isAlive) {
+            const d = this.runState.distance;
+            if (!this._lastTrackUpdate || d - this._lastTrackUpdate > 25) {
+                this._lastTrackUpdate = d;
+                this._updateTrackRibbon();
+                this._updateSpeedLines();
             }
         }
 
         if (this.cameraManager?.updateFollow && this.player?.group && this.runState?.isAlive) {
             const pos = this.player.group.position.clone();
-            this.cameraManager.updateFollow(pos, Math.PI, delta, {
-                backOffset: 6,
-                heightOffset: 1.2,
-                pitch: 0.2
+            const info = this.pathGenerator?.getInfoAtDistance(this.runState.distance);
+            const rotY = info ? -info.rotation : 0;
+            this.cameraManager.updateFollow(pos, rotY, delta, {
+                backOffset: 7,
+                heightOffset: 1.4,
+                pitch: 0.25
             });
         }
     }

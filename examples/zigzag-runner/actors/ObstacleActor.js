@@ -2,22 +2,16 @@ import * as THREE from 'three';
 import { OBSTACLE_DEFINITIONS } from '../data/ObstacleDefinitions.js';
 
 export class ObstacleActor {
-    constructor(definitionId, laneIndex, z, lanePositions) {
+    constructor(definitionId, laneIndex, pathDistance, scene) {
         const def = OBSTACLE_DEFINITIONS.find(d => d.id === definitionId) || OBSTACLE_DEFINITIONS[0];
         this.definition = def;
         this.definitionId = definitionId;
         this.laneIndex = laneIndex;
-        this.z = z;
+        this.pathDistance = pathDistance;
         this.collected = false;
 
         const h = def.height || 1;
         this.group = new THREE.Group();
-        this.group.position.set(
-            lanePositions[laneIndex] ?? 0,
-            0,
-            z
-        );
-
         const geo = new THREE.BoxGeometry(def.width || 1, h, def.depth || 1);
         const mat = new THREE.MeshStandardMaterial({ color: def.color ?? 0xe74c3c });
         this.mesh = new THREE.Mesh(geo, mat);

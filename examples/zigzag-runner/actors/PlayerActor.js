@@ -59,13 +59,32 @@ export class PlayerActor {
     update(delta, time) {
         if (this.laneLerp < 1) {
             this.laneLerp = Math.min(1, this.laneLerp + this.laneSpeed * delta);
-            const t = this.laneLerp * this.laneLerp * (3 - 2 * this.laneLerp);
-            const from = LANE_DEFINITIONS.LANE_POSITIONS[this.currentLane];
-            const to = LANE_DEFINITIONS.LANE_POSITIONS[this.targetLane];
-            this.group.position.x = from + (to - from) * t;
             if (this.laneLerp >= 1) {
                 this.currentLane = this.targetLane;
             }
+        }
+        const t = this.laneLerp < 1
+            ? this.laneLerp * this.laneLerp * (3 - 2 * this.laneLerp)
+            : 1;
+        const from = LANE_DEFINITIONS.LANE_POSITIONS[this.currentLane];
+        const to = LANE_DEFINITIONS.LANE_POSITIONS[this.targetLane];
+        const laneOffset = from + (to - from) * t;
+
+        const scene = this.sceneRef;
+        if (scene?.pathGenerator && scene?.runState != null) {
+            const info = scene.pathGenerator.getInfoAtDistance(scene.runState.distance);
+            const pos = scene.pathGenerator.getPositionAtDistance(scene.runState.distance, laneOffset);
+            this.group.position.x = pos.x;
+            this.group.position.z = pos.z;
+            const forward = new THREE.Vector3(0, 0, -1);
+            const tangent = info.tangent.clone().normalize();
+            if (tangent.lengthSq() > 0.0001) {
+                this.group.quaternion.setFromUnitVectors(forward, tangent);
+            }
+        } else {
+            this.group.position.x = laneOffset;
+            this.group.position.z = 0;
+            this.group.quaternion.identity();
         }
 
         const grounded = this.group.position.y <= 0;

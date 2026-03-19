@@ -13,8 +13,8 @@ export class LaneSystem {
         this.context = context;
         const input = context?.scene?.getSystem?.('input');
         if (!input) return;
-        input.on('left', () => this.player?.setTargetLane?.((this.player.targetLane ?? 0) + 1));
-        input.on('right', () => this.player?.setTargetLane?.((this.player.targetLane ?? 0) - 1));
+        input.on('left', () => this.player?.setTargetLane?.((this.player.targetLane ?? 0) - 1));
+        input.on('right', () => this.player?.setTargetLane?.((this.player.targetLane ?? 0) + 1));
     }
 
     update(delta, time, context) {

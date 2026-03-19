@@ -128,6 +128,11 @@ export class CameraManager {
 
             this.activeCamera.position.copy(desiredPos);
             this.activeCamera.lookAt(lookTarget);
+            const roll = customOptions.roll ?? 0;
+            if (roll !== 0) {
+                const forward = new THREE.Vector3().subVectors(lookTarget, this.activeCamera.position).normalize();
+                this.activeCamera.rotateOnAxis(forward, roll);
+            }
         }
     }
 
