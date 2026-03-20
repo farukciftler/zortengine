@@ -1,10 +1,47 @@
-import React, { useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Pressable, StyleSheet, View, Text } from 'react-native';
+import * as ScreenOrientation from 'expo-screen-orientation';
 import { GameView } from './GameView';
+import { VirtualJoystick } from 'zortengine/src/adapters/react-native/index.js';
+import {
+  getRallyInputAPI,
+  setRallyGas,
+  setRallyBrake,
+  resetRallyPedals,
+} from './rallyBridge.js';
 
 export default function App() {
-  const [mode, setMode] = useState(null); // 'tap' | 'run' | null
+  const [mode, setMode] = useState(null); // 'tap' | 'run' | 'rally' | null
   const gameKey = useMemo(() => (mode ? `mode:${mode}` : 'menu'), [mode]);
+
+  useEffect(() => {
+    let alive = true;
+    (async () => {
+      try {
+        if (!alive) return;
+        if (mode === 'rally') {
+          await ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.LANDSCAPE);
+        } else {
+          await ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.PORTRAIT_UP);
+        }
+      } catch (e) {
+        console.warn('[App] ScreenOrientation', e?.message ?? e);
+      }
+    })();
+    return () => {
+      alive = false;
+    };
+  }, [mode]);
+
+  useEffect(() => {
+    if (mode === 'rally') {
+      resetRallyPedals();
+    }
+  }, [mode]);
+
+  const onRallyDir = useCallback((x) => {
+    getRallyInputAPI()?.setJoystickDir?.(x, 0);
+  }, []);
 
   if (!mode) {
     return (
@@ -24,6 +61,11 @@ export default function App() {
             <Text style={styles.buttonTitle}>Swipe Runner</Text>
             <Text style={styles.buttonHint}>Sağ/Sol swipe: şerit değiştir</Text>
           </Pressable>
+
+          <Pressable style={styles.button} onPress={() => setMode('rally')}>
+            <Text style={styles.buttonTitle}>Ralli</Text>
+            <Text style={styles.buttonHint}>Yatay ekran • Sol: direksiyon • Sağ: gaz / fren</Text>
+          </Pressable>
         </View>
 
         <Text style={styles.footer}>LAN: Expo Go ile bağlan</Text>
@@ -31,18 +73,61 @@ export default function App() {
     );
   }
 
+  const overlayTitle =
+    mode === 'tap' ? 'Tap Arena' : mode === 'run' ? 'Swipe Runner' : mode === 'rally' ? 'Ralli' : '';
+  const overlayHint =
+    mode === 'tap'
+      ? 'Dokunarak hedefleri patlat'
+      : mode === 'run'
+        ? 'Sağ/Sol swipe ile şerit değiştir'
+        : mode === 'rally'
+          ? 'Sol: direksiyon • Sağ: gaz ve fren'
+          : '';
+
   return (
     <View style={styles.container}>
-      <GameView key={gameKey} style={styles.gameView} mode={mode} />
+      <GameView
+        key={gameKey}
+        style={styles.gameView}
+        mode={mode}
+        pointerEvents={mode === 'rally' ? 'none' : 'auto'}
+      />
+      {mode === 'rally' && (
+        <View style={styles.rallyHud} pointerEvents="box-none">
+          <View style={styles.joystickZone} pointerEvents="auto" collapsable={false}>
+            <VirtualJoystick
+              region="left"
+              onDirectionChange={onRallyDir}
+              deadzone={0.08}
+              radius={72}
+              showVisual
+            />
+          </View>
+          <View style={styles.pedalZone} pointerEvents="auto" collapsable={false}>
+            <Pressable
+              style={({ pressed }) => [styles.pedal, styles.pedalBrake, pressed && styles.pedalPressed]}
+              onPressIn={() => setRallyBrake(1)}
+              onPressOut={() => setRallyBrake(0)}
+            >
+              <Text style={styles.pedalLabel}>FREN</Text>
+            </Pressable>
+            <Pressable
+              style={({ pressed }) => [styles.pedal, styles.pedalGas, pressed && styles.pedalPressed]}
+              onPressIn={() => setRallyGas(1)}
+              onPressOut={() => setRallyGas(0)}
+            >
+              <Text style={styles.pedalLabel}>GAZ</Text>
+            </Pressable>
+          </View>
+        </View>
+      )}
       <View style={styles.overlay}>
         <Pressable style={styles.backButton} onPress={() => setMode(null)}>
           <Text style={styles.backText}>← Menü</Text>
         </Pressable>
         <View style={styles.overlayRight} pointerEvents="none">
-          <Text style={styles.overlayTitle}>{mode === 'tap' ? 'Tap Arena' : 'Swipe Runner'}</Text>
-          <Text style={styles.overlayHint}>
-            {mode === 'tap' ? 'Dokunarak hedefleri patlat' : 'Sağ/Sol swipe ile şerit değiştir'}
-          </Text>
+          <Text style={styles.overlayTitle}>{overlayTitle}</Text>
+          <Text style={styles.overlayHint}>{overlayHint}</Text>
         </View>
       </View>
     </View>
@@ -73,6 +158,56 @@ const styles = StyleSheet.create({
   },
   menuButtons: {
     gap: 14,
+  },
+  rallyHud: {
+    ...StyleSheet.absoluteFillObject,
+    zIndex: 5,
+  },
+  joystickZone: {
+    position: 'absolute',
+    left: 0,
+    top: 0,
+    bottom: 0,
+    width: '42%',
+  },
+  pedalZone: {
+    position: 'absolute',
+    right: 0,
+    top: 0,
+    bottom: 0,
+    width: '38%',
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'flex-end',
+    paddingBottom: 20,
+    paddingRight: 12,
+    gap: 12,
+  },
+  pedal: {
+    width: 88,
+    height: 120,
+    borderRadius: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 2,
+  },
+  pedalGas: {
+    backgroundColor: 'rgba(39, 174, 96, 0.85)',
+    borderColor: 'rgba(255,255,255,0.35)',
+  },
+  pedalBrake: {
+    backgroundColor: 'rgba(192, 57, 43, 0.85)',
+    borderColor: 'rgba(255,255,255,0.35)',
+  },
+  pedalPressed: {
+    opacity: 0.75,
+    transform: [{ scale: 0.96 }],
+  },
+  pedalLabel: {
+    color: '#fff',
+    fontWeight: '800',
+    fontSize: 13,
+    letterSpacing: 0.5,
   },
   button: {
     borderRadius: 16,

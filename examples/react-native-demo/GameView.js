@@ -12,6 +12,8 @@ import { RNPlatform, RNRendererAdapter, RNInputManager } from 'zortengine/src/ad
 import * as THREE from 'three';
 import { TapArenaScene } from './scenes/TapArenaScene';
 import { SwipeRunnerScene } from './scenes/SwipeRunnerScene';
+import { RallyScene } from './scenes/RallyScene';
+import { setRallyInputAPI, clearRallyInputAPI } from './rallyBridge.js';
 
 if (typeof global !== 'undefined') {
   global.THREE = global.THREE || THREE;
@@ -101,10 +103,11 @@ class DemoScene extends GameScene {
 function createSceneForMode(mode) {
   if (mode === 'tap') return new TapArenaScene();
   if (mode === 'run') return new SwipeRunnerScene();
+  if (mode === 'rally') return new RallyScene();
   return new DemoScene({ name: 'demo' });
 }
 
-export function GameView({ style, mode = 'menu' }) {
+export function GameView({ style, mode = 'menu', pointerEvents }) {
   const engineRef = useRef(null);
   const platformRef = useRef(null);
   const adapterRef = useRef(null);
@@ -146,16 +149,31 @@ export function GameView({ style, mode = 'menu' }) {
     adapter.resize?.(viewport.width, viewport.height);
 
     engine.start();
+
+    if (mode === 'rally') {
+      setRallyInputAPI({
+        setJoystickDir: (x, z) => inputManager.setJoystickDir(x, z),
+      });
+    } else {
+      clearRallyInputAPI();
+    }
   }, [mode]);
 
   useEffect(() => {
     return () => {
+      clearRallyInputAPI();
       engineRef.current?.destroy?.();
     };
   }, []);
 
   return (
-    <View ref={inputRef} style={[styles.container, style]} {...panHandlers} collapsable={false}>
+    <View
+      ref={inputRef}
+      style={[styles.container, style]}
+      {...panHandlers}
+      collapsable={false}
+      pointerEvents={pointerEvents ?? 'auto'}
+    >
       <GLView style={StyleSheet.absoluteFill} onContextCreate={handleContextCreate} />
     </View>
   );

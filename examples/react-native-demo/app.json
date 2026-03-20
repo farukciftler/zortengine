@@ -20,7 +20,8 @@
       "package": "com.zortengine.demo"
     },
     "plugins": [
-      "expo-asset"
+      "expo-asset",
+      "expo-screen-orientation"
     ]
   }
 }
