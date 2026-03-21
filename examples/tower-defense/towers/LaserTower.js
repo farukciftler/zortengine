@@ -9,7 +9,7 @@ export class LaserTower extends Tower {
         super(gameArea, {
             type: 'laser',
             range: 12,
-            damage: 0.8,
+            damage: 6,
             fireRate: 0.1,
             baseCost: 100,
             color: 0xff4757,

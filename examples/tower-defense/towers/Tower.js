@@ -96,7 +96,7 @@ export class Tower extends GameObject {
                 this.turretGroup.lookAt(tPos);
                 
                 if (this.fireCooldown <= 0) {
-                    this.fireCooldown = 1.0 / this.fireRate;
+                    this.fireCooldown = this.fireRate;
                     this.shoot(this.gameArea);
                 }
             }

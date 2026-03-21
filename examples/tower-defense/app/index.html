@@ -95,6 +95,17 @@
             <button id="btn-upgrade" class="btn" style="width:100%; font-size:1rem;">UPGRADE ($<span id="upg-cost">50</span>)</button>
             <button id="btn-sell" class="btn" style="width:100%; font-size:1rem; background: #ff4757; margin-top: 5px;">SELL</button>
         </div>
+
+        <div id="wave-banner" class="hidden" style="position: absolute; top: 15%; left: 50%; transform: translateX(-50%); pointer-events: none; text-align: center; width: 100%;">
+            <h2 id="banner-text" style="font-size: 5rem; font-weight: 900; margin: 0; background: linear-gradient(to right, #4facfe, #00f2fe); -webkit-background-clip: text; -webkit-text-fill-color: transparent; filter: drop-shadow(0 0 10px rgba(79, 172, 254, 0.5)); letter-spacing: 15px; opacity: 0; transition: opacity 0.5s, transform 0.5s scale(0.8);">WAVE 1</h2>
+        </div>
+
+        <div id="victory-screen" class="panel hidden" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); text-align: center; padding: 40px; min-width: 400px; border: 2px solid #00f2fe; box-shadow: 0 0 30px rgba(0, 242, 254, 0.3);">
+            <h1 style="font-size: 4rem; margin: 0; color: #00f2fe;">VICTORY</h1>
+            <p style="font-size: 1.2rem; color: #ccc;">All waves defended. Level clear.</p>
+            <button id="btn-next-level" class="btn" style="margin-top: 20px; font-size: 1.5rem;">CONTINUE TO NEXT LEVEL</button>
+            <button onclick="location.reload()" class="btn" style="margin-top: 10px; font-size: 1rem; background: rgba(255,255,255,0.1); width: 100%;">MAIN MENU</button>
+        </div>
     </div>
     <script type="module" src="main.js"></script>
 </body>

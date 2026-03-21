@@ -5,6 +5,7 @@ import { CameraManager, InputManager } from 'zortengine/browser';
 import { Levels, tileSize, buildGrid } from '../data/LevelConfig.js';
 import { WaveSystem } from '../systems/WaveSystem.js';
 import { BaseEntity } from '../actors/Base.js';
+import { createFinishLine } from '../utils/FinishLineBuilder.js';
 import { LaserTower } from '../towers/LaserTower.js';
 import { CannonTower } from '../towers/CannonTower.js';
 import { SlowTower } from '../towers/SlowTower.js';
@@ -21,6 +22,8 @@ export class GameScene extends ZortGameScene {
         this.levelIndex = 0; // 0=Level 1, 1=Level 2, 2=Level 3...
         this.currentLevel = null;
         this.baseEntities = [];
+        this.particles = [];
+        this.floatingTexts = [];
         
         this.selectedTowerType = 'laser';
         this.hoverMesh = null;
@@ -72,24 +75,17 @@ export class GameScene extends ZortGameScene {
         
         for (let basePos of this.worldBaseNodes) {
             let baseExt = new BaseEntity(this, 100);
-            const baseCore = new THREE.Mesh(
-                new THREE.OctahedronGeometry(2),
-                new THREE.MeshStandardMaterial({ color: 0x00d2d3, emissive: 0x00a8ff, emissiveIntensity: 0.5, metalness: 0.9, roughness: 0.1 })
-            );
-            const baseRing = new THREE.Mesh(
-                new THREE.TorusGeometry(3.5, 0.2, 16, 64),
-                new THREE.MeshStandardMaterial({ color: 0xffffff, emissive: 0x48dbfb, emissiveIntensity: 0.8, metalness: 1 })
-            );
-            baseCore.castShadow = true;
-            baseRing.castShadow = true;
             
-            baseExt.group.add(baseCore);
-            baseExt.group.add(baseRing);
+            // Generate Detailed Racing-style Finish Line
+            const finishVisuals = createFinishLine();
+            
+            baseExt.group.add(finishVisuals.group);
             baseExt.group.position.copy(basePos);
             this.add(baseExt);
             
-            baseExt.baseCore = baseCore;
-            baseExt.baseRing = baseRing;
+            baseExt.core = finishVisuals.core;
+            baseExt.ring = finishVisuals.ring;
+            baseExt.flag = finishVisuals.flag; // New animated flag
             this.baseEntities.push(baseExt);
         }
 
@@ -99,6 +95,15 @@ export class GameScene extends ZortGameScene {
         this.hoverMesh = new THREE.Mesh(hGeo, new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.5, depthWrite: false }));
         this.hoverMesh.visible = false;
         this.threeScene.add(this.hoverMesh);
+
+        // Range Blueprint Circle
+        this.rangeCircle = new THREE.Mesh(
+            new THREE.RingGeometry(0.95, 1.0, 64),
+            new THREE.MeshBasicMaterial({ color: 0x00f2fe, side: THREE.DoubleSide, transparent: true, opacity: 0.8, depthWrite: false })
+        );
+        this.rangeCircle.rotation.x = -Math.PI / 2;
+        this.rangeCircle.visible = false;
+        this.threeScene.add(this.rangeCircle);
 
         // Events
         this.events.on('enemy:killed', (enemy) => {
@@ -212,6 +217,7 @@ export class GameScene extends ZortGameScene {
         this.btnNextWave = document.getElementById('btn-next-wave');
         this.btnNextWave.addEventListener('click', () => {
             if(!this.waveSystem.spawning) {
+                this.showWaveBanner(this.waveSystem.wave);
                 this.waveSystem.startWave();
                 this.btnNextWave.classList.add('hidden');
                 this.updateHUD();
@@ -256,8 +262,58 @@ export class GameScene extends ZortGameScene {
             }
         });
 
+        // Next Level button
+        const btnNextLvl = document.getElementById('btn-next-level');
+        if (btnNextLvl) {
+            btnNextLvl.addEventListener('click', () => {
+                location.reload(); // Quick reset for now
+            });
+        }
+
         // initial build selection
         document.querySelector('[data-type="laser"]').classList.add('selected');
+    }
+
+    showWaveBanner(wave) {
+        const banner = document.getElementById('wave-banner');
+        const text = document.getElementById('banner-text');
+        if (!banner || !text) return;
+        
+        text.innerText = `WAVE ${wave}`;
+        banner.classList.remove('hidden');
+        text.style.opacity = '1';
+        text.style.transform = 'scale(1)';
+        
+        setTimeout(() => {
+            text.style.opacity = '0';
+            text.style.transform = 'scale(1.2)';
+            setTimeout(() => {
+                banner.classList.add('hidden');
+                text.style.transform = 'scale(0.8)';
+            }, 500);
+        }, 2000);
+    }
+
+    onWaveEnded() {
+        if (this.waveSystem.wave >= 10) { 
+            this.victory();
+        } else {
+            this.btnNextWave.classList.remove('hidden');
+        }
+    }
+
+    victory() {
+        this.isGameOver = true;
+        document.getElementById('victory-screen').classList.remove('hidden');
+        this.createExplosion(new THREE.Vector3(0, 10, 0), 0xffff00);
+        this.createExplosion(new THREE.Vector3(5, 8, -5), 0x00ff00);
+        this.createExplosion(new THREE.Vector3(-5, 8, 5), 0x00ffff);
+    }
+
+    onResize(width, height, aspect) {
+        if (this.cameraManager) {
+            this.cameraManager.onResize(aspect);
+        }
     }
 
     onEnter() {
@@ -290,26 +346,57 @@ export class GameScene extends ZortGameScene {
         document.getElementById('val-wave').innerText = this.waveSystem.wave;
     }
 
-    onWaveEnded() {
-        this.btnNextWave.classList.remove('hidden');
-    }
-
     spawnEnemy(enemy) {
         this.add(enemy);
         this.enemies.push(enemy);
     }
 
     removeEnemy(enemy) {
-        enemy.isDead = true; // double safety
+        if (enemy.hp <= 0) {
+            const pos = enemy.group.position.clone();
+            pos.y += 1;
+            this.createExplosion(pos, 0x4facfe);
+            this.createFloatingText(pos, `+$${enemy.reward}`, 0x00f2fe);
+        }
+        
+        enemy.isDead = true;
         this.enemies = this.enemies.filter(e => e !== enemy);
         this.remove(enemy);
-        this.threeScene.remove(enemy.group);
+        if (enemy.group) this.threeScene.remove(enemy.group);
+    }
+
+    createExplosion(pos, color) {
+        for (let i = 0; i < 8; i++) {
+            const size = 0.2 + Math.random() * 0.3;
+            const p = new THREE.Mesh(
+                new THREE.BoxGeometry(size, size, size),
+                new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 1 })
+            );
+            p.position.copy(pos);
+            const vel = new THREE.Vector3(
+                (Math.random() - 0.5) * 6,
+                Math.random() * 6 + 2,
+                (Math.random() - 0.5) * 6
+            );
+            this.particles.push({ mesh: p, vel, life: 1.0 });
+            this.threeScene.add(p);
+        }
+    }
+
+    createFloatingText(pos, text, color) {
+        const p = new THREE.Mesh(
+            new THREE.OctahedronGeometry(0.35),
+            new THREE.MeshStandardMaterial({ color, emissive: color, emissiveIntensity: 2.0 })
+        );
+        p.position.copy(pos);
+        p.position.y += 1.0;
+        this.threeScene.add(p);
+        this.particles.push({ mesh: p, vel: new THREE.Vector3(0, 3, 0), life: 1.2, isFloatingText: true });
     }
 
     gameOver() {
         this.isGameOver = true;
-        alert("GAME OVER! Sona Kadar Gittin: Wave " + this.waveSystem.wave);
-        // Quick Reset
+        alert("GAME OVER! Wave " + this.waveSystem.wave);
         location.reload(); 
     }
 
@@ -377,20 +464,83 @@ export class GameScene extends ZortGameScene {
     onUpdate(delta, time) {
         if (this.isGameOver) return;
         
+        let showingRange = false;
+        
+        // Show range of currently selected tower
+        if (this.selectedTile && this.selectedTile.userData.tower) {
+            const twr = this.selectedTile.userData.tower;
+            this.rangeCircle.position.set(twr.group.position.x, twr.group.position.y + 0.1, twr.group.position.z);
+            this.rangeCircle.scale.setScalar(twr.range);
+            this.rangeCircle.material.color.setHex(0x00f2fe);
+            this.rangeCircle.visible = true;
+            showingRange = true;
+        }
+        
         if (this.inputManager && this.tiles.length > 0) {
             const intersects = this.inputManager.getRaycastIntersection(this.cameraManager.getThreeCamera(), this.tiles);
             if (intersects.length > 0) {
-                this.hoverMesh.position.x = intersects[0].object.position.x;
-                this.hoverMesh.position.y = intersects[0].object.position.y + 0.02; // Always visible on top of correct block
-                this.hoverMesh.position.z = intersects[0].object.position.z;
+                const hitMesh = intersects[0].object;
+                const data = hitMesh.userData;
+                this.hoverMesh.position.x = hitMesh.position.x;
+                this.hoverMesh.position.y = hitMesh.position.y + 0.02; // Always visible on top of correct block
+                this.hoverMesh.position.z = hitMesh.position.z;
                 this.hoverMesh.visible = true;
                 
-                if(intersects[0].object.userData.tower) this.hoverMesh.material.color.setHex(0x00a8ff);
-                else if(intersects[0].object.userData.buildable) this.hoverMesh.material.color.setHex(0xffffff);
-                else this.hoverMesh.material.color.setHex(0xe84118);
+                if(data.tower) {
+                    this.hoverMesh.material.color.setHex(0x00a8ff);
+                    if (!showingRange) {
+                        const twr = data.tower;
+                        this.rangeCircle.position.set(twr.group.position.x, twr.group.position.y + 0.1, twr.group.position.z);
+                        this.rangeCircle.scale.setScalar(twr.range);
+                        this.rangeCircle.material.color.setHex(0xffffff);
+                        this.rangeCircle.visible = true;
+                        showingRange = true;
+                    }
+                } else if(data.buildable) {
+                    this.hoverMesh.material.color.setHex(0xffffff);
+                    if (!showingRange) {
+                        let r = 12;
+                        if(this.selectedTowerType === 'cannon') r = 8;
+                        else if(this.selectedTowerType === 'slow') r = 10;
+                        
+                        this.rangeCircle.position.set(hitMesh.position.x, hitMesh.position.y + 0.1, hitMesh.position.z);
+                        this.rangeCircle.scale.setScalar(r);
+                        this.rangeCircle.material.color.setHex(0x00f2fe);
+                        this.rangeCircle.visible = true;
+                        showingRange = true;
+                    }
+                } else {
+                    this.hoverMesh.material.color.setHex(0xe84118);
+                }
             } else {
                 this.hoverMesh.visible = false;
             }
+        }
+        if (!showingRange) {
+            this.rangeCircle.visible = false;
+        }
+
+        // Animate particles
+        for (let i = this.particles.length - 1; i >= 0; i--) {
+            const p = this.particles[i];
+            p.life -= delta;
+            if (p.life <= 0) {
+                this.threeScene.remove(p.mesh);
+                if (p.mesh.geometry) p.mesh.geometry.dispose();
+                if (p.mesh.material) p.mesh.material.dispose();
+                this.particles.splice(i, 1);
+                continue;
+            }
+            p.mesh.position.add(p.vel.clone().multiplyScalar(delta));
+            if (!p.isFloatingText) {
+                p.vel.y -= delta * 15; // Gravity
+                p.mesh.scale.setScalar(p.life);
+                p.mesh.rotation.x += delta * 5;
+            } else {
+                p.mesh.rotation.y += delta * 3;
+                p.mesh.scale.setScalar(0.8 + Math.sin(time * 10) * 0.2);
+            }
+            if (p.mesh.material.opacity) p.mesh.material.opacity = p.life;
         }
 
         this.cameraManager.updateFollow(new THREE.Vector3(0,0,0), 0, delta, {
@@ -401,11 +551,13 @@ export class GameScene extends ZortGameScene {
         this.waveSystem.update(delta);
         
         for (let b of this.baseEntities) {
-            if (b.baseRing) {
-                b.baseCore.rotation.y = time * 0.5;
-                b.baseCore.position.y = Math.sin(time * 2) * 0.5;
-                b.baseRing.rotation.x = Math.PI / 2 + Math.sin(time) * 0.2;
-                b.baseRing.rotation.z = time * 1.5;
+            if (b.flag) {
+                b.flag.children.forEach(piece => {
+                    // Waving on the X axis since flag is spanning Z
+                    const wave = Math.sin(time * 3 + piece.userData.phase) * 0.15;
+                    piece.position.x = piece.userData.origX + wave;
+                    piece.position.y = piece.userData.origY + Math.cos(time * 2 + piece.userData.phase) * 0.05;
+                });
             }
         }
 
