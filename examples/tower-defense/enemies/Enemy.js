@@ -51,14 +51,17 @@ export class Enemy extends GameObject {
         this.hp -= amount;
         this.hpBar.scale.x = Math.max(0, this.hp / this.maxHp);
         
-        // Safe Flash animation for entire model
+        // Safe Flash animation that restores exact glowing colors
         if (this.mesh) {
             this.mesh.traverse((child) => {
                 if (child.isMesh && child.material && child.material.emissive) {
+                    if (child.userData.origEmissive === undefined) {
+                        child.userData.origEmissive = child.material.emissive.getHex();
+                    }
                     child.material.emissive.setHex(0xffffff);
                     setTimeout(() => { 
                         if (child && child.material && child.material.emissive) {
-                            child.material.emissive.setHex(0x000000); 
+                            child.material.emissive.setHex(child.userData.origEmissive); 
                         }
                     }, 100);
                 }

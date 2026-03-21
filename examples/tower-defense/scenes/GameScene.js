@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { GameScene as ZortGameScene } from 'zortengine';
 import { CameraManager, InputManager } from 'zortengine/browser';
 
-import { LevelConfig, buildGrid } from '../data/LevelConfig.js';
+import { Levels, tileSize, buildGrid } from '../data/LevelConfig.js';
 import { WaveSystem } from '../systems/WaveSystem.js';
 import { BaseEntity } from '../actors/Base.js';
 import { LaserTower } from '../towers/LaserTower.js';
@@ -16,6 +16,11 @@ export class GameScene extends ZortGameScene {
         this.towers = [];
         this.tiles = [];
         this.gold = 500;
+        this.playerHp = 100;
+        
+        this.levelIndex = 0; // 0=Level 1, 1=Level 2, 2=Level 3...
+        this.currentLevel = null;
+        this.baseEntities = [];
         
         this.selectedTowerType = 'laser';
         this.hoverMesh = null;
@@ -29,6 +34,23 @@ export class GameScene extends ZortGameScene {
             this.engine.renderer.shadowMap.enabled = true;
             this.engine.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
         }
+
+        this.currentLevel = Levels[this.levelIndex];
+
+        // Format world positions
+        this.worldPaths = this.currentLevel.paths.map(path => {
+            return path.map(wp => new THREE.Vector3(
+                (wp.c - this.currentLevel.cols/2 + 0.5) * tileSize, 
+                0, 
+                (wp.r - this.currentLevel.rows/2 + 0.5) * tileSize
+            ));
+        });
+        
+        this.worldBaseNodes = this.currentLevel.baseNodes.map(wp => new THREE.Vector3(
+            (wp.c - this.currentLevel.cols/2 + 0.5) * tileSize, 
+            2.5, 
+            (wp.r - this.currentLevel.rows/2 + 0.5) * tileSize
+        ));
 
         this.cameraManager = this.registerSystem('camera', new CameraManager(this.getRenderScene()), { priority: 10 });
         this.setCamera(this.cameraManager);
@@ -45,32 +67,34 @@ export class GameScene extends ZortGameScene {
         this._buildWorld();
         this._bindUI();
 
-        this.waveSystem = new WaveSystem(this, this.worldWaypoints);
-        this.baseEntity = new BaseEntity(this, 100);
+        this.waveSystem = new WaveSystem(this, this.worldPaths);
+        this.baseEntities = [];
         
-        // Beautiful Crystal Base
-        const baseCore = new THREE.Mesh(
-            new THREE.OctahedronGeometry(2),
-            new THREE.MeshStandardMaterial({ color: 0x00d2d3, emissive: 0x00a8ff, emissiveIntensity: 0.5, metalness: 0.9, roughness: 0.1 })
-        );
-        const baseRing = new THREE.Mesh(
-            new THREE.TorusGeometry(3.5, 0.2, 16, 64),
-            new THREE.MeshStandardMaterial({ color: 0xffffff, emissive: 0x48dbfb, emissiveIntensity: 0.8, metalness: 1 })
-        );
-        baseCore.castShadow = true;
-        baseRing.castShadow = true;
-        
-        this.baseEntity.group.add(baseCore);
-        this.baseEntity.group.add(baseRing);
-        this.baseEntity.group.position.copy(this.worldWaypoints[this.worldWaypoints.length - 1]);
-        this.baseEntity.group.position.y = 2.5;
-        this.add(this.baseEntity);
-        
-        this.baseEntity.baseCore = baseCore;
-        this.baseEntity.baseRing = baseRing;
+        for (let basePos of this.worldBaseNodes) {
+            let baseExt = new BaseEntity(this, 100);
+            const baseCore = new THREE.Mesh(
+                new THREE.OctahedronGeometry(2),
+                new THREE.MeshStandardMaterial({ color: 0x00d2d3, emissive: 0x00a8ff, emissiveIntensity: 0.5, metalness: 0.9, roughness: 0.1 })
+            );
+            const baseRing = new THREE.Mesh(
+                new THREE.TorusGeometry(3.5, 0.2, 16, 64),
+                new THREE.MeshStandardMaterial({ color: 0xffffff, emissive: 0x48dbfb, emissiveIntensity: 0.8, metalness: 1 })
+            );
+            baseCore.castShadow = true;
+            baseRing.castShadow = true;
+            
+            baseExt.group.add(baseCore);
+            baseExt.group.add(baseRing);
+            baseExt.group.position.copy(basePos);
+            this.add(baseExt);
+            
+            baseExt.baseCore = baseCore;
+            baseExt.baseRing = baseRing;
+            this.baseEntities.push(baseExt);
+        }
 
         // Hover Highlight
-        const hGeo = new THREE.PlaneGeometry(LevelConfig.tileSize, LevelConfig.tileSize);
+        const hGeo = new THREE.PlaneGeometry(tileSize, tileSize);
         hGeo.rotateX(-Math.PI/2);
         this.hoverMesh = new THREE.Mesh(hGeo, new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.5, depthWrite: false }));
         this.hoverMesh.visible = false;
@@ -84,12 +108,17 @@ export class GameScene extends ZortGameScene {
         });
         
         this.events.on('enemy:reached_base', (enemy) => {
-            this.baseEntity.takeDamage(enemy.damage);
+            this.playerHp -= enemy.damage;
+            if (this.playerHp <= 0) this.events.emit('base:destroyed');
+            else this.events.emit('base:dmg');
             this.removeEnemy(enemy);
         });
 
         this.events.on('base:dmg', () => this.updateHUD());
-        this.events.on('base:destroyed', () => this.gameOver());
+        this.events.on('base:destroyed', () => {
+            this.updateHUD();
+            this.gameOver();
+        });
         
         this.inputManager.on('attack', () => this.handlePointClick());
     }
@@ -118,15 +147,9 @@ export class GameScene extends ZortGameScene {
     }
     
     _buildWorld() {
-        const { tileSize, cols, rows, waypoints } = LevelConfig;
-        this.gridLogic = buildGrid();
+        const { cols, rows } = this.currentLevel;
+        this.gridLogic = buildGrid(this.currentLevel);
         
-        this.worldWaypoints = waypoints.map(wp => new THREE.Vector3(
-            (wp.c - cols/2 + 0.5) * tileSize, 
-            0, 
-            (wp.r - rows/2 + 0.5) * tileSize
-        ));
-
         // Create meshes
         this.groundGroup = new THREE.Group();
         
@@ -262,7 +285,7 @@ export class GameScene extends ZortGameScene {
     }
 
     updateHUD() {
-        document.getElementById('val-hp').innerText = this.baseEntity.hp;
+        document.getElementById('val-hp').innerText = this.playerHp;
         document.getElementById('val-gold').innerText = this.gold;
         document.getElementById('val-wave').innerText = this.waveSystem.wave;
     }
@@ -377,11 +400,13 @@ export class GameScene extends ZortGameScene {
 
         this.waveSystem.update(delta);
         
-        if (this.baseEntity && this.baseEntity.baseRing) {
-            this.baseEntity.baseCore.rotation.y = time * 0.5;
-            this.baseEntity.baseCore.position.y = Math.sin(time * 2) * 0.5;
-            this.baseEntity.baseRing.rotation.x = Math.PI / 2 + Math.sin(time) * 0.2;
-            this.baseEntity.baseRing.rotation.z = time * 1.5;
+        for (let b of this.baseEntities) {
+            if (b.baseRing) {
+                b.baseCore.rotation.y = time * 0.5;
+                b.baseCore.position.y = Math.sin(time * 2) * 0.5;
+                b.baseRing.rotation.x = Math.PI / 2 + Math.sin(time) * 0.2;
+                b.baseRing.rotation.z = time * 1.5;
+            }
         }
 
         // ZortEngine scenes require explicit ticks for custom behavior unless using System/Component

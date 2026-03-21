@@ -3,18 +3,32 @@ import { Tower } from './Tower.js';
 
 export class LaserTower extends Tower {
     constructor(gameArea) {
+        const baseGeo = new THREE.CylinderGeometry(0.7, 0.9, 0.6, 6);
+        const turretGeo = new THREE.TorusGeometry(0.5, 0.15, 8, 24);
+        
         super(gameArea, {
             type: 'laser',
             range: 12,
-            damage: 25,
-            fireRate: 2.5,
+            damage: 0.8,
+            fireRate: 0.1,
             baseCost: 100,
-            upgradeCost: 75,
             color: 0xff4757,
-            turretGeo: new THREE.CylinderGeometry(0.4, 0.8, 1.5, 4)
+            baseGeo: baseGeo,
+            turretGeo: turretGeo
         });
+
+        // Add floating inner core
+        const coreGeo = new THREE.OctahedronGeometry(0.35);
+        const coreMat = new THREE.MeshStandardMaterial({ color: 0xffffff, emissive: 0xff4757, emissiveIntensity: 2.0 });
+        this.coreMesh = new THREE.Mesh(coreGeo, coreMat);
+        this.coreMesh.castShadow = true;
+        this.turretGroup.add(this.coreMesh);
+        
+        if (this.turretMesh) {
+            this.turretMesh.rotation.x = Math.PI/2;
+            this.turretMesh.material.metalness = 0.8;
+        }
         this.gameArea = gameArea;
-        this.turretMesh.rotation.x = Math.PI / 2; // point forward
         
         // High quality cylindrical laser beam
         const laserMat = new THREE.MeshBasicMaterial({ color: 0xff4757, transparent: true, opacity: 0.8 });
@@ -29,6 +43,16 @@ export class LaserTower extends Tower {
         this.flare.visible = false;
 
         this.laserTimeout = null;
+    }
+
+    onUpdate(delta, time) {
+        super.onUpdate(delta, time); // Handles finding target and cooldown
+        
+        if (this.coreMesh) {
+            this.coreMesh.rotation.y += delta * 2;
+            this.coreMesh.rotation.z += delta * 1;
+            this.coreMesh.position.y = Math.sin(time * 5) * 0.1;
+        }
     }
 
     shoot(scene) {

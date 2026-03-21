@@ -2,8 +2,12 @@ import * as THREE from 'three';
 import { Tower } from './Tower.js';
 
 export class CannonTower extends Tower {
-    constructor(scene) {
-        super(scene, {
+    constructor(gameArea) {
+        // Heavy Hexagonal Base
+        const baseGeo = new THREE.CylinderGeometry(0.8, 0.9, 0.8, 8);
+        const turretGeo = new THREE.BoxGeometry(1.0, 0.6, 1.2);
+        
+        super(gameArea, {
             type: 'cannon',
             range: 8,
             damage: 60,
@@ -11,17 +15,24 @@ export class CannonTower extends Tower {
             baseCost: 200,
             upgradeCost: 150,
             color: 0xffa502,
-            turretGeo: new THREE.SphereGeometry(1, 16, 16)
+            baseGeo: baseGeo,
+            turretGeo: turretGeo
         });
         
-        // Add a cannon barrel
-        const barrel = new THREE.Mesh(
-            new THREE.CylinderGeometry(0.3, 0.3, 1.5),
-            new THREE.MeshStandardMaterial({ color: 0x111111 })
-        );
-        barrel.rotation.x = Math.PI / 2;
-        barrel.position.z = 0.8;
-        this.turretGroup.add(barrel);
+        // Add double barrels
+        const barrelGeo = new THREE.CylinderGeometry(0.12, 0.16, 1.2, 8);
+        barrelGeo.rotateX(Math.PI/2);
+        const barrelMat = new THREE.MeshStandardMaterial({ color: 0x222222, metalness: 0.9, roughness: 0.2 });
+        
+        const b1 = new THREE.Mesh(barrelGeo, barrelMat); 
+        b1.position.set(0.25, 0, 0.6); 
+        b1.castShadow = true;
+        
+        const b2 = new THREE.Mesh(barrelGeo, barrelMat); 
+        b2.position.set(-0.25, 0, 0.6); 
+        b2.castShadow = true;
+        
+        this.turretGroup.add(b1, b2);
     }
 
     shoot(scene) {

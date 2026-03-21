@@ -1,31 +1,48 @@
 import * as THREE from 'three';
 
-export function createHumanoid(color = 0xee5253, headColor = 0xffccaa, hasSword = true) {
+export function createHumanoid(color, headColor, hasSword = true) {
     const root = new THREE.Group();
-    
-    // Body
-    const bodyMat = new THREE.MeshStandardMaterial({ color, roughness: 0.7 });
-    const body = new THREE.Mesh(new THREE.BoxGeometry(0.6, 1.0, 0.4), bodyMat);
+
+    // Body (Hexagonal Armor Core)
+    const bodyMat = new THREE.MeshStandardMaterial({ color, roughness: 0.4, metalness: 0.6 });
+    const bodyGeo = new THREE.CylinderGeometry(0.35, 0.25, 0.9, 6);
+    const body = new THREE.Mesh(bodyGeo, bodyMat);
     body.position.y = 1.1; // Centered
     body.castShadow = true;
     body.receiveShadow = true;
     root.add(body);
     
-    // Head
-    const headMat = new THREE.MeshStandardMaterial({ color: headColor, roughness: 0.5 });
-    const head = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.4, 0.4), headMat);
+    // Glowing Core Reactor on chest
+    const coreGeo = new THREE.CylinderGeometry(0.15, 0.15, 0.6, 16);
+    coreGeo.rotateZ(Math.PI/2);
+    const coreMat = new THREE.MeshStandardMaterial({ color: 0xffffff, emissive: color, emissiveIntensity: 1.5 });
+    const coreMesh = new THREE.Mesh(coreGeo, coreMat);
+    coreMesh.position.z = 0.2;
+    body.add(coreMesh);
+    
+    // Head (Cybernetic Helmet)
+    const headMat = new THREE.MeshStandardMaterial({ color: headColor, roughness: 0.3, metalness: 0.8 });
+    const headGeo = new THREE.DodecahedronGeometry(0.28);
+    const head = new THREE.Mesh(headGeo, headMat);
     head.position.y = 1.8;
     head.castShadow = true;
     head.receiveShadow = true;
+    
+    // Cyberpunk Visor
+    const visorGeo = new THREE.BoxGeometry(0.4, 0.08, 0.15);
+    const visorMat = new THREE.MeshStandardMaterial({ color: 0xffffff, emissive: 0x00f2fe, emissiveIntensity: 1.0 });
+    const visor = new THREE.Mesh(visorGeo, visorMat);
+    visor.position.set(0, 0, 0.25);
+    head.add(visor);
     root.add(head);
 
-    // Helpers for pivoting
-    function createLimb(width, height, depth, colorHex, pX, pY, pZ) {
+    // Helpers for robotic joints
+    function createLimb(topR, botR, height, colorHex, pX, pY, pZ) {
         const pGroup = new THREE.Group();
         pGroup.position.set(pX, pY, pZ);
         
-        const geo = new THREE.BoxGeometry(width, height, depth);
-        const mat = new THREE.MeshStandardMaterial({ color: colorHex, roughness: 0.8 });
+        const geo = new THREE.CylinderGeometry(topR, botR, height, 6);
+        const mat = new THREE.MeshStandardMaterial({ color: colorHex, roughness: 0.5, metalness: 0.7 });
         const mesh = new THREE.Mesh(geo, mat);
         mesh.position.y = -height / 2; // Offset so it hinges at the top
         mesh.castShadow = true;
@@ -34,16 +51,15 @@ export function createHumanoid(color = 0xee5253, headColor = 0xffccaa, hasSword 
         
         return { group: pGroup, mesh };
     }
-    
-    // Legs
-    const legL = createLimb(0.25, 0.6, 0.25, color, -0.15, 0.6, 0);
-    const legR = createLimb(0.25, 0.6, 0.25, color, 0.15, 0.6, 0);
+
+    // Robotic limbs (thicker tops, thinner bottoms)
+    const legL = createLimb(0.12, 0.08, 0.8, color, -0.2, 0.7, 0); // Left Leg
+    const legR = createLimb(0.12, 0.08, 0.8, color, 0.2, 0.7, 0);  // Right Leg
     root.add(legL.group);
     root.add(legR.group);
 
-    // Arms
-    const armL = createLimb(0.2, 0.7, 0.2, color, -0.4, 1.5, 0);
-    const armR = createLimb(0.2, 0.7, 0.2, color, 0.4, 1.5, 0);
+    const armL = createLimb(0.1, 0.06, 0.7, headColor, -0.45, 1.5, 0); // Left Arm
+    const armR = createLimb(0.1, 0.06, 0.7, headColor, 0.45, 1.5, 0);  // Right Arm
     root.add(armL.group);
     root.add(armR.group);
     

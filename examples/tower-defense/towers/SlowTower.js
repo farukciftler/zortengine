@@ -2,8 +2,11 @@ import * as THREE from 'three';
 import { Tower } from './Tower.js';
 
 export class SlowTower extends Tower {
-    constructor(scene) {
-        super(scene, {
+    constructor(gameArea) {
+        const baseGeo = new THREE.CylinderGeometry(0.8, 0.8, 0.6, 16);
+        const turretGeo = new THREE.SphereGeometry(0.6, 16, 16);
+        
+        super(gameArea, {
             type: 'slow',
             range: 10,
             damage: 5,
@@ -11,9 +14,25 @@ export class SlowTower extends Tower {
             baseCost: 150,
             upgradeCost: 100,
             color: 0x1e90ff,
-            turretGeo: new THREE.TorusGeometry(1, 0.3, 8, 16)
+            baseGeo: baseGeo,
+            turretGeo: turretGeo
         });
-        this.turretMesh.rotation.x = Math.PI / 2;
+        
+        if (this.turretMesh) {
+            this.turretMesh.material.transparent = true;
+            this.turretMesh.material.opacity = 0.8;
+            this.turretMesh.material.emissive.setHex(0x1e90ff);
+            this.turretMesh.material.emissiveIntensity = 0.5;
+        }
+
+        // Add spinning halo rings
+        const ringGeo = new THREE.TorusGeometry(0.9, 0.05, 8, 32);
+        const ringMat = new THREE.MeshStandardMaterial({ color: 0xffffff, emissive: 0x00f2fe });
+        
+        this.halo1 = new THREE.Mesh(ringGeo, ringMat); this.halo1.rotation.x = Math.PI/2;
+        this.halo2 = new THREE.Mesh(ringGeo, ringMat); this.halo2.rotation.x = Math.PI/2;
+        
+        this.turretGroup.add(this.halo1, this.halo2);
     }
 
     shoot(scene) {
@@ -62,6 +81,13 @@ export class SlowTower extends Tower {
     onUpdate(delta, time) {
         super.onUpdate(delta, time);
         // Spin effect
-        this.turretMesh.rotation.z += delta * 2;
+        if (this.halo1) {
+            this.halo1.position.y = Math.sin(time * 3) * 0.2;
+            this.halo1.rotation.z += delta * 2;
+        }
+        if (this.halo2) {
+            this.halo2.position.y = Math.sin(time * 2 + Math.PI) * 0.2;
+            this.halo2.rotation.z -= delta * 1.5;
+        }
     }
 }
