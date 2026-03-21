@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ZortEngine Tetris 3D</title>
+    <style>
+        :root { color-scheme: dark; }
+        html, body { width: 100%; height: 100%; margin: 0; padding: 0; overflow: hidden; }
+        body { background: #050510; color: white; font-family: sans-serif; }
+        canvas { display: block; width: 100vw; height: 100vh; }
+        #ui {
+            position: absolute; top: 20px; left: 20px; pointer-events: none;
+            background: rgba(0,0,0,0.5); padding: 20px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.2);
+        }
+        h1 { margin: 0 0 10px 0; font-size: 24px; color: #0ff0fc; }
+        p { margin: 5px 0; font-size: 18px; }
+        .controls { margin-top: 15px; font-size: 14px; color: #aaa; }
+    </style>
+    <script type="importmap">
+    {
+        "imports": {
+            "three": "https://cdn.jsdelivr.net/npm/three@0.166.0/build/three.module.js",
+            "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.166.0/examples/jsm/",
+            "three/examples/jsm/": "https://cdn.jsdelivr.net/npm/three@0.166.0/examples/jsm/",
+            "cannon-es": "https://cdn.jsdelivr.net/npm/cannon-es@0.20.0/dist/cannon-es.js",
+            "zortengine": "../../../src/engine/index.js",
+            "zortengine/assets": "../../../src/engine/assets/index.js",
+            "zortengine/browser": "../../../src/adapters/browser/index.js",
+            "zortengine/gameplay": "../../../src/gameplay/index.js",
+            "zortengine/physics": "../../../src/adapters/physics/index.js",
+            "zortengine/persistence": "../../../src/persistence/index.js",
+            "zortengine/render": "../../../src/adapters/render/index.js"
+        }
+    }
+    </script>
+</head>
+<body>
+    <div id="ui">
+        <h1>3D TETRIS</h1>
+        <p>Score: <span id="score">0</span></p>
+        <p>Lines: <span id="lines">0</span></p>
+        <div class="controls">
+            V/B or Arrows: Move<br/>
+            Up: Rotate<br/>
+            Space: Drop
+        </div>
+    </div>
+    <script type="module" src="main.js"></script>
+</body>
+</html>

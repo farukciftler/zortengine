@@ -94,7 +94,7 @@ export class CameraManager {
             const offset = options.orthoOffset || new THREE.Vector3(18, 18, 18);
             const desiredPos = targetPos.clone().add(offset);
             const smoothing = options.smoothing || 6;
-            this.activeCamera.position.lerp(desiredPos, smoothing * delta);
+            this.activeCamera.position.lerp(desiredPos, Math.min(1.0, smoothing * delta));
             this.activeCamera.lookAt(lookTarget);
         } else if (this.currentType === 'persp') {
             lookTarget.y += (options.heightOffset || 1.5);
