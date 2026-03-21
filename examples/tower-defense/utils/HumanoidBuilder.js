@@ -7,12 +7,16 @@ export function createHumanoid(color = 0xee5253, headColor = 0xffccaa, hasSword 
     const bodyMat = new THREE.MeshStandardMaterial({ color, roughness: 0.7 });
     const body = new THREE.Mesh(new THREE.BoxGeometry(0.6, 1.0, 0.4), bodyMat);
     body.position.y = 1.1; // Centered
+    body.castShadow = true;
+    body.receiveShadow = true;
     root.add(body);
     
     // Head
     const headMat = new THREE.MeshStandardMaterial({ color: headColor, roughness: 0.5 });
     const head = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.4, 0.4), headMat);
     head.position.y = 1.8;
+    head.castShadow = true;
+    head.receiveShadow = true;
     root.add(head);
 
     // Helpers for pivoting
@@ -24,6 +28,8 @@ export function createHumanoid(color = 0xee5253, headColor = 0xffccaa, hasSword 
         const mat = new THREE.MeshStandardMaterial({ color: colorHex, roughness: 0.8 });
         const mesh = new THREE.Mesh(geo, mat);
         mesh.position.y = -height / 2; // Offset so it hinges at the top
+        mesh.castShadow = true;
+        mesh.receiveShadow = true;
         pGroup.add(mesh);
         
         return { group: pGroup, mesh };
@@ -47,10 +53,12 @@ export function createHumanoid(color = 0xee5253, headColor = 0xffccaa, hasSword 
         const swordMat = new THREE.MeshStandardMaterial({ color: 0xdcdde1, metalness: 0.9, roughness: 0.1 });
         const sword = new THREE.Mesh(swordGeo, swordMat);
         sword.position.y = -0.4;
+        sword.castShadow = true;
         
         const hiltgeo = new THREE.BoxGeometry(0.1, 0.2, 0.2);
         const hilt = new THREE.Mesh(hiltgeo, new THREE.MeshStandardMaterial({color: 0x833471}));
         hilt.position.y = 0.1;
+        hilt.castShadow = true;
 
         const swordGroup = new THREE.Group();
         swordGroup.add(sword);

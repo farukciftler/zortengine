@@ -26,23 +26,30 @@ export class Tower extends GameObject {
     }
 
     buildMesh(config) {
-        this.baseMesh = new THREE.Mesh(
-            new THREE.CylinderGeometry(1.2, 1.4, 0.5, 8),
-            new THREE.MeshStandardMaterial({ color: 0x2d3436, roughness: 0.8 })
-        );
+        const baseMat = new THREE.MeshStandardMaterial({ color: 0x2d3436, roughness: 0.8 });
+        if (config.baseGeo) {
+            this.baseMesh = new THREE.Mesh(config.baseGeo, baseMat);
+        } else {
+            this.baseMesh = new THREE.Mesh(new THREE.CylinderGeometry(1.2, 1.4, 0.5, 8), baseMat);
+        }
         this.baseMesh.position.y = 0.25;
+        this.baseMesh.castShadow = true;
+        this.baseMesh.receiveShadow = true;
+        this.group.add(this.baseMesh);
 
         this.turretGroup = new THREE.Group();
         this.turretGroup.position.y = 1;
-
-        this.turretMesh = new THREE.Mesh(
-            config.turretGeo || new THREE.BoxGeometry(1.2, 1.2, 1.2),
-            new THREE.MeshStandardMaterial({ color: this.color, metalness: 0.5, roughness: 0.2 })
-        );
-        this.turretGroup.add(this.turretMesh);
-
-        this.group.add(this.baseMesh);
         this.group.add(this.turretGroup);
+
+        const turretMat = new THREE.MeshStandardMaterial({ color: this.color, metalness: 0.5, roughness: 0.2 });
+        if (config.turretGeo) {
+            this.turretMesh = new THREE.Mesh(config.turretGeo, turretMat);
+        } else {
+            this.turretMesh = new THREE.Mesh(new THREE.BoxGeometry(1.2, 1.2, 1.2), turretMat);
+        }
+        this.turretMesh.castShadow = true;
+        this.turretMesh.receiveShadow = true;
+        this.turretGroup.add(this.turretMesh);
     }
 
     upgrade() {

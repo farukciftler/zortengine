@@ -25,6 +25,11 @@ export class GameScene extends ZortGameScene {
     }
 
     setup() {
+        if (this.engine.renderer) {
+            this.engine.renderer.shadowMap.enabled = true;
+            this.engine.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        }
+
         this.cameraManager = this.registerSystem('camera', new CameraManager(this.getRenderScene()), { priority: 10 });
         this.setCamera(this.cameraManager);
         this.cameraManager.setPreset('2.5d');
@@ -43,21 +48,31 @@ export class GameScene extends ZortGameScene {
         this.waveSystem = new WaveSystem(this, this.worldWaypoints);
         this.baseEntity = new BaseEntity(this, 100);
         
-        // Setup Base Visuals
-        const baseMesh = new THREE.Mesh(
-            new THREE.BoxGeometry(4, 4, 4),
-            new THREE.MeshStandardMaterial({ color: 0x4facfe, metalness: 0.8 })
+        // Beautiful Crystal Base
+        const baseCore = new THREE.Mesh(
+            new THREE.OctahedronGeometry(2),
+            new THREE.MeshStandardMaterial({ color: 0x00d2d3, emissive: 0x00a8ff, emissiveIntensity: 0.5, metalness: 0.9, roughness: 0.1 })
         );
-        this.baseEntity.group.add(baseMesh);
+        const baseRing = new THREE.Mesh(
+            new THREE.TorusGeometry(3.5, 0.2, 16, 64),
+            new THREE.MeshStandardMaterial({ color: 0xffffff, emissive: 0x48dbfb, emissiveIntensity: 0.8, metalness: 1 })
+        );
+        baseCore.castShadow = true;
+        baseRing.castShadow = true;
+        
+        this.baseEntity.group.add(baseCore);
+        this.baseEntity.group.add(baseRing);
         this.baseEntity.group.position.copy(this.worldWaypoints[this.worldWaypoints.length - 1]);
-        this.baseEntity.group.position.y = 2;
+        this.baseEntity.group.position.y = 2.5;
         this.add(this.baseEntity);
+        
+        this.baseEntity.baseCore = baseCore;
+        this.baseEntity.baseRing = baseRing;
 
         // Hover Highlight
         const hGeo = new THREE.PlaneGeometry(LevelConfig.tileSize, LevelConfig.tileSize);
         hGeo.rotateX(-Math.PI/2);
-        this.hoverMesh = new THREE.Mesh(hGeo, new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.3 }));
-        this.hoverMesh.position.y = 0.1;
+        this.hoverMesh = new THREE.Mesh(hGeo, new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.5, depthWrite: false }));
         this.hoverMesh.visible = false;
         this.threeScene.add(this.hoverMesh);
 
@@ -80,13 +95,25 @@ export class GameScene extends ZortGameScene {
     }
 
     _setupLighting() {
-        this.threeScene.background = new THREE.Color(0x0f141e);
-        const ambient = new THREE.AmbientLight(0xffffff, 0.4);
-        this.threeScene.add(ambient);
+        this.threeScene.fog = new THREE.FogExp2(0x111520, 0.015);
+        this.threeScene.background = new THREE.Color(0x111520);
         
-        const dir = new THREE.DirectionalLight(0xffffff, 0.9);
-        dir.position.set(20, 40, 20);
+        // Atmosphere soft light
+        const hemi = new THREE.HemisphereLight(0x2d3436, 0x090a0f, 2.5);
+        this.threeScene.add(hemi);
+
+        const dir = new THREE.DirectionalLight(0xfdcbcb, 2.5);
+        dir.position.set(30, 50, 30);
         dir.castShadow = true;
+        dir.shadow.mapSize.width = 2048;
+        dir.shadow.mapSize.height = 2048;
+        dir.shadow.camera.near = 1;
+        dir.shadow.camera.far = 150;
+        dir.shadow.camera.left = -30;
+        dir.shadow.camera.right = 30;
+        dir.shadow.camera.top = 30;
+        dir.shadow.camera.bottom = -30;
+        dir.shadow.bias = -0.0005;
         this.threeScene.add(dir);
     }
     
@@ -102,20 +129,52 @@ export class GameScene extends ZortGameScene {
 
         // Create meshes
         this.groundGroup = new THREE.Group();
+        
+        const basePlateGeo = new THREE.BoxGeometry(cols * tileSize + 4, 8, rows * tileSize + 4);
+        const basePlateMat = new THREE.MeshStandardMaterial({ color: 0x111625, roughness: 0.9 });
+        const basePlate = new THREE.Mesh(basePlateGeo, basePlateMat);
+        basePlate.position.set(0, -4.5, 0); // Under the map
+        basePlate.receiveShadow = true;
+        this.groundGroup.add(basePlate);
+
         for (let r = 0; r < rows; r++) {
             for (let c = 0; c < cols; c++) {
                 const isPath = !this.gridLogic[r][c];
-                const geo = new THREE.PlaneGeometry(tileSize * 0.95, tileSize * 0.95);
-                geo.rotateX(-Math.PI/2);
+                
+                const height = isPath ? 0.2 : 1.6;
+                const centerY = isPath ? -0.1 : -0.4;
+                
+                const geo = new THREE.BoxGeometry(tileSize * 0.96, height, tileSize * 0.96);
+                const colorHex = isPath ? 0x2d3436 : ( ((r+c)%2===0) ? 0x34495e : 0x2c3e50 );
                 const mat = new THREE.MeshStandardMaterial({ 
-                    color: isPath ? 0x2d3436 : 0x27ae60,
-                    roughness: 0.9
+                    color: colorHex,
+                    roughness: 0.8,
+                    metalness: isPath ? 0.2 : 0.1
                 });
+                
                 const mesh = new THREE.Mesh(geo, mat);
-                mesh.position.set((c - cols/2 + 0.5) * tileSize, 0, (r - rows/2 + 0.5) * tileSize);
-                mesh.userData = { r, c, buildable: this.gridLogic[r][c], tower: null };
+                mesh.position.set((c - cols/2 + 0.5) * tileSize, centerY, (r - rows/2 + 0.5) * tileSize);
+                mesh.castShadow = true;
+                mesh.receiveShadow = true;
+                
+                if (!isPath) {
+                    const edges = new THREE.LineSegments(
+                        new THREE.EdgesGeometry(geo),
+                        new THREE.LineBasicMaterial({ color: 0x55efc4, transparent: true, opacity: 0.15 })
+                    );
+                    mesh.add(edges);
+                }
+
+                // Invisible hit plane exactly exactly on top of block for raycasting
+                const hitGeo = new THREE.PlaneGeometry(tileSize, tileSize);
+                hitGeo.rotateX(-Math.PI/2);
+                const hitMesh = new THREE.Mesh(hitGeo, new THREE.MeshBasicMaterial({visible: false}));
+                hitMesh.position.set(mesh.position.x, centerY + height/2, mesh.position.z);
+                hitMesh.userData = { r, c, buildable: this.gridLogic[r][c], tower: null };
+                
                 this.groundGroup.add(mesh);
-                this.tiles.push(mesh);
+                this.groundGroup.add(hitMesh);
+                this.tiles.push(hitMesh);
             }
         }
         this.threeScene.add(this.groundGroup);
@@ -299,6 +358,7 @@ export class GameScene extends ZortGameScene {
             const intersects = this.inputManager.getRaycastIntersection(this.cameraManager.getThreeCamera(), this.tiles);
             if (intersects.length > 0) {
                 this.hoverMesh.position.x = intersects[0].object.position.x;
+                this.hoverMesh.position.y = intersects[0].object.position.y + 0.02; // Always visible on top of correct block
                 this.hoverMesh.position.z = intersects[0].object.position.z;
                 this.hoverMesh.visible = true;
                 
@@ -317,6 +377,13 @@ export class GameScene extends ZortGameScene {
 
         this.waveSystem.update(delta);
         
+        if (this.baseEntity && this.baseEntity.baseRing) {
+            this.baseEntity.baseCore.rotation.y = time * 0.5;
+            this.baseEntity.baseCore.position.y = Math.sin(time * 2) * 0.5;
+            this.baseEntity.baseRing.rotation.x = Math.PI / 2 + Math.sin(time) * 0.2;
+            this.baseEntity.baseRing.rotation.z = time * 1.5;
+        }
+
         // ZortEngine scenes require explicit ticks for custom behavior unless using System/Component
         for (let enemy of this.enemies) {
             if (!enemy.isDead) enemy.onUpdate(delta, time);

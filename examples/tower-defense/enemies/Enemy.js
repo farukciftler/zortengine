@@ -24,7 +24,9 @@ export class Enemy extends GameObject {
         this.currentWaypointIndex = 0;
         this.isDead = false;
         
-        this.mesh = config.mesh || createHumanoid(config.color || 0xee5253, 0xffccaa, true);
+        const cColor = config.color || new THREE.Color().setHSL(Math.random(), 0.7, 0.5).getHex();
+        const hColor = config.headColor || new THREE.Color().setHSL(Math.random(), 0.5, 0.7).getHex();
+        this.mesh = config.mesh || createHumanoid(cColor, hColor, true);
         this.mesh.position.y = 0.0; // sits on its bottom pivot correctly
         this.group.add(this.mesh);
 
