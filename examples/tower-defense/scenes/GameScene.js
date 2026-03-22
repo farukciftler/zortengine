@@ -10,16 +10,28 @@ import { LaserTower } from '../towers/LaserTower.js';
 import { CannonTower } from '../towers/CannonTower.js';
 import { SlowTower } from '../towers/SlowTower.js';
 
+// Skill Pool
+const SKILL_POOL = [
+    { id: 'laser_speed', name: 'Rapid Laser', desc: 'Laser fire rate +15%', icon: '⚡', apply: (s) => { s.skillMods.laserFireRate *= 0.85; } },
+    { id: 'laser_dmg', name: 'Laser Power', desc: 'Laser damage +20%', icon: '🔴', apply: (s) => { s.skillMods.laserDamage *= 1.2; } },
+    { id: 'cannon_dmg', name: 'Heavy Rounds', desc: 'Cannon damage +25%', icon: '💥', apply: (s) => { s.skillMods.cannonDamage *= 1.25; } },
+    { id: 'slow_range', name: 'Frost Reach', desc: 'Slow tower range +20%', icon: '❄️', apply: (s) => { s.skillMods.slowRange *= 1.2; } },
+    { id: 'sell_bonus', name: 'Salvage Expert', desc: 'Tower sell price +25%', icon: '💰', apply: (s) => { s.skillMods.sellBonus *= 1.25; } },
+    { id: 'gold_bonus', name: 'Bounty Hunter', desc: 'Enemy gold reward +15%', icon: '🪙', apply: (s) => { s.skillMods.goldBonus *= 1.15; } },
+    { id: 'all_range', name: 'Eagle Eye', desc: 'All tower range +10%', icon: '🦅', apply: (s) => { s.skillMods.allRange *= 1.1; } },
+    { id: 'all_dmg', name: 'Arsenal', desc: 'All tower damage +10%', icon: '🎯', apply: (s) => { s.skillMods.allDamage *= 1.1; } },
+];
+
 export class GameScene extends ZortGameScene {
     constructor() {
         super({ name: 'game' });
         this.enemies = [];
         this.towers = [];
         this.tiles = [];
-        this.gold = 500;
+        this.gold = 300;
         this.playerHp = 100;
         
-        this.levelIndex = 0; // 0=Level 1, 1=Level 2, 2=Level 3...
+        this.levelIndex = 0;
         this.currentLevel = null;
         this.baseEntities = [];
         this.particles = [];
@@ -27,9 +39,24 @@ export class GameScene extends ZortGameScene {
         
         this.selectedTowerType = 'laser';
         this.hoverMesh = null;
-        this.selectedTile = null; // for upgrades
+        this.selectedTile = null;
         
         this.isGameOver = false;
+
+        // XP & Level System
+        this.xp = 0;
+        this.playerLevel = 1;
+        this.xpToNextLevel = 50;
+        this.skillMods = {
+            laserFireRate: 1.0,
+            laserDamage: 1.0,
+            cannonDamage: 1.0,
+            slowRange: 1.0,
+            sellBonus: 1.0,
+            goldBonus: 1.0,
+            allRange: 1.0,
+            allDamage: 1.0,
+        };
     }
 
     setup() {
@@ -107,7 +134,9 @@ export class GameScene extends ZortGameScene {
 
         // Events
         this.events.on('enemy:killed', (enemy) => {
-            this.gold += enemy.reward;
+            const goldReward = Math.floor(enemy.reward * this.skillMods.goldBonus);
+            this.gold += goldReward;
+            this.addXP(enemy.reward);
             this.updateHUD();
             this.removeEnemy(enemy);
         });
@@ -155,25 +184,41 @@ export class GameScene extends ZortGameScene {
         const { cols, rows } = this.currentLevel;
         this.gridLogic = buildGrid(this.currentLevel);
         
+        // Build buff zone lookup
+        this.buffZoneMap = {};
+        if (this.currentLevel.buffZones) {
+            for (const bz of this.currentLevel.buffZones) {
+                this.buffZoneMap[`${bz.r}_${bz.c}`] = bz;
+            }
+        }
+
         // Create meshes
         this.groundGroup = new THREE.Group();
         
         const basePlateGeo = new THREE.BoxGeometry(cols * tileSize + 4, 8, rows * tileSize + 4);
         const basePlateMat = new THREE.MeshStandardMaterial({ color: 0x111625, roughness: 0.9 });
         const basePlate = new THREE.Mesh(basePlateGeo, basePlateMat);
-        basePlate.position.set(0, -4.5, 0); // Under the map
+        basePlate.position.set(0, -4.5, 0);
         basePlate.receiveShadow = true;
         this.groundGroup.add(basePlate);
 
         for (let r = 0; r < rows; r++) {
             for (let c = 0; c < cols; c++) {
                 const isPath = !this.gridLogic[r][c];
+                const isBuffZone = !!this.buffZoneMap[`${r}_${c}`];
                 
                 const height = isPath ? 0.2 : 1.6;
                 const centerY = isPath ? -0.1 : -0.4;
                 
                 const geo = new THREE.BoxGeometry(tileSize * 0.96, height, tileSize * 0.96);
-                const colorHex = isPath ? 0x2d3436 : ( ((r+c)%2===0) ? 0x34495e : 0x2c3e50 );
+                let colorHex = isPath ? 0x2d3436 : ( ((r+c)%2===0) ? 0x34495e : 0x2c3e50 );
+                
+                // Buff Zone visual highlight
+                if (isBuffZone && !isPath) {
+                    const bz = this.buffZoneMap[`${r}_${c}`];
+                    colorHex = bz.type === 'range' ? 0x2d6a4f : 0x5a189a;
+                }
+
                 const mat = new THREE.MeshStandardMaterial({ 
                     color: colorHex,
                     roughness: 0.8,
@@ -186,19 +231,32 @@ export class GameScene extends ZortGameScene {
                 mesh.receiveShadow = true;
                 
                 if (!isPath) {
+                    const edgeColor = isBuffZone ? 0x00f2fe : 0x55efc4;
+                    const edgeOpacity = isBuffZone ? 0.4 : 0.15;
                     const edges = new THREE.LineSegments(
                         new THREE.EdgesGeometry(geo),
-                        new THREE.LineBasicMaterial({ color: 0x55efc4, transparent: true, opacity: 0.15 })
+                        new THREE.LineBasicMaterial({ color: edgeColor, transparent: true, opacity: edgeOpacity })
                     );
                     mesh.add(edges);
                 }
 
-                // Invisible hit plane exactly exactly on top of block for raycasting
+                // Buff Zone glow marker
+                if (isBuffZone && !isPath) {
+                    const bz = this.buffZoneMap[`${r}_${c}`];
+                    const markerColor = bz.type === 'range' ? 0x00f2fe : 0xe040fb;
+                    const markerGeo = new THREE.TorusGeometry(0.6, 0.04, 8, 32);
+                    const markerMat = new THREE.MeshBasicMaterial({ color: markerColor, transparent: true, opacity: 0.7 });
+                    const marker = new THREE.Mesh(markerGeo, markerMat);
+                    marker.rotation.x = -Math.PI / 2;
+                    marker.position.set(mesh.position.x, centerY + height/2 + 0.05, mesh.position.z);
+                    this.groundGroup.add(marker);
+                }
+
                 const hitGeo = new THREE.PlaneGeometry(tileSize, tileSize);
                 hitGeo.rotateX(-Math.PI/2);
                 const hitMesh = new THREE.Mesh(hitGeo, new THREE.MeshBasicMaterial({visible: false}));
                 hitMesh.position.set(mesh.position.x, centerY + height/2, mesh.position.z);
-                hitMesh.userData = { r, c, buildable: this.gridLogic[r][c], tower: null };
+                hitMesh.userData = { r, c, buildable: this.gridLogic[r][c], tower: null, buffZone: this.buffZoneMap[`${r}_${c}`] || null };
                 
                 this.groundGroup.add(mesh);
                 this.groundGroup.add(hitMesh);
@@ -322,9 +380,10 @@ export class GameScene extends ZortGameScene {
             this.waveUI.classList.remove('hidden');
             this.buildUI.classList.remove('hidden');
         }
+        const xpBarContainer = document.getElementById('xp-bar-container');
+        if (xpBarContainer) xpBarContainer.classList.remove('hidden');
         this.updateHUD();
         
-        // Position camera to look at the board
         this.cameraManager.updateFollow(new THREE.Vector3(0,0,0), 0, 0, {
             orthoOffset: new THREE.Vector3(25, 25, 25),
             lookOffset: new THREE.Vector3(0, 0, 0)
@@ -344,6 +403,11 @@ export class GameScene extends ZortGameScene {
         document.getElementById('val-hp').innerText = this.playerHp;
         document.getElementById('val-gold').innerText = this.gold;
         document.getElementById('val-wave').innerText = this.waveSystem.wave;
+        document.getElementById('val-xp').innerText = this.xp;
+        document.getElementById('val-player-lvl').innerText = this.playerLevel;
+        
+        const fill = document.getElementById('xp-bar-fill');
+        if (fill) fill.style.width = `${Math.min(100, (this.xp / this.xpToNextLevel) * 100)}%`;
     }
 
     spawnEnemy(enemy) {
@@ -394,6 +458,63 @@ export class GameScene extends ZortGameScene {
         this.particles.push({ mesh: p, vel: new THREE.Vector3(0, 3, 0), life: 1.2, isFloatingText: true });
     }
 
+    // XP & Level System
+    addXP(amount) {
+        this.xp += amount;
+        while (this.xp >= this.xpToNextLevel) {
+            this.xp -= this.xpToNextLevel;
+            this.playerLevel++;
+            this.xpToNextLevel = Math.floor(this.xpToNextLevel * 1.5);
+            this.showSkillPanel();
+        }
+    }
+
+    showSkillPanel() {
+        const panel = document.getElementById('skill-panel');
+        const choicesDiv = document.getElementById('skill-choices');
+        if (!panel || !choicesDiv) return;
+        
+        // Pick 3 random skills
+        const shuffled = [...SKILL_POOL].sort(() => Math.random() - 0.5);
+        const choices = shuffled.slice(0, 3);
+        choicesDiv.innerHTML = '';
+        
+        for (const skill of choices) {
+            const btn = document.createElement('div');
+            btn.style.cssText = 'cursor:pointer; background:rgba(30,40,50,0.95); border:1px solid rgba(255,255,255,0.2); border-radius:10px; padding:15px; width:140px; transition:border-color 0.2s, transform 0.2s;';
+            btn.innerHTML = `<div style="font-size:2rem;">${skill.icon}</div><div style="font-weight:bold; margin:8px 0; color:#fff;">${skill.name}</div><div style="font-size:0.8rem; color:#aaa;">${skill.desc}</div>`;
+            btn.addEventListener('mouseenter', () => { btn.style.borderColor = '#4facfe'; btn.style.transform = 'scale(1.05)'; });
+            btn.addEventListener('mouseleave', () => { btn.style.borderColor = 'rgba(255,255,255,0.2)'; btn.style.transform = 'scale(1)'; });
+            btn.addEventListener('click', () => {
+                skill.apply(this);
+                panel.classList.add('hidden');
+                this.createFloatingText(new THREE.Vector3(0, 5, 0), `${skill.icon} ${skill.name}`, 0x4facfe);
+                this.updateHUD();
+            });
+            choicesDiv.appendChild(btn);
+        }
+        panel.classList.remove('hidden');
+    }
+
+    // Impact Sparks (called by LaserTower on hit)
+    createImpactSparks(pos, color) {
+        for (let i = 0; i < 6; i++) {
+            const size = 0.02 + Math.random() * 0.03;
+            const p = new THREE.Mesh(
+                new THREE.TetrahedronGeometry(size),
+                new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 1 })
+            );
+            p.position.copy(pos);
+            const vel = new THREE.Vector3(
+                (Math.random() - 0.5) * 4,
+                Math.random() * 3 + 0.5,
+                (Math.random() - 0.5) * 4
+            );
+            this.particles.push({ mesh: p, vel, life: 0.25 });
+            this.threeScene.add(p);
+        }
+    }
+
     gameOver() {
         this.isGameOver = true;
         alert("GAME OVER! Wave " + this.waveSystem.wave);
@@ -427,8 +548,7 @@ export class GameScene extends ZortGameScene {
         let TowerClass = LaserTower;
         let pTile = tile.position;
         
-        let tempTwr = new LaserTower(this); // Just to get cost, will optimize later
-        let cost = 100;
+        let cost = 120;
         if(this.selectedTowerType === 'cannon') { TowerClass = CannonTower; cost=200; }
         else if(this.selectedTowerType === 'slow') { TowerClass = SlowTower; cost=150; }
         
@@ -436,6 +556,28 @@ export class GameScene extends ZortGameScene {
             this.gold -= cost;
             const twr = new TowerClass(this);
             twr.group.position.copy(pTile);
+            
+            // Apply global skill mods
+            twr.range *= this.skillMods.allRange;
+            twr.damage *= this.skillMods.allDamage;
+            twr.sellValue *= this.skillMods.sellBonus;
+            if (twr.type === 'laser') {
+                twr.fireRate *= this.skillMods.laserFireRate;
+                twr.damage *= this.skillMods.laserDamage;
+            } else if (twr.type === 'cannon') {
+                twr.damage *= this.skillMods.cannonDamage;
+            } else if (twr.type === 'slow') {
+                twr.range *= this.skillMods.slowRange;
+            }
+
+            // Apply Buff Zone bonuses
+            const bz = tile.userData.buffZone;
+            if (bz) {
+                if (bz.type === 'range') twr.range *= (1 + bz.bonus);
+                else if (bz.type === 'damage') twr.damage *= (1 + bz.bonus);
+                console.log(`[BuffZone] Tower gets ${bz.type} +${Math.round(bz.bonus*100)}% bonus!`);
+            }
+
             this.add(twr);
             this.towers.push(twr);
             tile.userData.tower = twr;
@@ -451,7 +593,9 @@ export class GameScene extends ZortGameScene {
         let twr = tile.userData.tower;
         document.getElementById('upg-title').innerText = twr.type.toUpperCase() + ' TOWER';
         document.getElementById('upg-lvl').innerText = twr.level;
-        document.getElementById('upg-dmg').innerText = twr.damage.toFixed(0);
+        document.getElementById('upg-dmg').innerText = twr.damage.toFixed(1);
+        document.getElementById('upg-range').innerText = twr.range.toFixed(1);
+        document.getElementById('upg-sell').innerText = Math.floor(twr.sellValue);
         document.getElementById('upg-cost').innerText = twr.upgradeCost;
         this.upgradeUI.classList.remove('hidden');
     }
@@ -476,13 +620,16 @@ export class GameScene extends ZortGameScene {
             showingRange = true;
         }
         
+        const buffTooltip = document.getElementById('buff-tooltip');
+        let showingBuff = false;
+
         if (this.inputManager && this.tiles.length > 0) {
             const intersects = this.inputManager.getRaycastIntersection(this.cameraManager.getThreeCamera(), this.tiles);
             if (intersects.length > 0) {
                 const hitMesh = intersects[0].object;
                 const data = hitMesh.userData;
                 this.hoverMesh.position.x = hitMesh.position.x;
-                this.hoverMesh.position.y = hitMesh.position.y + 0.02; // Always visible on top of correct block
+                this.hoverMesh.position.y = hitMesh.position.y + 0.02;
                 this.hoverMesh.position.z = hitMesh.position.z;
                 this.hoverMesh.visible = true;
                 
@@ -499,15 +646,37 @@ export class GameScene extends ZortGameScene {
                 } else if(data.buildable) {
                     this.hoverMesh.material.color.setHex(0xffffff);
                     if (!showingRange) {
-                        let r = 12;
-                        if(this.selectedTowerType === 'cannon') r = 8;
-                        else if(this.selectedTowerType === 'slow') r = 10;
+                        let r = 5;
+                        if(this.selectedTowerType === 'cannon') r = 4;
+                        else if(this.selectedTowerType === 'slow') r = 5;
                         
                         this.rangeCircle.position.set(hitMesh.position.x, hitMesh.position.y + 0.1, hitMesh.position.z);
                         this.rangeCircle.scale.setScalar(r);
                         this.rangeCircle.material.color.setHex(0x00f2fe);
                         this.rangeCircle.visible = true;
                         showingRange = true;
+                    }
+
+                    // Show buff zone tooltip
+                    if (data.buffZone && buffTooltip) {
+                        const bz = data.buffZone;
+                        const icon = bz.type === 'range' ? '🎯' : '⚔️';
+                        const label = bz.type === 'range' ? 'RANGE' : 'DAMAGE';
+                        const pct = Math.round(bz.bonus * 100);
+                        buffTooltip.innerHTML = `${icon} +${pct}% ${label}`;
+                        buffTooltip.style.borderColor = bz.type === 'range' ? 'rgba(0, 242, 254, 0.6)' : 'rgba(224, 64, 251, 0.6)';
+                        buffTooltip.style.boxShadow = bz.type === 'range' 
+                            ? '0 0 12px rgba(0, 242, 254, 0.3)' 
+                            : '0 0 12px rgba(224, 64, 251, 0.3)';
+
+                        // Position near the mouse
+                        const ptr = this.inputManager.mousePos || { x: 0, y: 0 };
+                        const screenX = ((ptr.x + 1) / 2) * window.innerWidth;
+                        const screenY = ((1 - ptr.y) / 2) * window.innerHeight;
+                        buffTooltip.style.left = `${screenX + 15}px`;
+                        buffTooltip.style.top = `${screenY - 30}px`;
+                        buffTooltip.classList.remove('hidden');
+                        showingBuff = true;
                     }
                 } else {
                     this.hoverMesh.material.color.setHex(0xe84118);
@@ -518,6 +687,9 @@ export class GameScene extends ZortGameScene {
         }
         if (!showingRange) {
             this.rangeCircle.visible = false;
+        }
+        if (!showingBuff && buffTooltip) {
+            buffTooltip.classList.add('hidden');
         }
 
         // Animate particles

@@ -26,7 +26,7 @@ export class Tower extends GameObject {
     }
 
     buildMesh(config) {
-        const baseMat = new THREE.MeshStandardMaterial({ color: 0x2d3436, roughness: 0.8 });
+        const baseMat = new THREE.MeshStandardMaterial({ color: 0xffffff, metalness: 0.8, roughness: 0.1 });
         if (config.baseGeo) {
             this.baseMesh = new THREE.Mesh(config.baseGeo, baseMat);
         } else {
@@ -58,9 +58,15 @@ export class Tower extends GameObject {
         this.range *= 1.1;
         this.sellValue += this.upgradeCost * 0.5;
         this.upgradeCost = Math.floor(this.upgradeCost * 1.6);
-        this.turretMesh.scale.multiplyScalar(1.05);
-        this.turretMesh.material.emissive.setHex(this.color);
-        this.turretMesh.material.emissiveIntensity = 0.2 * this.level;
+        // Let subclasses handle visual changes
+        this.onUpgradeVisual(this.level);
+    }
+
+    onUpgradeVisual(level) {
+        // Default: subtle scale bump. Subclasses override this.
+        if (this.turretMesh) {
+            this.turretMesh.scale.multiplyScalar(1.03);
+        }
     }
 
     findTarget(enemies) {

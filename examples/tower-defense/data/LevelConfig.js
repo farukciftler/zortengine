@@ -14,7 +14,12 @@ export const Levels = [
                 { c: 15, r: 4 }
             ]
         ],
-        baseNodes: [{ c: 15, r: 4 }]
+        baseNodes: [{ c: 15, r: 4 }],
+        buffZones: [
+            { r: 3, c: 2, type: 'range', bonus: 0.25 },
+            { r: 8, c: 4, type: 'damage', bonus: 0.3 },
+            { r: 5, c: 8, type: 'range', bonus: 0.2 },
+        ]
     },
     {
         id: 2,
@@ -31,11 +36,17 @@ export const Levels = [
             [
                 { c: -1, r: 13 },
                 { c: 4, r: 13 },
-                { c: 4, r: 7 }, // Joins middle
+                { c: 4, r: 7 },
                 { c: 17, r: 7 }
             ]
         ],
-        baseNodes: [{ c: 17, r: 7 }]
+        baseNodes: [{ c: 17, r: 7 }],
+        buffZones: [
+            { r: 4, c: 7, type: 'range', bonus: 0.2 },
+            { r: 12, c: 3, type: 'damage', bonus: 0.25 },
+            { r: 6, c: 10, type: 'range', bonus: 0.3 },
+            { r: 8, c: 15, type: 'damage', bonus: 0.2 },
+        ]
     },
     {
         id: 3,
@@ -44,17 +55,23 @@ export const Levels = [
         rows: 18,
         paths: [
             [
-                { c: 4, r: -1 }, // Top
+                { c: 4, r: -1 },
                 { c: 4, r: 14 },
-                { c: 18, r: 14 } // Unites at Exit right
+                { c: 18, r: 14 }
             ],
             [
-                { c: 14, r: -1 }, // Top right
+                { c: 14, r: -1 },
                 { c: 14, r: 8 },
-                { c: -1, r: 8 }  // Exit left
+                { c: -1, r: 8 }
             ]
         ],
-        baseNodes: [{ c: 18, r: 14 }, { c: -1, r: 8 }]
+        baseNodes: [{ c: 18, r: 14 }, { c: -1, r: 8 }],
+        buffZones: [
+            { r: 3, c: 5, type: 'damage', bonus: 0.3 },
+            { r: 13, c: 3, type: 'range', bonus: 0.25 },
+            { r: 7, c: 13, type: 'damage', bonus: 0.2 },
+            { r: 15, c: 16, type: 'range', bonus: 0.3 },
+        ]
     }
 ];
 

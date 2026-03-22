@@ -68,36 +68,71 @@
             <div class="hud-stat">HP: <span id="val-hp">100</span></div>
             <div class="hud-stat">GOLD: $<span id="val-gold">500</span></div>
             <div class="hud-stat">WAVE: <span id="val-wave">1</span></div>
+            <div class="hud-stat">XP: <span id="val-xp">0</span> | LVL <span id="val-player-lvl">1</span></div>
+        </div>
+
+        <div id="xp-bar-container" class="hidden" style="position: absolute; top: 60px; left: 20px; width: 200px; height: 6px; background: rgba(255,255,255,0.15); border-radius: 3px; pointer-events: none;">
+            <div id="xp-bar-fill" style="height: 100%; width: 0%; background: linear-gradient(90deg, #4facfe, #00f2fe); border-radius: 3px; transition: width 0.3s;"></div>
         </div>
 
         <div id="wave-status" class="hidden">
             <button id="btn-next-wave" class="btn panel">START WAVE</button>
         </div>
 
-        <div id="build-menu" class="panel hidden">
-            <div class="build-btn" data-type="laser">
+        <div id="buff-tooltip" class="hidden" style="position: absolute; pointer-events: none; padding: 8px 14px; border-radius: 8px; background: rgba(10, 15, 30, 0.92); backdrop-filter: blur(8px); border: 1px solid rgba(0, 242, 254, 0.5); font-size: 0.85rem; font-weight: bold; color: #fff; text-align: center; z-index: 20; white-space: nowrap; box-shadow: 0 0 12px rgba(0, 242, 254, 0.3);">
+        </div>
+
+        <div id="build-menu" class="panel hidden" style="gap: 10px;">
+            <div class="build-btn" data-type="laser" style="min-width: 120px;">
                 <div class="build-icon icon-laser"></div>
-                <span>Laser ($100)</span>
+                <span style="font-weight:bold;">Laser ($120)</span>
+                <div style="font-size:0.65rem; color:#aaa; margin-top:4px; text-align:left; line-height:1.4;">
+                    DMG: 3/hit · DPS: 20<br>
+                    Range: 5 · Rate: Fast<br>
+                    <span style="color:#ff4757;">⚡ Piercing beam</span>
+                </div>
             </div>
-            <div class="build-btn" data-type="cannon">
+            <div class="build-btn" data-type="cannon" style="min-width: 120px;">
                 <div class="build-icon icon-cannon"></div>
-                <span>Cannon ($200)</span>
+                <span style="font-weight:bold;">Cannon ($200)</span>
+                <div style="font-size:0.65rem; color:#aaa; margin-top:4px; text-align:left; line-height:1.4;">
+                    DMG: 25/hit · AoE<br>
+                    Range: 4 · Rate: Slow<br>
+                    <span style="color:#ffa502;">💥 Splash damage</span>
+                </div>
             </div>
-            <div class="build-btn" data-type="slow">
+            <div class="build-btn" data-type="slow" style="min-width: 120px;">
                 <div class="build-icon icon-slow"></div>
-                <span>Slow ($150)</span>
+                <span style="font-weight:bold;">Frost ($150)</span>
+                <div style="font-size:0.65rem; color:#aaa; margin-top:4px; text-align:left; line-height:1.4;">
+                    DMG: 2/hit · Slow<br>
+                    Range: 5 · Rate: Med<br>
+                    <span style="color:#1e90ff;">❄️ 40% slow 3s</span>
+                </div>
             </div>
         </div>
 
         <div id="upgrade-panel" class="panel hidden">
-            <h3 id="upg-title" style="margin:0 0 10px 0;">Tower</h3>
-            <div style="font-size:0.9rem; color:#ccc; margin-bottom:15px;">Lvl <span id="upg-lvl">1</span> | Dmg: <span id="upg-dmg">10</span></div>
+            <h3 id="upg-title" style="margin:0 0 5px 0;">Tower</h3>
+            <div style="font-size:0.85rem; color:#ccc; margin-bottom:5px;">
+                Lvl <span id="upg-lvl">1</span> | Dmg: <span id="upg-dmg">10</span> | Range: <span id="upg-range">5</span>
+            </div>
+            <div style="font-size:0.75rem; color:#888; margin-bottom:10px;">
+                Sell: $<span id="upg-sell">0</span>
+            </div>
             <button id="btn-upgrade" class="btn" style="width:100%; font-size:1rem;">UPGRADE ($<span id="upg-cost">50</span>)</button>
             <button id="btn-sell" class="btn" style="width:100%; font-size:1rem; background: #ff4757; margin-top: 5px;">SELL</button>
         </div>
 
         <div id="wave-banner" class="hidden" style="position: absolute; top: 15%; left: 50%; transform: translateX(-50%); pointer-events: none; text-align: center; width: 100%;">
-            <h2 id="banner-text" style="font-size: 5rem; font-weight: 900; margin: 0; background: linear-gradient(to right, #4facfe, #00f2fe); -webkit-background-clip: text; -webkit-text-fill-color: transparent; filter: drop-shadow(0 0 10px rgba(79, 172, 254, 0.5)); letter-spacing: 15px; opacity: 0; transition: opacity 0.5s, transform 0.5s scale(0.8);">WAVE 1</h2>
+            <h2 id="banner-text" style="font-size: 5rem; font-weight: 900; margin: 0; background: linear-gradient(to right, #4facfe, #00f2fe); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; filter: drop-shadow(0 0 10px rgba(79, 172, 254, 0.5)); letter-spacing: 15px; opacity: 0; transition: opacity 0.5s, transform 0.5s scale(0.8);">WAVE 1</h2>
+        </div>
+
+        <!-- Skill Selection Panel -->
+        <div id="skill-panel" class="panel hidden" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); text-align: center; padding: 30px; min-width: 500px; border: 2px solid #4facfe; box-shadow: 0 0 30px rgba(79, 172, 254, 0.3); z-index: 10;">
+            <h2 style="margin: 0 0 5px 0; color: #4facfe; font-size: 1.8rem;">⚡ LEVEL UP!</h2>
+            <p style="margin: 0 0 20px 0; color: #aaa; font-size: 0.9rem;">Choose a permanent upgrade:</p>
+            <div id="skill-choices" style="display: flex; gap: 15px; justify-content: center;"></div>
         </div>
 
         <div id="victory-screen" class="panel hidden" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); text-align: center; padding: 40px; min-width: 400px; border: 2px solid #00f2fe; box-shadow: 0 0 30px rgba(0, 242, 254, 0.3);">
