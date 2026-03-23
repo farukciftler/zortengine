@@ -44,6 +44,7 @@ import { RunBootstrap } from '../runtime/RunBootstrap.js';
 import { MetaProgression } from '../runtime/MetaProgression.js';
 import { RunState } from '../runtime/RunState.js';
 import { RunHud } from '../ui/RunHud.js';
+import { buildBoynerBuilding } from '../buildings/BoynerBuilding.js';
 
 export class RunScene extends GameScene {
     constructor(options = {}) {
@@ -126,7 +127,7 @@ export class RunScene extends GameScene {
         this._setupInputRoutes(input);
         this._setupAbilities(abilities, input, particles, cameraManager);
         this._applyLoadoutModifiers();
-        this._enterRoom(ROOM_GRAPH[0].id);
+        // this._enterRoom(ROOM_GRAPH[0].id);
         this.checkpointController.save('setup');
         this.replicationController.connect();
 
@@ -305,7 +306,7 @@ export class RunScene extends GameScene {
         this.threeScene.add(dirLight);
     }
 
-    _buildWorldFromDefinition(worldDefinition) {
+    _buildWorldFromDefinition(worldDefinition, physics) {
         for (const prop of worldDefinition.props) {
             this.prefabs.create(prop.prefabId, {
                 definition: prop
@@ -343,7 +344,191 @@ export class RunScene extends GameScene {
         );
         this.add(this.extractionGate);
         this.spawnPoints = worldDefinition.spawnPoints.map(point => new THREE.Vector3(...point));
+
+        this._buildCareerBuildings(physics);
     }
+
+    _buildCareerBuildings(physics) {
+        // Boyner uses a dedicated retail store builder
+        buildBoynerBuilding(this.threeScene, physics, this.groundMaterial, [-20, 0, -20]);
+
+        const companies = [
+            {
+                name: 'MakeItProduct',
+                title: 'Founder & Lead',
+                color: 0x8e44ad,
+                emissive: 0x4a0070,
+                position: [20, 0, -20],
+                size: [7, 9, 7],
+                shape: 'box',
+                accentColor: 0xd670f0,
+            },
+            {
+                name: 'Wugo',
+                title: 'Product Manager',
+                color: 0x2980b9,
+                emissive: 0x00427a,
+                position: [-30, 0, 5],
+                size: [6, 7, 6],
+                shape: 'box',
+                accentColor: 0x5dade2,
+            },
+            {
+                name: 'PeP FinTech',
+                title: 'Senior Dev',
+                color: 0x27ae60,
+                emissive: 0x0b5430,
+                position: [30, 0, 5],
+                size: [6, 8, 6],
+                shape: 'box',
+                accentColor: 0x58d68d,
+            },
+            {
+                name: 'New Mind',
+                title: 'Software Dev',
+                color: 0xe67e22,
+                emissive: 0x7e4000,
+                position: [-20, 0, 25],
+                size: [5, 6, 5],
+                shape: 'box',
+                accentColor: 0xf0a562,
+            },
+            {
+                name: 'Locup Digital',
+                title: 'CEO & Founder',
+                color: 0x16a085,
+                emissive: 0x004d40,
+                position: [20, 0, 25],
+                size: [5, 5, 5],
+                shape: 'box',
+                accentColor: 0x48c9b0,
+            },
+            {
+                name: 'INVEON',
+                title: 'Junior Developer',
+                color: 0x2c3e50,
+                emissive: 0x0a0d10,
+                position: [0, 0, -35],
+                size: [6, 6, 6],
+                shape: 'box',
+                accentColor: 0x7f8c8d,
+            },
+        ];
+
+        for (const company of companies) {
+            // Main building body
+            const [w, h, d] = company.size;
+            const bodyGeo = new THREE.BoxGeometry(w, h, d);
+            const bodyMat = new THREE.MeshStandardMaterial({
+                color: company.color,
+                emissive: company.emissive,
+                emissiveIntensity: 0.3,
+                roughness: 0.5,
+                metalness: 0.3,
+            });
+            const body = new THREE.Mesh(bodyGeo, bodyMat);
+            body.castShadow = true;
+            body.receiveShadow = true;
+            body.position.set(company.position[0], h / 2, company.position[2]);
+            this.threeScene.add(body);
+            this.environmentMeshes.push(body);
+
+            // Physics body for the building
+            if (physics) {
+                physics.addBody(
+                    physics.createBox(w, h, d, 0, body.position, null, { material: this.groundMaterial }),
+                    body
+                );
+            }
+
+            // Rooftop (flat accent slab)
+            const roofGeo = new THREE.BoxGeometry(w + 0.6, 0.4, d + 0.6);
+            const roofMat = new THREE.MeshStandardMaterial({
+                color: company.accentColor,
+                emissive: company.accentColor,
+                emissiveIntensity: 0.5,
+                roughness: 0.3,
+                metalness: 0.5,
+            });
+            const roof = new THREE.Mesh(roofGeo, roofMat);
+            roof.position.set(company.position[0], h + 0.2, company.position[2]);
+            this.threeScene.add(roof);
+
+            // Edge glow strips (vertical lines on corners)
+            const stripH = h;
+            const stripGeo = new THREE.BoxGeometry(0.15, stripH, 0.15);
+            const stripMat = new THREE.MeshStandardMaterial({
+                color: company.accentColor,
+                emissive: company.accentColor,
+                emissiveIntensity: 1.2,
+                roughness: 0.2,
+            });
+            const offX = w / 2;
+            const offZ = d / 2;
+            const corners = [
+                [offX, offZ], [-offX, offZ],
+                [offX, -offZ], [-offX, -offZ]
+            ];
+            for (const [cx, cz] of corners) {
+                const strip = new THREE.Mesh(stripGeo, stripMat);
+                strip.position.set(company.position[0] + cx, h / 2, company.position[2] + cz);
+                this.threeScene.add(strip);
+            }
+
+            // Floating name label above building
+            const canvas = document.createElement('canvas');
+            canvas.width = 512;
+            canvas.height = 128;
+            const ctx = canvas.getContext('2d');
+            ctx.clearRect(0, 0, 512, 128);
+            ctx.fillStyle = 'rgba(0,0,0,0.65)';
+            const radius = 16;
+            ctx.beginPath();
+            ctx.moveTo(radius, 0);
+            ctx.lineTo(512 - radius, 0);
+            ctx.quadraticCurveTo(512, 0, 512, radius);
+            ctx.lineTo(512, 128 - radius);
+            ctx.quadraticCurveTo(512, 128, 512 - radius, 128);
+            ctx.lineTo(radius, 128);
+            ctx.quadraticCurveTo(0, 128, 0, 128 - radius);
+            ctx.lineTo(0, radius);
+            ctx.quadraticCurveTo(0, 0, radius, 0);
+            ctx.closePath();
+            ctx.fill();
+
+            // Accent border
+            ctx.strokeStyle = `#${company.accentColor.toString(16).padStart(6, '0')}`;
+            ctx.lineWidth = 4;
+            ctx.stroke();
+
+            // Company name
+            ctx.fillStyle = '#ffffff';
+            ctx.font = 'bold 42px Arial';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(company.name, 256, 52);
+
+            // Title
+            ctx.fillStyle = `#${company.accentColor.toString(16).padStart(6, '0')}`;
+            ctx.font = '24px Arial';
+            ctx.fillText(company.title, 256, 92);
+
+            const texture = new THREE.CanvasTexture(canvas);
+            const labelGeo = new THREE.PlaneGeometry(7, 1.8);
+            const labelMat = new THREE.MeshBasicMaterial({
+                map: texture,
+                transparent: true,
+                depthWrite: false,
+                side: THREE.DoubleSide
+            });
+            const label = new THREE.Mesh(labelGeo, labelMat);
+            label.position.set(company.position[0], h + 2.5, company.position[2]);
+            this.threeScene.add(label);
+            this._careerLabels = this._careerLabels || [];
+            this._careerLabels.push(label);
+        }
+    }
+
 
     _createPlayers(physics, input, particles, cameraManager) {
         const defaultPlayer = this._createPlayer({
@@ -836,6 +1021,16 @@ export class RunScene extends GameScene {
 
         this._processEnemyAttacks(delta);
         this._processHazards(delta);
+
+        // Career building labels: billboard effect (always face the camera)
+        if (this._careerLabels && this._careerLabels.length > 0) {
+            const camera = this.getCamera?.()?.getThreeCamera?.();
+            if (camera) {
+                for (const label of this._careerLabels) {
+                    label.lookAt(camera.position);
+                }
+            }
+        }
 
         this.replicationController.syncLocalState();
     }

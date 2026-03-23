@@ -8,6 +8,7 @@ export class MyGame extends Engine {
             seed: options.seed
         });
         this.bootOptions = options;
+        /*
         this.menuScene = new MainMenuScene({
             networkUrl: options.networkUrl,
             playerId: options.playerId,
@@ -17,6 +18,8 @@ export class MyGame extends Engine {
         this._bindMenuScene(this.menuScene);
         this.addScene('menu', this.menuScene);
         this.useScene('menu');
+        */
+        this.startRun();
         this.start();
     }
 

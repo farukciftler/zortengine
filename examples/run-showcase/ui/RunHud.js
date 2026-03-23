@@ -5,49 +5,10 @@ export class RunHud {
     }
 
     setup() {
+        /*
         this.ui.addProgressBar('hp', 'calc(50% - 100px)', 20, 200, 25, '#e74c3c');
-        this.ui.addText('score', 'HAVUZ: 20/20', 20, 20, {
-            color: '#ffffff',
-            size: 20
-        });
-        this.ui.addText('wave', 'DALGA: 1/1', 20, 100, {
-            color: '#f8e16c',
-            size: 18
-        });
-        this.ui.addText('meta', 'ESSENCE: 0 | RELIC: 0', 20, 130, {
-            color: '#7dd3fc',
-            size: 16
-        });
-        this.ui.addText('status', 'DURUM: AKTIF', 20, 160, {
-            color: '#cbd5e1',
-            size: 16
-        });
-        this.ui.addText('metaProgress', 'KALICI: 0 ESSENCE | TAMAM: 0 | FAIL: 0', 20, 190, {
-            color: '#c084fc',
-            size: 15
-        });
-        this.ui.addText('room', 'ODA: Landing Bay', 20, 215, {
-            color: '#fca5a5',
-            size: 15
-        });
-        this.ui.addText('seed', 'SEED: daily-00000000', 20, 240, {
-            color: '#86efac',
-            size: 14
-        });
-        this.ui.addText(
-            'info',
-            'Run demo: WASD hareket, Space ziplama, tik ates, Q dash, V kamera gecisi.',
-            20,
-            285,
-            { color: '#bdc3c7', size: 16 }
-        );
-
-        this.ui.addPanel('choicePanel', 'calc(50% - 190px)', 'calc(50% - 130px)', 380, {
-            display: 'none'
-        });
-        this.ui.addPanel('summaryPanel', 'calc(50% - 210px)', 'calc(50% - 120px)', 420, {
-            display: 'none'
-        });
+        ... (rest commented out effectively by making it an empty setup or commenting it)
+        */
     }
 
     updateAmmo(freeCount, totalCount = 20) {
