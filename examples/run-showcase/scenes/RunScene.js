@@ -46,6 +46,7 @@ import { RunState } from '../runtime/RunState.js';
 import { RunHud } from '../ui/RunHud.js';
 import { buildBoynerBuilding } from '../buildings/BoynerBuilding.js';
 import { buildInveonBuilding } from '../buildings/InveonBuilding.js';
+import { buildWugoBuilding } from '../buildings/WugoBuilding.js';
 import { buildBench, buildPlanter, buildSquarePattern, buildStreetLamp, buildFence } from '../buildings/SquareElements.js';
 
 export class RunScene extends GameScene {
@@ -362,6 +363,10 @@ export class RunScene extends GameScene {
         const inveon = buildInveonBuilding(this.threeScene, physics, this.groundMaterial, [0, 0, -35]);
         this._interactiveBuildings.push(inveon);
 
+        // WUGO — Event discovery app building
+        const wugo = buildWugoBuilding(this.threeScene, physics, this.groundMaterial, [-30, 0, 5]);
+        this._interactiveBuildings.push(wugo);
+
         this._buildPlaza(physics);
 
         const companies = [
@@ -374,16 +379,6 @@ export class RunScene extends GameScene {
                 size: [7, 9, 7],
                 shape: 'box',
                 accentColor: 0xd670f0,
-            },
-            {
-                name: 'Wugo',
-                title: 'Product Manager',
-                color: 0x2980b9,
-                emissive: 0x00427a,
-                position: [-30, 0, 5],
-                size: [6, 7, 6],
-                shape: 'box',
-                accentColor: 0x5dade2,
             },
             {
                 name: 'PeP FinTech',
@@ -1007,9 +1002,15 @@ export class RunScene extends GameScene {
             if (isInside) anyInside = true;
 
             // 2. Door Animation Logic
-            // Entrance is at local -z in building space, but building is rotated PI, so entrance is at world +z from center.
-            const entranceWorldZ = bounds.z + (bounds.d / 2);
-            const distToEntrance = Math.sqrt(Math.pow(playerPos.x - bounds.x, 2) + Math.pow(playerPos.z - entranceWorldZ, 2));
+            // Default entrance is world +z from center. If building has entranceOffset, use it.
+            const entrancePos = new THREE.Vector3(bounds.x, 0, bounds.z);
+            if (building.entranceOffset) {
+                entrancePos.add(building.entranceOffset);
+            } else {
+                entrancePos.z += (bounds.d / 2);
+            }
+
+            const distToEntrance = playerPos.distanceTo(entrancePos);
 
             const shouldOpen = distToEntrance < 6;
             const targetRotation = shouldOpen ? -Math.PI / 1.6 : 0; // Swing out
@@ -1034,15 +1035,29 @@ export class RunScene extends GameScene {
             if (this.player?.group) {
                 this.yaw = this.player.group.rotation.y + Math.PI; 
                 this.pitch = 0.3;
-            }
+                const input = this.getSystem('input');
+                if (input) {
+                    input.isFpsMode = true;
+                    // Try to lock automatically (might require one click if not already clicking)
+                    input.requestPointerLock();
+                    this.hud.updateInfo('TPS Modu: Mouse ile bakış açısını yönetin.');
+                }
 
-            const movement = this.player.getComponent('movement');
-            if (movement) movement.setMode('tps');
+                const movement = this.player.getComponent('movement');
+                if (movement) movement.setMode('tps');
+            }
             this._wasInsideBuilding = true;
         } else if (!anyInside && this._wasInsideBuilding) {
             // Player just exited a building
             this.cameraMode = 'isometric';
             this.cameraManager?.setMode('isometric');
+            
+            const input = this.getSystem('input');
+            if (input) {
+                input.isFpsMode = false;
+                input.exitPointerLock();
+            }
+
             const movement = this.player.getComponent('movement');
             if (movement) movement.setMode('isometric');
             this._wasInsideBuilding = false;
@@ -1050,6 +1065,9 @@ export class RunScene extends GameScene {
     }
     onUpdate(delta) {
         const input = this.getSystem('input');
+        if (this.hud && input) {
+            this.hud.updateCursor(input.clientX, input.clientY, this.cameraMode, input.isPointerLocked());
+        }
 
         if (this.flowController.consumePendingRestart()) {
             return;
@@ -1117,6 +1135,10 @@ export class RunScene extends GameScene {
     }
 
     toggleCameraMode() {
+        if (this._wasInsideBuilding) {
+            this.hud.updateInfo('Bina içerisindeyken görünüm modunu değiştiremezsiniz.');
+            return;
+        }
         if (!this._wasInsideBuilding && this.cameraMode === 'isometric') {
             this.hud.updateInfo('TPS modu sadece binaların içerisinde aktiftir.');
             return;

@@ -43,6 +43,8 @@ export class InputManager {
         this.isFpsMode = false;
         this.mouseDelta = { x: 0, y: 0 };
         this.mousePos = new THREE.Vector2(0, 0);
+        this.clientX = 0;
+        this.clientY = 0;
         this.raycaster = new THREE.Raycaster();
 
         this.platform = config.platform || new BrowserPlatform();
@@ -60,6 +62,8 @@ export class InputManager {
 
         this.removeListeners.push(
             this.platform.addEventListener('document', 'mousemove', event => {
+                this.clientX = event.clientX;
+                this.clientY = event.clientY;
                 if (this.isPointerLocked()) {
                     this.mouseDelta.x += event.movementX;
                     this.mouseDelta.y += event.movementY;

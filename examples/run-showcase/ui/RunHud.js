@@ -5,10 +5,55 @@ export class RunHud {
     }
 
     setup() {
-        /*
-        this.ui.addProgressBar('hp', 'calc(50% - 100px)', 20, 200, 25, '#e74c3c');
-        ... (rest commented out effectively by making it an empty setup or commenting it)
-        */
+        const cursor = document.createElement('div');
+        cursor.id = 'game-cursor';
+        cursor.style.width = '12px';
+        cursor.style.height = '12px';
+        cursor.style.border = '2px solid rgba(255, 255, 255, 0.9)';
+        cursor.style.borderRadius = '50%';
+        cursor.style.position = 'fixed';
+        cursor.style.pointerEvents = 'none';
+        cursor.style.zIndex = '10000';
+        cursor.style.transform = 'translate(-50%, -50%)';
+        cursor.style.boxShadow = '0 0 5px rgba(0,0,0,0.5)';
+        cursor.style.transition = 'width 0.15s, height 0.15s, border-color 0.15s, background 0.15s';
+        document.body.appendChild(cursor);
+        this._gameCursor = cursor;
+
+        const style = document.createElement('style');
+        style.innerHTML = `* { cursor: none !important; }`;
+        document.head.appendChild(style);
+    }
+
+    updateCursor(x, y, mode, isLocked) {
+        if (!this._gameCursor) return;
+        
+        if (mode === 'tps') {
+            this._gameCursor.style.display = 'none';
+            return;
+        } else {
+            this._gameCursor.style.display = 'block';
+        }
+
+        let targetX = x;
+        let targetY = y;
+        
+        if (isLocked) {
+            targetX = window.innerWidth / 2;
+            targetY = window.innerHeight / 2;
+            this._gameCursor.style.width = '4px';
+            this._gameCursor.style.height = '4px';
+            this._gameCursor.style.background = '#fff';
+            this._gameCursor.style.border = '1px solid #000';
+        } else {
+            this._gameCursor.style.width = '14px';
+            this._gameCursor.style.height = '14px';
+            this._gameCursor.style.background = 'transparent';
+            this._gameCursor.style.border = '2.5px solid #fff';
+        }
+
+        this._gameCursor.style.left = `${targetX}px`;
+        this._gameCursor.style.top = `${targetY}px`;
     }
 
     updateAmmo(freeCount, totalCount = 20) {
