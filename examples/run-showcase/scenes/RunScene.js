@@ -823,18 +823,22 @@ export class RunScene extends GameScene {
         const player = this.playersByProfile[profile];
         if (!player || this.runState.status !== 'active' || this.choiceActive) return;
 
-        // Custom showcase logic: Click to move in isometric mode
-        if (this.cameraMode === 'isometric' && abilityId === 'primaryFire') {
-            const input = this.getSystem('input');
-            const camera = this.getCamera();
-            if (input && camera) {
-                // Raycast against environment to find target point on ground
-                const intersections = input.getRaycastIntersection(camera.getThreeCamera(), this.environmentMeshes);
-                if (intersections.length > 0) {
-                    player.getComponent('movement')?.moveToPoint(intersections[0].point);
+        // Custom showcase logic:
+        if (abilityId === 'primaryFire') {
+            if (this.cameraMode === 'isometric') {
+                const input = this.getSystem('input');
+                const camera = this.getCamera();
+                if (input && camera) {
+                    const intersections = input.getRaycastIntersection(camera.getThreeCamera(), this.environmentMeshes);
+                    if (intersections.length > 0) {
+                        player.getComponent('movement')?.moveToPoint(intersections[0].point);
+                    }
                 }
+                return;
+            } else if (this.cameraMode === 'tps') {
+                // Do nothing in TPS mode when clicking (just look around)
+                return;
             }
-            return;
         }
 
         const used = this.getSystem('abilities')?.useAbility(player, abilityId) || false;
