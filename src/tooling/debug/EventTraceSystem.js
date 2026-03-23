@@ -19,7 +19,12 @@ export class EventTraceSystem {
         const engineEvents = context?.engine?.events;
         if (engineEvents?.onAny) {
             const listener = (eventName, ...args) => {
-                const preview = JSON.stringify(args[0] ?? '').slice(0, 80);
+                let preview = '';
+                try {
+                    preview = JSON.stringify(args[0] ?? '').slice(0, 80);
+                } catch (e) {
+                    preview = `[Object] ${args[0]?.constructor?.name || typeof args[0]}`;
+                }
                 this.buffer.unshift(`${eventName}: ${preview}`);
                 this.buffer = this.buffer.slice(0, 8);
                 const panel = this.ui?.elements?.eventTracePanel;

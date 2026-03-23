@@ -16,9 +16,12 @@ export function buildBoynerBuilding(scene, physics, groundMaterial, position = [
     const H = 7;
     const D = 12;
     const WALL_T = 0.4;
+    const FLOOR_Y = 0.011;
 
     // ── Palette ───────────────────────────────────────────────────────────────
-    const brickMat  = new THREE.MeshStandardMaterial({ color: 0xd6b896, roughness: 0.88, metalness: 0.02 });
+    const brickMat    = new THREE.MeshStandardMaterial({ color: 0xd6b896, roughness: 0.88, metalness: 0.02 });
+    const concreteMat = new THREE.MeshStandardMaterial({ color: 0x9e9e9e, roughness: 0.9, metalness: 0.05 });
+    const restMaterial = new THREE.MeshStandardMaterial({ color: 0x2c3e50 }); // optional placeholder if needed
     const darkMat   = new THREE.MeshStandardMaterial({ color: 0x1a1a2e, roughness: 0.7, metalness: 0.1 });
     const accentMat = new THREE.MeshStandardMaterial({
         color: 0xb5161e, emissive: 0x7a0009, emissiveIntensity: 0.3, roughness: 0.4, metalness: 0.2
@@ -42,17 +45,21 @@ export function buildBoynerBuilding(scene, physics, groundMaterial, position = [
         return add(m);
     };
 
-    // ── FLOOR SLAB ────────────────────────────────────────────────────────────
-    box(W + WALL_T * 2, 0.3, D + WALL_T * 2, brickMat, 0, 0.15, 0);
+    // ── FLOOR — Flush with plaza (y=0.01) ───────────────────────────────────
+    const intFloorMat = new THREE.MeshStandardMaterial({ color: 0xf4e8d0, roughness: 0.6 });
+    const floorGeo = new THREE.PlaneGeometry(W + WALL_T * 2, D + WALL_T * 2);
+    const floor = new THREE.Mesh(floorGeo, intFloorMat);
+    floor.rotation.x = -Math.PI / 2;
+    floor.position.set(0, 0.011, 0); // Tiny offset to avoid z-fight with plaza
+    add(floor);
 
-    // ── FRONT WALL  (z = -D/2) ───────────────────────────────────────────────
+    // ── FRONT WALL — Modern store facade ─────────────────────────────────────
     const frontZ = -(D / 2) - WALL_T / 2;
     box(3.5, H, WALL_T, brickMat, -(W / 2) + 1.75, H / 2, frontZ);
     box(3.5, H, WALL_T, brickMat,  (W / 2) - 1.75, H / 2, frontZ);
     box(0.5, H, WALL_T, brickMat, -2.5, H / 2, frontZ);
     box(0.5, H, WALL_T, brickMat,  2.5, H / 2, frontZ);
     box(3.0, 0.8, WALL_T, brickMat, 0, H - 0.4, frontZ);
-    box(W, 0.5, WALL_T, brickMat, 0, 0.55, frontZ);
     box(W, 0.8, WALL_T, brickMat, 0, H - 0.4, frontZ);
 
     // Front glass panels
@@ -87,21 +94,45 @@ export function buildBoynerBuilding(scene, physics, groundMaterial, position = [
     addWindowFrame(-5.5, winY, frontZ - 0.05, 3.95, winH + 0.15);
     addWindowFrame( 5.5, winY, frontZ - 0.05, 3.95, winH + 0.15);
 
-    // Door
-    const doorH = H - 1.4;
-    const doorW = 2.8;
+    // ── DOOR GROUP ───────────────────────────────────────────────────────────
+    const doorGroup = new THREE.Group();
+    const doorH = H - 0.4;
+    const doorW = 3.0;
+    
+    // Rotating door pivot (on the side)
+    doorGroup.position.set(-doorW / 2, 0, frontZ);
+    group.add(doorGroup);
+
     const doorGlass = new THREE.Mesh(new THREE.PlaneGeometry(doorW, doorH), glassMat);
-    doorGlass.position.set(0, doorH / 2 + 0.3, frontZ - 0.01);
-    add(doorGlass, false);
-    box(0.12, doorH, WALL_T * 0.5, frameMat, -(doorW/2), doorH/2 + 0.3, frontZ - 0.05);
-    box(0.12, doorH, WALL_T * 0.5, frameMat,  (doorW/2), doorH/2 + 0.3, frontZ - 0.05);
-    box(doorW + 0.15, 0.12, WALL_T * 0.5, frameMat, 0, doorH + 0.3, frontZ - 0.05);
-    box(0.08, doorH, WALL_T * 0.5, frameMat, 0, doorH/2 + 0.3, frontZ - 0.05);
+    doorGlass.position.set(doorW / 2, doorH / 2 + 0.1, 0.04);
+    doorGroup.add(doorGlass);
+
+    // Frame on the door itself
+    const doorFrameGeo = new THREE.BoxGeometry(0.12, doorH, WALL_T * 0.5);
+    const df1 = new THREE.Mesh(doorFrameGeo, frameMat);
+    df1.position.set(0, doorH / 2 + 0.1, 0);
+    doorGroup.add(df1);
+    
+    const df2 = new THREE.Mesh(doorFrameGeo, frameMat);
+    df2.position.set(doorW, doorH / 2 + 0.1, 0);
+    doorGroup.add(df2);
+
+    const topF = new THREE.Mesh(new THREE.BoxGeometry(doorW + 0.12, 0.12, WALL_T * 0.5), frameMat);
+    topF.position.set(doorW / 2, doorH + 0.1, 0);
+    doorGroup.add(topF);
+
+    // Handle
     const handleMat = new THREE.MeshStandardMaterial({ color: 0xd4af37, metalness: 0.9, roughness: 0.15 });
-    const handle = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 0.45, 8), handleMat);
-    handle.rotation.z = Math.PI / 2;
-    handle.position.set(0.55, doorH/2, frontZ - 0.2);
-    add(handle, false);
+    const hGroup = new THREE.Group();
+    const hBar = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 0.6, 8), handleMat);
+    hBar.position.y = 0.3;
+    hGroup.add(hBar);
+    hGroup.position.set(doorW - 0.2, 1.2, 0.1);
+    doorGroup.add(hGroup);
+
+    // Fixed Outer Frame (in 'group', not 'doorGroup')
+    box(doorW + 0.25, 0.15, WALL_T * 0.6, frameMat, 0, doorH + 0.15, frontZ);
+
 
     // ── BACK WALL ─────────────────────────────────────────────────────────────
     const backZ = (D / 2) + WALL_T / 2;
@@ -148,9 +179,7 @@ export function buildBoynerBuilding(scene, physics, groundMaterial, position = [
         box(WALL_T * 0.4, 0.1, sideWinW, frameMat, rightX, 1.0 + sideWinH, zo);
     });
 
-    // ── INTERIOR FLOOR ────────────────────────────────────────────────────────
-    const intFloorMat = new THREE.MeshStandardMaterial({ color: 0xf4e8d0, roughness: 0.6 });
-    box(W, 0.08, D, intFloorMat, 0, 0.34, 0);
+    // (Removed old bulky interior floor)
 
     // ── INTERIOR FURNISHINGS ──────────────────────────────────────────────────
     const woodMat    = new THREE.MeshStandardMaterial({ color: 0x8B5E3C, roughness: 0.8 });
@@ -158,8 +187,9 @@ export function buildBoynerBuilding(scene, physics, groundMaterial, position = [
     const clothColors = [0xe74c3c, 0x3498db, 0x2ecc71, 0x9b59b6, 0xf39c12, 0x1abc9c, 0xe91e63];
 
     // Helper: clothing rack (horizontal bar + 2 vertical legs)
-    const addRack = (x, y, z, rackW = 2.5, ry = 0) => {
+    const addRack = (x, y_height, z, rackW = 2.5, ry = 0) => {
         const rg = new THREE.Group();
+        const y = y_height;
         // Horizontal bar
         const bar = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, rackW, 8), metalPole);
         bar.rotation.z = Math.PI / 2;
@@ -185,7 +215,7 @@ export function buildBoynerBuilding(scene, physics, groundMaterial, position = [
             garment.position.set(-rackW/2 + 0.2 + i * 0.35, -0.32, 0);
             rg.add(garment);
         }
-        rg.position.set(x, y, z);
+        rg.position.set(x, FLOOR_Y + y, z); // Lifted to sit on floor
         rg.rotation.y = ry;
         group.add(rg);
     };
@@ -235,7 +265,7 @@ export function buildBoynerBuilding(scene, physics, groundMaterial, position = [
         dress.position.z = 0.17;
         mg.add(dress);
 
-        mg.position.set(x, 0, z);
+        mg.position.set(x, FLOOR_Y, z); // Lifted to sit on floor
         mg.rotation.y = ry;
         group.add(mg);
     };
@@ -329,18 +359,27 @@ export function buildBoynerBuilding(scene, physics, groundMaterial, position = [
     group.position.set(px, 0, pz);
     scene.add(group);
 
-    // ── PHYSICS — invisible static proxy (avoids group.position being overridden)
+    // ── PHYSICS — Separate walls to allow entry ──────────────────────────────
+    // NOTE: Building is rotated PI, so world-front (door) is at pz + D/2
     if (physics && groundMaterial) {
-        const proxyGeo = new THREE.BoxGeometry(W + WALL_T * 2, H, D + WALL_T * 2);
-        const proxyMat = new THREE.MeshBasicMaterial({ visible: false });
-        const proxy = new THREE.Mesh(proxyGeo, proxyMat);
-        proxy.position.set(px, H / 2, pz);
-        scene.add(proxy);
-        physics.addBody(
-            physics.createBox(W + WALL_T * 2, H, D + WALL_T * 2, 0, proxy.position, null, { material: groundMaterial }),
-            proxy
-        );
+        const wallH = H;
+        // Visual BACK (world -z)
+        physics.addBody(physics.createBox(W, wallH, WALL_T, 0, new THREE.Vector3(px, wallH/2, pz - D/2), null, { material: groundMaterial }));
+        // Left wall
+        physics.addBody(physics.createBox(WALL_T, wallH, D, 0, new THREE.Vector3(px - W/2, wallH/2, pz), null, { material: groundMaterial }));
+        // Right wall
+        physics.addBody(physics.createBox(WALL_T, wallH, D, 0, new THREE.Vector3(px + W/2, wallH/2, pz), null, { material: groundMaterial }));
+        
+        // Visual FRONT (world +z) — with door gap
+        const frontWallW = (W - doorW) / 2;
+        physics.addBody(physics.createBox(frontWallW, wallH, WALL_T, 0, new THREE.Vector3(px - W/2 + frontWallW/2, wallH/2, pz + D/2), null, { material: groundMaterial }));
+        physics.addBody(physics.createBox(frontWallW, wallH, WALL_T, 0, new THREE.Vector3(px + W/2 - frontWallW/2, wallH/2, pz + D/2), null, { material: groundMaterial }));
     }
 
-    return { group };
+    return { 
+        group, 
+        doorGroup, 
+        id: 'boyner',
+        bounds: { x: px, z: pz, w: W, d: D } 
+    };
 }

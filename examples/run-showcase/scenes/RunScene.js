@@ -45,6 +45,8 @@ import { MetaProgression } from '../runtime/MetaProgression.js';
 import { RunState } from '../runtime/RunState.js';
 import { RunHud } from '../ui/RunHud.js';
 import { buildBoynerBuilding } from '../buildings/BoynerBuilding.js';
+import { buildInveonBuilding } from '../buildings/InveonBuilding.js';
+import { buildBench, buildPlanter, buildSquarePattern, buildStreetLamp, buildFence } from '../buildings/SquareElements.js';
 
 export class RunScene extends GameScene {
     constructor(options = {}) {
@@ -100,9 +102,12 @@ export class RunScene extends GameScene {
             abilities,
             ui
         } = this.bootstrap.registerCoreSystems();
+        this.cameraManager = cameraManager;
         this.hud = new RunHud(ui);
         this.hudPresenter = new RunHudPresenter(this, this.hud);
         this.hudPresenter.initialize();
+        this._interactiveBuildings = []; // Track buildings for door/camera logic
+        this.cameraMode = 'isometric'; 
         this.checkpointController = new RunCheckpointController(this, this.saveManager);
         this.combatCoordinator = new RunCombatCoordinator(this);
         this.flowController = new RunFlowController(this);
@@ -349,8 +354,15 @@ export class RunScene extends GameScene {
     }
 
     _buildCareerBuildings(physics) {
-        // Boyner uses a dedicated retail store builder
-        buildBoynerBuilding(this.threeScene, physics, this.groundMaterial, [-20, 0, -20]);
+        // Boyner — dedicated retail store builder
+        const boyner = buildBoynerBuilding(this.threeScene, physics, this.groundMaterial, [-20, 0, -20]);
+        this._interactiveBuildings.push(boyner);
+
+        // INVEON — dedicated software office builder
+        const inveon = buildInveonBuilding(this.threeScene, physics, this.groundMaterial, [0, 0, -35]);
+        this._interactiveBuildings.push(inveon);
+
+        this._buildPlaza(physics);
 
         const companies = [
             {
@@ -402,16 +414,6 @@ export class RunScene extends GameScene {
                 size: [5, 5, 5],
                 shape: 'box',
                 accentColor: 0x48c9b0,
-            },
-            {
-                name: 'INVEON',
-                title: 'Junior Developer',
-                color: 0x2c3e50,
-                emissive: 0x0a0d10,
-                position: [0, 0, -35],
-                size: [6, 6, 6],
-                shape: 'box',
-                accentColor: 0x7f8c8d,
             },
         ];
 
@@ -826,6 +828,20 @@ export class RunScene extends GameScene {
         const player = this.playersByProfile[profile];
         if (!player || this.runState.status !== 'active' || this.choiceActive) return;
 
+        // Custom showcase logic: Click to move in isometric mode
+        if (this.cameraMode === 'isometric' && abilityId === 'primaryFire') {
+            const input = this.getSystem('input');
+            const camera = this.getCamera();
+            if (input && camera) {
+                // Raycast against environment to find target point on ground
+                const intersections = input.getRaycastIntersection(camera.getThreeCamera(), this.environmentMeshes);
+                if (intersections.length > 0) {
+                    player.getComponent('movement')?.moveToPoint(intersections[0].point);
+                }
+            }
+            return;
+        }
+
         const used = this.getSystem('abilities')?.useAbility(player, abilityId) || false;
         if (used && abilityId === 'dash' && this.runState.modifiers.dashShield > 0) {
             this.getSystem('damage')?.heal(player, this.runState.modifiers.dashShield * 0.25, {
@@ -968,6 +984,70 @@ export class RunScene extends GameScene {
         this.flowController.restartRun();
     }
 
+    _updateBuildingInteractions(delta) {
+        if (!this.player || !this.player.group) return;
+
+        const playerPos = this.player.group.position;
+        // 1. Detection with Hysteresis (to avoid camera flickering at threshold)
+        const exitBuffer = 1.0; // 1m buffer to keep you 'inside' longer when exiting
+        let anyInside = false;
+
+        for (const building of this._interactiveBuildings) {
+            const { bounds, doorGroup, doors } = building;
+            const distX = Math.abs(playerPos.x - bounds.x);
+            const distZ = Math.abs(playerPos.z - bounds.z);
+
+            // Use tight check for entering, loose for staying
+            const halfW = bounds.w / 2;
+            const halfD = bounds.d / 2;
+            const isInside = this._wasInsideBuilding 
+                ? (distX < halfW + exitBuffer && distZ < halfD + exitBuffer)
+                : (distX < halfW - 0.5 && distZ < halfD - 0.5);
+
+            if (isInside) anyInside = true;
+
+            // 2. Door Animation Logic
+            // Entrance is at local -z in building space, but building is rotated PI, so entrance is at world +z from center.
+            const entranceWorldZ = bounds.z + (bounds.d / 2);
+            const distToEntrance = Math.sqrt(Math.pow(playerPos.x - bounds.x, 2) + Math.pow(playerPos.z - entranceWorldZ, 2));
+
+            const shouldOpen = distToEntrance < 6;
+            const targetRotation = shouldOpen ? -Math.PI / 1.6 : 0; // Swing out
+
+            if (doorGroup) { // Single door (Boyner)
+                doorGroup.rotation.y += (targetRotation - doorGroup.rotation.y) * 0.1;
+            } else if (doors) { // Double doors (Inveon)
+                const targetL = shouldOpen ? -Math.PI / 1.8 : 0;
+                const targetR = shouldOpen ?  Math.PI / 1.8 : 0;
+                doors[0].rotation.y += (targetL - doors[0].rotation.y) * 0.1;
+                doors[1].rotation.y += (targetR - doors[1].rotation.y) * 0.1;
+            }
+        }
+
+        // 3. Camera Mode Transition
+        if (anyInside && !this._wasInsideBuilding) {
+            // Player just entered a building
+            this.cameraMode = 'tps';
+            this.cameraManager?.setMode('tps');
+            
+            // Sync camera to look in the direction the player is moving (180 offset for follow logic)
+            if (this.player?.group) {
+                this.yaw = this.player.group.rotation.y + Math.PI; 
+                this.pitch = 0.3;
+            }
+
+            const movement = this.player.getComponent('movement');
+            if (movement) movement.setMode('tps');
+            this._wasInsideBuilding = true;
+        } else if (!anyInside && this._wasInsideBuilding) {
+            // Player just exited a building
+            this.cameraMode = 'isometric';
+            this.cameraManager?.setMode('isometric');
+            const movement = this.player.getComponent('movement');
+            if (movement) movement.setMode('isometric');
+            this._wasInsideBuilding = false;
+        }
+    }
     onUpdate(delta) {
         const input = this.getSystem('input');
 
@@ -1021,6 +1101,7 @@ export class RunScene extends GameScene {
 
         this._processEnemyAttacks(delta);
         this._processHazards(delta);
+        this._updateBuildingInteractions(delta);
 
         // Career building labels: billboard effect (always face the camera)
         if (this._careerLabels && this._careerLabels.length > 0) {
@@ -1036,21 +1117,25 @@ export class RunScene extends GameScene {
     }
 
     toggleCameraMode() {
+        if (!this._wasInsideBuilding && this.cameraMode === 'isometric') {
+            this.hud.updateInfo('TPS modu sadece binaların içerisinde aktiftir.');
+            return;
+        }
         const input = this.getSystem('input');
         const camera = this.getCamera();
         if (!input || !camera) return;
-
-        if (this.cameraMode === '2.5d') {
+ 
+        if (this.cameraMode === 'isometric' || this.cameraMode === '2.5d') {
             this.cameraMode = 'tps';
             camera.setPreset('tps');
             input.isFpsMode = true;
             this.hud.updateInfo('TPS modu: ekrana tikla, mouse ile bak. V ile geri donebilirsin.');
         } else {
-            this.cameraMode = '2.5d';
-            camera.setPreset('2.5d');
+            this.cameraMode = 'isometric';
+            camera.setPreset('isometric'); 
             input.isFpsMode = false;
             input.exitPointerLock();
-            this.hud.updateInfo('2.5D mod: WASD hareket, tik ates, Q dash. Coop varsa JIKL + Enter/P/O.');
+            this.hud.updateInfo('Isometric mod: WASD hareket, tik ates, Q dash.');
         }
     }
 
@@ -1101,5 +1186,30 @@ export class RunScene extends GameScene {
         this.activeEnemies = restored.filter(object => object instanceof EnemyActor);
         this.pickups = restored.filter(object => object instanceof CollectibleActor);
         return true;
+    }
+
+    _buildPlaza(physics) {
+        // 1. Expanded Central Square Floor Pattern (80x80)
+        buildSquarePattern(this.threeScene, 0, 0, 80, 80);
+        
+        // 2. ONLY Outermost Perimeter Fences (80x80 Boundary)
+        const borders = [
+            buildFence(this.threeScene, physics, this.groundMaterial, [-40, -40], [40, -40]),
+            buildFence(this.threeScene, physics, this.groundMaterial, [-40, -40], [-40, 40]),
+            buildFence(this.threeScene, physics, this.groundMaterial, [40, -40], [40, 40]),
+            buildFence(this.threeScene, physics, this.groundMaterial, [-40, 40], [40, 40])
+        ];
+
+        // Add to environment meshes to ensure player and beam raycasts hit them
+        for (const fence of borders) {
+            fence.traverse(child => {
+                if (child.isMesh) this.environmentMeshes.push(child);
+            });
+        }
+
+        /* 
+           Benches, Planters, Lamps and Interior building fences REMOVED.
+           Only the large outer square boundary remains.
+        */
     }
 }

@@ -69,9 +69,25 @@ export class PlayerMovementController extends Component {
         }
 
         const move = this.input.getMovementVector(this.profile);
-        const moveDir = this.mode === 'tps'
-            ? this._getThirdPersonMoveDirection(move)
-            : this._getIsometricMoveDirection(move);
+        if (move.x !== 0 || move.z !== 0) {
+            this.targetPosition = null; // Manual input cancels click-to-move
+        }
+
+        let moveDir;
+        if (this.targetPosition && this.mode === 'isometric') {
+            const diff = new THREE.Vector3().subVectors(this.targetPosition, this.owner.group.position);
+            diff.y = 0;
+            if (diff.length() < 0.25) {
+                this.targetPosition = null;
+                moveDir = new THREE.Vector3();
+            } else {
+                moveDir = diff.normalize();
+            }
+        } else {
+            moveDir = this.mode === 'tps'
+                ? this._getThirdPersonMoveDirection(move)
+                : this._getIsometricMoveDirection(move);
+        }
 
         if (moveDir.lengthSq() > 0) {
             moveDir.normalize();
@@ -96,6 +112,13 @@ export class PlayerMovementController extends Component {
             }
         } else if (this.owner.fsm) {
             this.owner.fsm.setState('idle');
+        }
+    }
+
+    moveToPoint(point) {
+        if (this.mode === 'isometric' && point) {
+            this.targetPosition = point.clone();
+            this.targetPosition.y = 0;
         }
     }
 
