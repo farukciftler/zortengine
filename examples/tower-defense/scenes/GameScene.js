@@ -9,6 +9,8 @@ import { createFinishLine } from '../utils/FinishLineBuilder.js';
 import { LaserTower } from '../towers/LaserTower.js';
 import { CannonTower } from '../towers/CannonTower.js';
 import { SlowTower } from '../towers/SlowTower.js';
+import { RallyTrack } from '../utils/RallyTrack.js';
+// import { HeliLanding } from '../utils/HeliLanding.js';
 
 // Skill Pool
 const SKILL_POOL = [
@@ -28,19 +30,19 @@ export class GameScene extends ZortGameScene {
         this.enemies = [];
         this.towers = [];
         this.tiles = [];
-        this.gold = 300;
+        this.gold = 450;
         this.playerHp = 100;
-        
+
         this.levelIndex = 0;
         this.currentLevel = null;
         this.baseEntities = [];
         this.particles = [];
         this.floatingTexts = [];
-        
+
         this.selectedTowerType = 'laser';
         this.hoverMesh = null;
         this.selectedTile = null;
-        
+
         this.isGameOver = false;
 
         // XP & Level System
@@ -70,46 +72,61 @@ export class GameScene extends ZortGameScene {
         // Format world positions
         this.worldPaths = this.currentLevel.paths.map(path => {
             return path.map(wp => new THREE.Vector3(
-                (wp.c - this.currentLevel.cols/2 + 0.5) * tileSize, 
-                0, 
-                (wp.r - this.currentLevel.rows/2 + 0.5) * tileSize
+                (wp.c - this.currentLevel.cols / 2 + 0.5) * tileSize,
+                0,
+                (wp.r - this.currentLevel.rows / 2 + 0.5) * tileSize
             ));
         });
-        
+
         this.worldBaseNodes = this.currentLevel.baseNodes.map(wp => new THREE.Vector3(
-            (wp.c - this.currentLevel.cols/2 + 0.5) * tileSize, 
-            2.5, 
-            (wp.r - this.currentLevel.rows/2 + 0.5) * tileSize
+            (wp.c - this.currentLevel.cols / 2 + 0.5) * tileSize,
+            2.5,
+            (wp.r - this.currentLevel.rows / 2 + 0.5) * tileSize
         ));
 
         this.cameraManager = this.registerSystem('camera', new CameraManager(this.getRenderScene()), { priority: 10 });
         this.setCamera(this.cameraManager);
         this.cameraManager.setPreset('2.5d');
-        
+
         this.inputManager = this.registerSystem('input', new InputManager({
             platform: this.engine.platform,
             domElement: this.engine.renderer.domElement,
             autoAttach: true
         }), { priority: 20 });
         this.inputManager.isFpsMode = false;
-        
+
         this._setupLighting();
         this._buildWorld();
         this._bindUI();
 
+        // Decorative rally track around the map (disabled for now)
+        // this.rallyTrack = new RallyTrack(this.threeScene, this.currentLevel.cols, this.currentLevel.rows, tileSize);
+
+        // Decorative helicopter landing on the path area
+        /*
+        const heliR = Math.floor(this.currentLevel.rows / 2);
+        const heliC = 0;
+        const heliWorldPos = new THREE.Vector3(
+            (heliC - this.currentLevel.cols / 2 + 0.5) * tileSize,
+            0,
+            (heliR - this.currentLevel.rows / 2 + 0.5) * tileSize
+        );
+        this.heliLanding = new HeliLanding(this.threeScene, heliWorldPos);
+        */
+
         this.waveSystem = new WaveSystem(this, this.worldPaths);
         this.baseEntities = [];
-        
+
         for (let basePos of this.worldBaseNodes) {
             let baseExt = new BaseEntity(this, 100);
-            
+
             // Generate Detailed Racing-style Finish Line
             const finishVisuals = createFinishLine();
-            
+
             baseExt.group.add(finishVisuals.group);
             baseExt.group.position.copy(basePos);
             this.add(baseExt);
-            
+
             baseExt.core = finishVisuals.core;
             baseExt.ring = finishVisuals.ring;
             baseExt.flag = finishVisuals.flag; // New animated flag
@@ -118,7 +135,7 @@ export class GameScene extends ZortGameScene {
 
         // Hover Highlight
         const hGeo = new THREE.PlaneGeometry(tileSize, tileSize);
-        hGeo.rotateX(-Math.PI/2);
+        hGeo.rotateX(-Math.PI / 2);
         this.hoverMesh = new THREE.Mesh(hGeo, new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.5, depthWrite: false }));
         this.hoverMesh.visible = false;
         this.threeScene.add(this.hoverMesh);
@@ -140,7 +157,7 @@ export class GameScene extends ZortGameScene {
             this.updateHUD();
             this.removeEnemy(enemy);
         });
-        
+
         this.events.on('enemy:reached_base', (enemy) => {
             this.playerHp -= enemy.damage;
             if (this.playerHp <= 0) this.events.emit('base:destroyed');
@@ -153,14 +170,14 @@ export class GameScene extends ZortGameScene {
             this.updateHUD();
             this.gameOver();
         });
-        
+
         this.inputManager.on('attack', () => this.handlePointClick());
     }
 
     _setupLighting() {
         this.threeScene.fog = new THREE.FogExp2(0x111520, 0.015);
         this.threeScene.background = new THREE.Color(0x111520);
-        
+
         // Atmosphere soft light
         const hemi = new THREE.HemisphereLight(0x2d3436, 0x090a0f, 2.5);
         this.threeScene.add(hemi);
@@ -179,11 +196,11 @@ export class GameScene extends ZortGameScene {
         dir.shadow.bias = -0.0005;
         this.threeScene.add(dir);
     }
-    
+
     _buildWorld() {
         const { cols, rows } = this.currentLevel;
         this.gridLogic = buildGrid(this.currentLevel);
-        
+
         // Build buff zone lookup
         this.buffZoneMap = {};
         if (this.currentLevel.buffZones) {
@@ -194,7 +211,7 @@ export class GameScene extends ZortGameScene {
 
         // Create meshes
         this.groundGroup = new THREE.Group();
-        
+
         const basePlateGeo = new THREE.BoxGeometry(cols * tileSize + 4, 8, rows * tileSize + 4);
         const basePlateMat = new THREE.MeshStandardMaterial({ color: 0x111625, roughness: 0.9 });
         const basePlate = new THREE.Mesh(basePlateGeo, basePlateMat);
@@ -206,30 +223,30 @@ export class GameScene extends ZortGameScene {
             for (let c = 0; c < cols; c++) {
                 const isPath = !this.gridLogic[r][c];
                 const isBuffZone = !!this.buffZoneMap[`${r}_${c}`];
-                
+
                 const height = isPath ? 0.2 : 1.6;
                 const centerY = isPath ? -0.1 : -0.4;
-                
+
                 const geo = new THREE.BoxGeometry(tileSize * 0.96, height, tileSize * 0.96);
-                let colorHex = isPath ? 0x2d3436 : ( ((r+c)%2===0) ? 0x34495e : 0x2c3e50 );
-                
+                let colorHex = isPath ? 0x2d3436 : (((r + c) % 2 === 0) ? 0x34495e : 0x2c3e50);
+
                 // Buff Zone visual highlight
                 if (isBuffZone && !isPath) {
                     const bz = this.buffZoneMap[`${r}_${c}`];
                     colorHex = bz.type === 'range' ? 0x2d6a4f : 0x5a189a;
                 }
 
-                const mat = new THREE.MeshStandardMaterial({ 
+                const mat = new THREE.MeshStandardMaterial({
                     color: colorHex,
                     roughness: 0.8,
                     metalness: isPath ? 0.2 : 0.1
                 });
-                
+
                 const mesh = new THREE.Mesh(geo, mat);
-                mesh.position.set((c - cols/2 + 0.5) * tileSize, centerY, (r - rows/2 + 0.5) * tileSize);
+                mesh.position.set((c - cols / 2 + 0.5) * tileSize, centerY, (r - rows / 2 + 0.5) * tileSize);
                 mesh.castShadow = true;
                 mesh.receiveShadow = true;
-                
+
                 if (!isPath) {
                     const edgeColor = isBuffZone ? 0x00f2fe : 0x55efc4;
                     const edgeOpacity = isBuffZone ? 0.4 : 0.15;
@@ -248,16 +265,16 @@ export class GameScene extends ZortGameScene {
                     const markerMat = new THREE.MeshBasicMaterial({ color: markerColor, transparent: true, opacity: 0.7 });
                     const marker = new THREE.Mesh(markerGeo, markerMat);
                     marker.rotation.x = -Math.PI / 2;
-                    marker.position.set(mesh.position.x, centerY + height/2 + 0.05, mesh.position.z);
+                    marker.position.set(mesh.position.x, centerY + height / 2 + 0.05, mesh.position.z);
                     this.groundGroup.add(marker);
                 }
 
                 const hitGeo = new THREE.PlaneGeometry(tileSize, tileSize);
-                hitGeo.rotateX(-Math.PI/2);
-                const hitMesh = new THREE.Mesh(hitGeo, new THREE.MeshBasicMaterial({visible: false}));
-                hitMesh.position.set(mesh.position.x, centerY + height/2, mesh.position.z);
+                hitGeo.rotateX(-Math.PI / 2);
+                const hitMesh = new THREE.Mesh(hitGeo, new THREE.MeshBasicMaterial({ visible: false }));
+                hitMesh.position.set(mesh.position.x, centerY + height / 2, mesh.position.z);
                 hitMesh.userData = { r, c, buildable: this.gridLogic[r][c], tower: null, buffZone: this.buffZoneMap[`${r}_${c}`] || null };
-                
+
                 this.groundGroup.add(mesh);
                 this.groundGroup.add(hitMesh);
                 this.tiles.push(hitMesh);
@@ -271,10 +288,10 @@ export class GameScene extends ZortGameScene {
         this.waveUI = document.getElementById('wave-status');
         this.buildUI = document.getElementById('build-menu');
         this.upgradeUI = document.getElementById('upgrade-panel');
-        
+
         this.btnNextWave = document.getElementById('btn-next-wave');
         this.btnNextWave.addEventListener('click', () => {
-            if(!this.waveSystem.spawning) {
+            if (!this.waveSystem.spawning) {
                 this.showWaveBanner(this.waveSystem.wave);
                 this.waveSystem.startWave();
                 this.btnNextWave.classList.add('hidden');
@@ -291,7 +308,7 @@ export class GameScene extends ZortGameScene {
                 this.hideUpgradePanel();
             });
         });
-        
+
         document.getElementById('btn-upgrade').addEventListener('click', () => {
             if (this.selectedTile && this.selectedTile.userData.tower) {
                 let twr = this.selectedTile.userData.tower;
@@ -303,18 +320,18 @@ export class GameScene extends ZortGameScene {
                 }
             }
         });
-        
+
         document.getElementById('btn-sell').addEventListener('click', () => {
             if (this.selectedTile && this.selectedTile.userData.tower) {
                 let twr = this.selectedTile.userData.tower;
                 this.gold += twr.sellValue;
                 this.remove(twr);
-                
+
                 // Cleanup 3D
                 this.threeScene.remove(twr.group);
                 this.towers = this.towers.filter(t => t !== twr);
                 this.selectedTile.userData.tower = null;
-                
+
                 this.hideUpgradePanel();
                 this.updateHUD();
             }
@@ -336,12 +353,12 @@ export class GameScene extends ZortGameScene {
         const banner = document.getElementById('wave-banner');
         const text = document.getElementById('banner-text');
         if (!banner || !text) return;
-        
+
         text.innerText = `WAVE ${wave}`;
         banner.classList.remove('hidden');
         text.style.opacity = '1';
         text.style.transform = 'scale(1)';
-        
+
         setTimeout(() => {
             text.style.opacity = '0';
             text.style.transform = 'scale(1.2)';
@@ -353,7 +370,7 @@ export class GameScene extends ZortGameScene {
     }
 
     onWaveEnded() {
-        if (this.waveSystem.wave >= 10) { 
+        if (this.waveSystem.wave >= 10) {
             this.victory();
         } else {
             this.btnNextWave.classList.remove('hidden');
@@ -375,7 +392,7 @@ export class GameScene extends ZortGameScene {
     }
 
     onEnter() {
-        if(this.hudUI) {
+        if (this.hudUI) {
             this.hudUI.classList.remove('hidden');
             this.waveUI.classList.remove('hidden');
             this.buildUI.classList.remove('hidden');
@@ -383,15 +400,15 @@ export class GameScene extends ZortGameScene {
         const xpBarContainer = document.getElementById('xp-bar-container');
         if (xpBarContainer) xpBarContainer.classList.remove('hidden');
         this.updateHUD();
-        
-        this.cameraManager.updateFollow(new THREE.Vector3(0,0,0), 0, 0, {
+
+        this.cameraManager.updateFollow(new THREE.Vector3(0, 0, 0), 0, 0, {
             orthoOffset: new THREE.Vector3(25, 25, 25),
             lookOffset: new THREE.Vector3(0, 0, 0)
         });
     }
 
     onExit() {
-        if(this.hudUI) {
+        if (this.hudUI) {
             this.hudUI.classList.add('hidden');
             this.waveUI.classList.add('hidden');
             this.buildUI.classList.add('hidden');
@@ -405,7 +422,7 @@ export class GameScene extends ZortGameScene {
         document.getElementById('val-wave').innerText = this.waveSystem.wave;
         document.getElementById('val-xp').innerText = this.xp;
         document.getElementById('val-player-lvl').innerText = this.playerLevel;
-        
+
         const fill = document.getElementById('xp-bar-fill');
         if (fill) fill.style.width = `${Math.min(100, (this.xp / this.xpToNextLevel) * 100)}%`;
     }
@@ -422,7 +439,7 @@ export class GameScene extends ZortGameScene {
             this.createExplosion(pos, 0x4facfe);
             this.createFloatingText(pos, `+$${enemy.reward}`, 0x00f2fe);
         }
-        
+
         enemy.isDead = true;
         this.enemies = this.enemies.filter(e => e !== enemy);
         this.remove(enemy);
@@ -473,12 +490,12 @@ export class GameScene extends ZortGameScene {
         const panel = document.getElementById('skill-panel');
         const choicesDiv = document.getElementById('skill-choices');
         if (!panel || !choicesDiv) return;
-        
+
         // Pick 3 random skills
         const shuffled = [...SKILL_POOL].sort(() => Math.random() - 0.5);
         const choices = shuffled.slice(0, 3);
         choicesDiv.innerHTML = '';
-        
+
         for (const skill of choices) {
             const btn = document.createElement('div');
             btn.style.cssText = 'cursor:pointer; background:rgba(30,40,50,0.95); border:1px solid rgba(255,255,255,0.2); border-radius:10px; padding:15px; width:140px; transition:border-color 0.2s, transform 0.2s;';
@@ -518,17 +535,17 @@ export class GameScene extends ZortGameScene {
     gameOver() {
         this.isGameOver = true;
         alert("GAME OVER! Wave " + this.waveSystem.wave);
-        location.reload(); 
+        location.reload();
     }
 
     handlePointClick() {
         if (this.isGameOver) return;
-        
+
         const intersects = this.inputManager.getRaycastIntersection(this.cameraManager.getThreeCamera(), this.tiles);
         if (intersects.length > 0) {
             const tile = intersects[0].object;
             const data = tile.userData;
-            
+
             if (data.tower) {
                 // Select existing tower
                 this.showUpgradePanel(tile);
@@ -547,16 +564,16 @@ export class GameScene extends ZortGameScene {
     buildTower(tile) {
         let TowerClass = LaserTower;
         let pTile = tile.position;
-        
+
         let cost = 120;
-        if(this.selectedTowerType === 'cannon') { TowerClass = CannonTower; cost=200; }
-        else if(this.selectedTowerType === 'slow') { TowerClass = SlowTower; cost=150; }
-        
+        if (this.selectedTowerType === 'cannon') { TowerClass = CannonTower; cost = 200; }
+        else if (this.selectedTowerType === 'slow') { TowerClass = SlowTower; cost = 150; }
+
         if (this.gold >= cost) {
             this.gold -= cost;
             const twr = new TowerClass(this);
             twr.group.position.copy(pTile);
-            
+
             // Apply global skill mods
             twr.range *= this.skillMods.allRange;
             twr.damage *= this.skillMods.allDamage;
@@ -575,7 +592,7 @@ export class GameScene extends ZortGameScene {
             if (bz) {
                 if (bz.type === 'range') twr.range *= (1 + bz.bonus);
                 else if (bz.type === 'damage') twr.damage *= (1 + bz.bonus);
-                console.log(`[BuffZone] Tower gets ${bz.type} +${Math.round(bz.bonus*100)}% bonus!`);
+                console.log(`[BuffZone] Tower gets ${bz.type} +${Math.round(bz.bonus * 100)}% bonus!`);
             }
 
             this.add(twr);
@@ -606,10 +623,15 @@ export class GameScene extends ZortGameScene {
     }
 
     onUpdate(delta, time) {
+        // Rally track runs always (decorative)
+        if (this.rallyTrack) this.rallyTrack.update(delta, time);
+        // Helicopter landing animation
+        // if (this.heliLanding) this.heliLanding.update(delta, time);
+
         if (this.isGameOver) return;
-        
+
         let showingRange = false;
-        
+
         // Show range of currently selected tower
         if (this.selectedTile && this.selectedTile.userData.tower) {
             const twr = this.selectedTile.userData.tower;
@@ -619,7 +641,7 @@ export class GameScene extends ZortGameScene {
             this.rangeCircle.visible = true;
             showingRange = true;
         }
-        
+
         const buffTooltip = document.getElementById('buff-tooltip');
         let showingBuff = false;
 
@@ -632,8 +654,8 @@ export class GameScene extends ZortGameScene {
                 this.hoverMesh.position.y = hitMesh.position.y + 0.02;
                 this.hoverMesh.position.z = hitMesh.position.z;
                 this.hoverMesh.visible = true;
-                
-                if(data.tower) {
+
+                if (data.tower) {
                     this.hoverMesh.material.color.setHex(0x00a8ff);
                     if (!showingRange) {
                         const twr = data.tower;
@@ -643,13 +665,13 @@ export class GameScene extends ZortGameScene {
                         this.rangeCircle.visible = true;
                         showingRange = true;
                     }
-                } else if(data.buildable) {
+                } else if (data.buildable) {
                     this.hoverMesh.material.color.setHex(0xffffff);
                     if (!showingRange) {
                         let r = 5;
-                        if(this.selectedTowerType === 'cannon') r = 4;
-                        else if(this.selectedTowerType === 'slow') r = 5;
-                        
+                        if (this.selectedTowerType === 'cannon') r = 4;
+                        else if (this.selectedTowerType === 'slow') r = 5;
+
                         this.rangeCircle.position.set(hitMesh.position.x, hitMesh.position.y + 0.1, hitMesh.position.z);
                         this.rangeCircle.scale.setScalar(r);
                         this.rangeCircle.material.color.setHex(0x00f2fe);
@@ -665,8 +687,8 @@ export class GameScene extends ZortGameScene {
                         const pct = Math.round(bz.bonus * 100);
                         buffTooltip.innerHTML = `${icon} +${pct}% ${label}`;
                         buffTooltip.style.borderColor = bz.type === 'range' ? 'rgba(0, 242, 254, 0.6)' : 'rgba(224, 64, 251, 0.6)';
-                        buffTooltip.style.boxShadow = bz.type === 'range' 
-                            ? '0 0 12px rgba(0, 242, 254, 0.3)' 
+                        buffTooltip.style.boxShadow = bz.type === 'range'
+                            ? '0 0 12px rgba(0, 242, 254, 0.3)'
                             : '0 0 12px rgba(224, 64, 251, 0.3)';
 
                         // Position near the mouse
@@ -715,13 +737,13 @@ export class GameScene extends ZortGameScene {
             if (p.mesh.material.opacity) p.mesh.material.opacity = p.life;
         }
 
-        this.cameraManager.updateFollow(new THREE.Vector3(0,0,0), 0, delta, {
+        this.cameraManager.updateFollow(new THREE.Vector3(0, 0, 0), 0, delta, {
             orthoOffset: new THREE.Vector3(25, 25, 25),
             lookOffset: new THREE.Vector3(0, 0, 0)
         });
 
         this.waveSystem.update(delta);
-        
+
         for (let b of this.baseEntities) {
             if (b.flag) {
                 b.flag.children.forEach(piece => {
