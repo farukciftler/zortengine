@@ -93,14 +93,15 @@ export function buildInveonBuilding(scene, physics, groundMaterial, position = [
     box(0.7, H, T * 1.2, concreteMat, -(W / 2) + 0.15, H / 2, frontZ);
     box(0.7, H, T * 1.2, concreteMat,  (W / 2) - 0.15, H / 2, frontZ);
 
-    // Horizontal spandrel bands (widened to reach into side walls)
-    box(W + T * 2, 0.4, T, darkConcrete, 0, 0.5, frontZ);   // sill
+    // Horizontal spandrel bands (SPLIT sill to clear door)
+    box(W * 0.35, 0.4, T, darkConcrete, -W * 0.325, 0.2, frontZ); // Sill Left
+    box(W * 0.35, 0.4, T, darkConcrete,  W * 0.325, 0.2, frontZ); // Sill Right
     box(W + T * 2, 0.6, T, darkConcrete, 0, H - 0.3, frontZ); // lintel
     box(W + T * 2, 0.3, T, darkConcrete, 0, H / 2, frontZ);   // mid spandrel
 
-    // Glass panels per bay (upper and lower half of each bay)
+    // Glass panels per bay (skip middle bay for door)
     const bayW = colSpacing - 0.55;
-    const bayOffsets = [-colSpacing, 0, colSpacing];
+    const bayOffsets = [-colSpacing, colSpacing];
     bayOffsets.forEach(bx => {
         // Lower glass panel
         const lg = new THREE.Mesh(new THREE.PlaneGeometry(bayW, H / 2 - 0.65), glassMat);
@@ -118,17 +119,17 @@ export function buildInveonBuilding(scene, physics, groundMaterial, position = [
     });
 
     // ── DOUBLE DOOR GROUP ────────────────────────────────────────────────────
-    const doorH = 3.2;
-    const doorW = 2.2;
+    const doorH = 3.6; // Increased to compensate lowering
+    const doorW = 3.2; 
     
     // Left Door Pivot
     const doorL = new THREE.Group();
-    doorL.position.set(-(doorW / 2), 0.4, frontZ);
+    doorL.position.set(-(doorW / 2), 0, frontZ);
     group.add(doorL);
     
     // Right Door Pivot
     const doorR = new THREE.Group();
-    doorR.position.set( (doorW / 2), 0.4, frontZ);
+    doorR.position.set( (doorW / 2), 0, frontZ);
     group.add(doorR);
 
     // Door glass panels (centered on pivots)
@@ -196,14 +197,47 @@ export function buildInveonBuilding(scene, physics, groundMaterial, position = [
         box(T * 0.4, 2.2, 0.06, frameMat, rightX, H * 0.6, zo + 1.75);
     });
 
-    // ── ROOF ──────────────────────────────────────────────────────────────────
+    // ── ROOFTOP DESIGN ──────────────────────────────────────────────────────
+    const roofY = H + 0.4;
     box(W + T * 2 + 0.3, 0.4, D + T * 2 + 0.3, darkConcrete, 0, H + 0.2, 0);
 
-    // HVAC unit on roof
-    box(3, 1.2, 2, concreteMat, -5, H + 0.8, 2);
-    box(3, 1.2, 2, concreteMat,  5, H + 0.8, 2);
-    cyl(0.4, 0.35, 0.6, steelMat, -5, H + 1.7, 2, 8);
-    cyl(0.4, 0.35, 0.6, steelMat,  5, H + 1.7, 2, 8);
+    // Modern Industrial HVAC
+    const createHvac = (x, z) => {
+        const hg = new THREE.Group();
+        box(2.5, 1.2, 1.8, concreteMat, 0, 0.6, 0).parent = hg;
+        cyl(0.8, 0.7, 0.4, steelMat, 0, 1.4, 0).parent = hg; // Fan vent
+        box(0.1, 0.1, 0.1, new THREE.MeshBasicMaterial({ color: 0xff0000 }), 0, 1.6, 0).parent = hg; // Safety light
+        hg.position.set(x, roofY, z);
+        group.add(hg);
+    };
+    createHvac(-4.5, 3);
+    createHvac(4.5, 3);
+
+    // Solar Panel Array (Sustainable Tech)
+    const solarMat = new THREE.MeshStandardMaterial({ color: 0x1a237e, metalness: 0.8, roughness: 0.1 });
+    for (let x = -5; x <= 5; x += 2.5) {
+        for (let z = -2.5; z <= 0; z += 1.5) {
+            const p = new THREE.Mesh(new THREE.PlaneGeometry(2, 1.2), solarMat);
+            p.rotation.x = -Math.PI / 6; // Angled
+            p.position.set(x, roofY + 0.5, z);
+            add(p);
+            // Support legs
+            box(0.05, 0.6, 0.05, steelMat, x, roofY + 0.2, z);
+        }
+    }
+
+    // Safety Beacons (Red glowing lights)
+    const beaconGeo = new THREE.SphereGeometry(0.15, 8, 8);
+    const beaconMat = new THREE.MeshBasicMaterial({ color: 0xff0000 });
+    const addBeacon = (x, z) => {
+        const b = new THREE.Mesh(beaconGeo, beaconMat);
+        b.position.set(x, roofY + 1.2, z);
+        add(b);
+        // Base pole
+        box(0.08, 1.2, 0.08, steelMat, x, roofY + 0.6, z);
+    };
+    addBeacon(leftX + 0.5, backZ - 0.5);
+    addBeacon(rightX - 0.5, backZ - 0.5);
 
     // ── PARAPET ───────────────────────────────────────────────────────────────
     const pH = 0.8;

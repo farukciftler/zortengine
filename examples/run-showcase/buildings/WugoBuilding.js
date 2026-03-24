@@ -6,13 +6,8 @@ import {
 } from './buildingPhysics.js';
 
 /**
- * WugoBuilding — Event Discovery App Office/Store.
- * 
- * Features:
- * - Event posters and screens showing "Discovery".
- * - Ticketing/Information desk.
- * - Right-side mounted signage as requested.
- * - Interactive door and TPS-friendly interior.
+ * WugoBuilding — Modern Event Discovery Hub.
+ * Features: High-detail seating, ticketing kiosks, event posters, and digital displays.
  */
 export function buildWugoBuilding(scene, physics, groundMaterial, position = [0, 0, 0]) {
     const [px, , pz] = position;
@@ -26,19 +21,17 @@ export function buildWugoBuilding(scene, physics, groundMaterial, position = [0,
     const FLOOR_Y = 0.011;
 
     // ── Palette ───────────────────────────────────────────────────────────────
-    const concreteMat  = new THREE.MeshStandardMaterial({ color: 0xe0e0e0, roughness: 0.8 });
-    const darkConcrete = new THREE.MeshStandardMaterial({ color: 0x3a3a3c, roughness: 0.9, metalness: 0.05 });
-    const blueMat      = new THREE.MeshStandardMaterial({ color: 0x2980b9, roughness: 0.4, metalness: 0.3 });
-    const lightBlueMat = new THREE.MeshStandardMaterial({ color: 0x5dade2, roughness: 0.3, metalness: 0.2 });
+    const blueMat      = new THREE.MeshStandardMaterial({ color: 0x1976d2, roughness: 0.3, metalness: 0.2 }); // Deep Blue
+    const lightBlueMat = new THREE.MeshStandardMaterial({ color: 0xbbdefb, roughness: 0.6 });
+    const concreteMat  = new THREE.MeshStandardMaterial({ color: 0xeeeeee, roughness: 0.8 });
+    const frameMat     = new THREE.MeshStandardMaterial({ color: 0x333333, metalness: 0.8, roughness: 0.2 });
     const glassMat     = new THREE.MeshStandardMaterial({ 
-        color: 0xaed6f1, transparent: true, opacity: 0.25, 
-        roughness: 0.05, metalness: 0.5, side: THREE.DoubleSide, depthWrite: false 
+        color: 0x81d4fa, transparent: true, opacity: 0.28, metalness: 0.6, roughness: 0.05, side: THREE.DoubleSide, depthWrite: false 
     });
-    const frameMat     = new THREE.MeshStandardMaterial({ color: 0x2c3e50, roughness: 0.5 });
-    const woodMat      = new THREE.MeshStandardMaterial({ color: 0x8d6e3e, roughness: 0.7 });
-    const steelMat     = new THREE.MeshStandardMaterial({ color: 0xbdc3c7, metalness: 0.9, roughness: 0.1 });
+    const orangeMat    = new THREE.MeshStandardMaterial({ color: 0xff9800, emissive: 0xff9800, emissiveIntensity: 0.2 });
+    const pinkMat      = new THREE.MeshStandardMaterial({ color: 0xe91e63 });
+    const steelMat     = new THREE.MeshStandardMaterial({ color: 0xcfd8dc, metalness: 0.9, roughness: 0.1 });
 
-    // ── Helpers ───────────────────────────────────────────────────────────────
     const add = (mesh, shadow = true) => {
         if (shadow) { mesh.castShadow = true; mesh.receiveShadow = true; }
         group.add(mesh);
@@ -50,220 +43,200 @@ export function buildWugoBuilding(scene, physics, groundMaterial, position = [0,
         return add(m);
     };
 
-    // ── FLOOR — Flush with plaza ─────────────────────────────────────────────
-    const floorGeo = new THREE.PlaneGeometry(W + WALL_T*2, D + WALL_T*2);
-    const floor = new THREE.Mesh(floorGeo, new THREE.MeshStandardMaterial({ color: 0xecf0f1, roughness: 0.5 }));
-    floor.rotation.x = -Math.PI / 2;
-    floor.position.set(0, FLOOR_Y, 0);
-    add(floor);
-
-    // ── WALLS ────────────────────────────────────────────────────────────────
     const frontZ = -(D / 2) - WALL_T / 2;
-    const backZ  =  (D / 2) + WALL_T / 2;
+    const backZ  = (D / 2) + WALL_T / 2;
     const leftX  = -(W / 2) - WALL_T / 2;
-    const rightX =  (W / 2) + WALL_T / 2;
+    const rightX = (W / 2) + WALL_T / 2;
 
-    // Back wall (Solid blue/white)
-    box(W, H, WALL_T, blueMat, 0, H/2, backZ);
-    // Left wall (Blue with large windows)
-    box(WALL_T, H, 2.0, blueMat, leftX, H/2, -D/2 + 1.0);
-    box(WALL_T, H, 2.0, blueMat, leftX, H/2,  D/2 - 1.0);
-    box(WALL_T, 1.2, D - 4.0, blueMat, leftX, 0.6, 0); // Bottom sill
-    box(WALL_T, 1.2, D - 4.0, blueMat, leftX, H - 0.6, 0); // Top lintel
-    
-    const sideWinG = new THREE.Mesh(new THREE.PlaneGeometry(D - 4.2, H - 2.5), glassMat);
-    sideWinG.rotation.y = Math.PI / 2;
-    sideWinG.position.set(leftX - 0.02, H/2, 0);
-    add(sideWinG, false);
-    // Mullions for side window
-    box(0.1, H - 2.4, 0.1, frameMat, leftX, H/2, -1.0);
-    box(0.1, H - 2.4, 0.1, frameMat, leftX, H/2,  1.0);
+    // ── Structure ────────────────────────────────────────────────────────────
+    box(W + WALL_T * 2, FLOOR_Y * 2, D + WALL_T * 2, concreteMat, 0, FLOOR_Y, 0); // Base
+    box(W, H, WALL_T, blueMat, 0, H / 2, backZ); // Back wall
+    box(WALL_T, H, D, blueMat, leftX, H / 2, 0); // Left wall
+    box(WALL_T, H, D, blueMat, rightX, H / 2, 0); // Right wall
+    box(W + WALL_T * 2, 0.4, D + WALL_T * 2, blueMat, 0, H + 0.2, 0); // Roof
 
-    // Right wall (Solid white - holds the sign)
-    box(WALL_T, H, D, blueMat, rightX, H/2, 0);
+    // ── Front Facade (High Detail) ──────────────────────────────────────────
+    // Thick Columns
+    box(1.0, H, WALL_T * 1.5, blueMat, -W/2 + 0.5, H/2, frontZ);
+    box(1.0, H, WALL_T * 1.5, blueMat,  W/2 - 0.5, H/2, frontZ);
+    box(1.0, H, WALL_T * 1.5, blueMat, -2.0, H/2, frontZ);
+    box(1.0, H, WALL_T * 1.5, blueMat,  2.0, H/2, frontZ);
 
-    // Front Facade (Modern Glass Focus)
-    const doorW = 2.6;
-    const doorH = 3.6;
-    const frontWallW = (W - doorW) / 2;
-    
-    // Pillars
-    box(0.6, H, WALL_T * 1.5, blueMat, -W/2 + 0.3, H/2, frontZ);
-    box(0.6, H, WALL_T * 1.5, blueMat,  W/2 - 0.3, H/2, frontZ);
-    box(0.6, H, WALL_T * 1.5, blueMat, -doorW/2 - 0.3, H/2, frontZ);
-    box(0.6, H, WALL_T * 1.5, blueMat,  doorW/2 + 0.3, H/2, frontZ);
-
-    // Glass panes between pillars
-    const paneW = (W/2 - doorW/2) - 1.2;
-    const paneH = H - 1.0;
-    [-W/2 + frontWallW/2 + 0.3, W/2 - frontWallW/2 - 0.3].forEach(px_pos => {
-        const pg = new THREE.Mesh(new THREE.PlaneGeometry(paneW, paneH), glassMat);
-        pg.position.set(px_pos, paneH/2 + 0.5, frontZ - 0.02);
-        add(pg, false);
-        // Transom bar
-        box(paneW, 0.1, 0.2, frameMat, px_pos, 2.5, frontZ - 0.05);
+    // Front Window Panes & Frames
+    const winH = H - 2.0;
+    const winY = winH / 2 + 1.0;
+    [-4.5, 4.5].forEach(x => {
+        const g = new THREE.Mesh(new THREE.PlaneGeometry(3.0, winH), glassMat);
+        g.position.set(x, winY, frontZ - 0.02);
+        add(g, false);
+        // Mullions
+        box(0.1, winH, 0.15, frameMat, x, winY, frontZ - 0.1);
+        box(3.1, 0.1, 0.15, frameMat, x, winY + winH/2, frontZ - 0.1);
+        box(3.1, 0.1, 0.15, frameMat, x, winY - winH/2, frontZ - 0.1);
     });
 
-    // Lintel over door
-    box(doorW + 1.2, H - doorH, WALL_T, blueMat, 0, doorH + (H - doorH)/2, frontZ);
+    // ── Interactive Door ─────────────────────────────────────────────────────
+    const doorW = 3.0;
+    const doorH = 4.2;
+    const drG = new THREE.Group();
+    drG.position.set(-doorW/2, 0, frontZ);
+    group.add(drG);
 
-    // ── INTERACTIVE DOOR ─────────────────────────────────────────────────────
-    const doorGroup = new THREE.Group();
-    doorGroup.position.set(0, FLOOR_Y, frontZ); 
-    group.add(doorGroup);
+    const drM = new THREE.Mesh(new THREE.PlaneGeometry(doorW, doorH), glassMat);
+    drM.position.set(doorW/2, doorH/2, 0.05);
+    drG.add(drM);
 
-    const doorMesh = new THREE.Mesh(new THREE.PlaneGeometry(doorW, doorH), glassMat);
-    doorMesh.position.set(0, doorH / 2, 0.05);
-    doorGroup.add(doorMesh);
+    // Door Frames
+    const dfG = new THREE.BoxGeometry(0.1, doorH, 0.2);
+    const df1 = new THREE.Mesh(dfG, frameMat); df1.position.set(0, doorH/2, 0.1); drG.add(df1);
+    const df2 = new THREE.Mesh(dfG, frameMat); df2.position.set(doorW, doorH/2, 0.1); drG.add(df2);
+    const df3 = new THREE.Mesh(new THREE.BoxGeometry(doorW+0.1, 0.1, 0.2), frameMat); df3.position.set(doorW/2, doorH, 0.1); drG.add(df3);
 
-    const dFrame = new THREE.Mesh(new THREE.BoxGeometry(0.12, doorH, 0.15), frameMat);
-    dFrame.position.set(-doorW/2 + 0.06, doorH/2, 0.05);
-    doorGroup.add(dFrame);
-    const dFrameR = dFrame.clone();
-    dFrameR.position.x = doorW/2 - 0.06;
-    doorGroup.add(dFrameR);
-    const dTop = new THREE.Mesh(new THREE.BoxGeometry(doorW, 0.12, 0.15), frameMat);
-    dTop.position.set(0, doorH - 0.06, 0.05);
-    doorGroup.add(dTop);
+    // Modern Curved Handle
+    const handle = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 1.2, 8), steelMat);
+    handle.position.set(doorW - 0.2, 1.3, 0.2);
+    drG.add(handle);
 
-    const handle = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 1.0, 8), steelMat);
-    handle.rotation.z = Math.PI / 2;
-    handle.position.set(0, 1.2, 0.15);
-    doorGroup.add(handle);
-
-    // ── ROOFTOP SIGNAGE (WUGO) ───────────────────────────────────────────────
+    // ── Rooftop Signage (WUGO Style) ──────────────────────────────────────────
     const signGroup = new THREE.Group();
-    signGroup.position.set(0, H + 0.8, frontZ - 0.2);
+    signGroup.position.set(0, H + 1.0, frontZ - 0.2);
     group.add(signGroup);
 
-    const signH = 1.6;
-    const signW = 7.0;
-    const canvas = document.createElement('canvas');
-    canvas.width = 512; canvas.height = 128;
-    const ctx = canvas.getContext('2d');
-    ctx.fillStyle = '#2980b9'; ctx.fillRect(0,0, 512, 128);
-    ctx.fillStyle = '#ffffff'; ctx.font = 'bold 80px Arial';
-    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    ctx.fillText('WUGO', 256, 64);
+    const sCanvas = document.createElement('canvas'); sCanvas.width = 512; sCanvas.height = 128;
+    const sCtx = sCanvas.getContext('2d');
+    sCtx.fillStyle = '#1976d2'; sCtx.fillRect(0,0,512,128);
+    sCtx.fillStyle = '#ffffff'; sCtx.font = 'bold 80px Arial'; sCtx.textAlign = 'center'; sCtx.textBaseline = 'middle';
+    sCtx.fillText('WUGO', 256, 64);
     
-    const sTex = new THREE.CanvasTexture(canvas);
-    const sMat = new THREE.MeshStandardMaterial({ map: sTex, emissive: 0x2980b9, emissiveIntensity: 0.8 });
-    
-    const sBoard = new THREE.Mesh(new THREE.PlaneGeometry(signW, signH), sMat);
-    sBoard.rotation.y = Math.PI; // Face local -z
-    sBoard.position.z = -0.11; // Offset to avoid z-fighting with backing panel
-    signGroup.add(sBoard);
-    // Backing panel
-    box(signW + 0.2, signH + 0.2, 0.2, frameMat, 0, 0, 0).parent = signGroup;
-    // Support poles
-    box(0.15, 1.2, 0.15, frameMat, -2.5, -0.8, 0).parent = signGroup;
-    box(0.15, 1.2, 0.15, frameMat,  2.5, -0.8, 0).parent = signGroup;
+    const sBoard = new THREE.Mesh(new THREE.PlaneGeometry(7, 2), new THREE.MeshStandardMaterial({ map: new THREE.CanvasTexture(sCanvas), emissive: 0x1976d2, emissiveIntensity: 0.5 }));
+    sBoard.rotation.y = Math.PI; sBoard.position.z = -0.11; signGroup.add(sBoard);
+    box(7.2, 2.2, 0.2, frameMat, 0, 0, 0).parent = signGroup; 
+    box(0.15, 1.4, 0.15, frameMat, -2.5, -0.7, 0).parent = signGroup;
+    box(0.15, 1.4, 0.15, frameMat,  2.5, -0.7, 0).parent = signGroup;
 
-    // ── INTERIOR (High-Detail Event Hub) ───────────────────────────────────
-    // Lounge Area (Sofas)
+    // ── HIGH-DETAIL INTERIOR —─────────────────────────────────────────────────
+    
+    // 1. Lounge Area (Detailed Soft Seating)
     const addSofa = (x, z, ry) => {
         const sg = new THREE.Group();
-        add(box(2.2, 0.45, 0.9, lightBlueMat, 0, 0.22, 0)).parent = sg; // seat
-        add(box(2.2, 0.6, 0.25, blueMat, 0, 0.5, 0.35)).parent = sg; // back
-        add(box(0.25, 0.5, 0.9, blueMat, -1.0, 0.45, 0)).parent = sg; // arm
-        add(box(0.25, 0.5, 0.9, blueMat,  1.0, 0.45, 0)).parent = sg; // arm
+        box(2.5, 0.5, 1.0, lightBlueMat, 0, 0.25, 0).parent = sg; // seat
+        box(2.5, 0.7, 0.2, blueMat, 0, 0.6, 0.4).parent = sg; // backrest
+        box(0.25, 0.6, 1.0, blueMat, -1.13, 0.45, 0).parent = sg; // arm L
+        box(0.25, 0.6, 1.0, blueMat,  1.13, 0.45, 0).parent = sg; // arm R
+        // Cushions
+        box(0.8, 0.8, 0.1, orangeMat, -0.6, 0.65, 0.3).parent = sg;
+        box(0.8, 0.8, 0.1, pinkMat, 0.6, 0.65, 0.3).parent = sg;
+        
         sg.position.set(x, FLOOR_Y, z);
         sg.rotation.y = ry;
         group.add(sg);
     };
-    addSofa(-4, 1.5, Math.PI / 2);
-    addSofa(-4, -1.5, Math.PI / 2);
+    addSofa(-4.5, 2, Math.PI / 2);
+    addSofa(-4.5, -1.0, Math.PI / 2);
 
-    // Modern Info/Ticket Desk
+    // 2. Information/Ticket Desk (Semi-Circular)
     const deskG = new THREE.Group();
-    add(box(4, 1.1, 1.5, concreteMat, 0, 0.55, 0)).parent = deskG; // main body
-    add(box(4.2, 0.1, 1.6, darkConcrete, 0, 1.15, 0)).parent = deskG; // top
-    // Wugo Logo on desk
-    const deskSign = new THREE.Mesh(new THREE.PlaneGeometry(1.5, 0.5), sMat);
-    deskSign.position.set(0, 0.6, 0.76);
-    deskG.add(deskSign);
-    deskG.position.set(3, FLOOR_Y, -1);
+    const dBase = new THREE.Mesh(new THREE.CylinderGeometry(2, 2.1, 1.1, 12, 1, false, 0, Math.PI), blueMat);
+    dBase.rotation.x = -Math.PI / 2;
+    dBase.rotation.z = Math.PI / 2;
+    dBase.position.y = 0.55;
+    deskG.add(dBase);
+    // Countertop
+    const dTop = new THREE.Mesh(new THREE.CylinderGeometry(2.2, 2.2, 0.1, 12, 1, false, 0, Math.PI), steelMat);
+    dTop.rotation.x = -Math.PI/2; dTop.rotation.z = Math.PI/2; dTop.position.y = 1.15;
+    deskG.add(dTop);
+    
+    deskG.position.set(3.5, FLOOR_Y, -2);
+    deskG.rotation.y = Math.PI / 4;
     group.add(deskG);
 
-    // Kiosks (Ticket Machines)
-    const addKiosk = (x, z, ry) => {
-        const kg = new THREE.Group();
-        add(box(0.6, 1.3, 0.4, frameMat, 0, 0.65, 0)).parent = kg; // body
-        const screen = new THREE.Mesh(new THREE.PlaneGeometry(0.5, 0.4), new THREE.MeshBasicMaterial({ color: 0x3498db }));
-        screen.position.set(0, 1.0, 0.21);
-        kg.add(screen);
-        kg.position.set(x, FLOOR_Y, z);
-        kg.rotation.y = ry;
-        group.add(kg);
-    };
-    addKiosk(5.5, 2.5, -Math.PI/6);
-    addKiosk(4.0, 3.5, -Math.PI/6);
-
-    // More Screens
-    const addScreen = (x, y, z, ry, label) => {
-        const scG = new THREE.Group();
-        add(box(2.5, 1.5, 0.1, frameMat, 0, 0, 0)).parent = scG;
-        const screen = new THREE.Mesh(new THREE.PlaneGeometry(2.3, 1.3), new THREE.MeshStandardMaterial({ color: 0x000000, emissive: 0x3498db, emissiveIntensity: 1.0 }));
-        screen.position.z = 0.06;
-        scG.add(screen);
+    // 3. Ticketing Kiosks (Self-Service)
+    const createKiosk = (x, z, ry) => {
+        const k = new THREE.Group();
+        box(0.8, 1.6, 0.5, frameMat, 0, 0.8, 0).parent = k;
+        const screen = new THREE.Mesh(new THREE.PlaneGeometry(0.65, 0.5), new THREE.MeshBasicMaterial({ color: 0x00bcd4 }));
+        screen.position.set(0, 1.25, 0.26); k.add(screen);
+        // Base plate
+        box(1.0, 0.1, 0.7, frameMat, 0, 0.05, 0).parent = k;
         
-        const c2 = document.createElement('canvas'); c2.width = 256; c2.height = 128;
-        const cx2 = c2.getContext('2d');
-        cx2.fillStyle = '#000000'; cx2.fillRect(0,0,256,128);
-        cx2.fillStyle = '#3498db'; cx2.font = 'bold 28px Arial'; cx2.textAlign = 'center';
-        cx2.fillText(label, 128, 64);
-        const tex2 = new THREE.CanvasTexture(c2);
-        const labelMesh = new THREE.Mesh(new THREE.PlaneGeometry(2, 1), new THREE.MeshBasicMaterial({ map: tex2, transparent: true }));
-        labelMesh.position.z = 0.07;
-        scG.add(labelMesh);
-
-        scG.position.set(x, y, z);
-        scG.rotation.y = ry;
-        group.add(scG);
+        k.position.set(x, FLOOR_Y, z);
+        k.rotation.y = ry;
+        group.add(k);
     };
+    createKiosk(5.8, 2, -Math.PI / 2);
+    createKiosk(5.8, 0, -Math.PI / 2);
+    createKiosk(5.8, -2, -Math.PI / 2);
 
-    addScreen(W/2 - 0.25, 2.5,  2, -Math.PI/2, "Concerts Near You");
-    addScreen(W/2 - 0.25, 2.5, -2, -Math.PI/2, "Tech Workshops");
-    addScreen(0, 3, backZ - 0.25, 0, "Explore Istanbul Events");
+    // 4. Large Digital Displays (Event Previews)
+    const addPoster = (x, y, z, ry, title, color) => {
+        const pg = new THREE.Group();
+        box(2.0, 3.0, 0.1, frameMat, 0, 0, 0).parent = pg;
+        const disp = new THREE.Mesh(new THREE.PlaneGeometry(1.8, 2.8), new THREE.MeshStandardMaterial({ color, emissive: color, emissiveIntensity: 0.5 }));
+        disp.position.z = 0.06; pg.add(disp);
+        
+        // Poster Text
+        const pc = document.createElement('canvas'); pc.width = 256; pc.height = 512;
+        const px = pc.getContext('2d');
+        px.fillStyle = 'white'; px.font = 'bold 36px Arial'; px.textAlign = 'center';
+        px.fillText(title, 128, 64);
+        px.fillText('TICKETS', 128, 480);
+        const pTex = new THREE.CanvasTexture(pc);
+        const pMesh = new THREE.Mesh(new THREE.PlaneGeometry(1.7, 2.7), new THREE.MeshBasicMaterial({ map: pTex, transparent: true }));
+        pMesh.position.z = 0.07; pg.add(pMesh);
 
-    // Event Posters (Paper quads on walls)
-    const addPoster = (x, y, z, ry, color) => {
-        const p = new THREE.Mesh(new THREE.PlaneGeometry(0.8, 1.1), new THREE.MeshStandardMaterial({ color, roughness: 0.9 }));
-        p.position.set(x, y, z);
+        pg.position.set(x, y, z);
+        pg.rotation.y = ry;
+        group.add(pg);
+    };
+    addPoster(-WALL_T/2 - 0.05, 3, backZ - 0.2, 0, "NIGHT LIFE", 0x673ab7);
+    addPoster(4, 3, backZ - 0.2, 0, "JAZZ FEST", 0x00c853);
+    addPoster(leftX + 0.2, 3, 3, Math.PI / 2, "COMEDY", 0xffeb3b);
+
+    // ── ROOFTOP DESIGN ──────────────────────────────────────────────────────
+    const roofY = H + 0.4;
+    // Parapet
+    box(W + WALL_T * 2 + 0.2, 0.8, WALL_T, blueMat, 0, roofY + 0.4, frontZ - 0.1); // Front
+    box(W + WALL_T * 2 + 0.2, 0.8, WALL_T, blueMat, 0, roofY + 0.4, backZ + 0.1);  // Back
+    box(WALL_T, 0.8, D + WALL_T * 2 + 0.2, blueMat, leftX - 0.1, roofY + 0.4, 0);  // Left
+    box(WALL_T, 0.8, D + WALL_T * 2 + 0.2, blueMat, rightX + 0.1, roofY + 0.4, 0); // Right
+
+    // HVAC Units
+    const addHvac = (x, z) => {
+        const hg = new THREE.Group();
+        box(1.5, 0.8, 1.2, steelMat, 0, 0.4, 0).parent = hg;
+        const fan = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.4, 0.1, 16), frameMat);
+        fan.position.y = 0.85; hg.add(fan);
+        hg.position.set(x, roofY, z);
+        group.add(hg);
+    };
+    addHvac(-4, 2);
+    addHvac(4, -2);
+
+    // Colorful Roof Pipes (Fun aesthetic)
+    const pipeMatY = new THREE.MeshStandardMaterial({ color: 0xffeb3b });
+    const pipeMatP = new THREE.MeshStandardMaterial({ color: 0xe91e63 });
+    const addPipe = (x, z, len, ry, mat) => {
+        const p = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.1, len, 8), mat);
+        p.rotation.z = Math.PI / 2;
         p.rotation.y = ry;
-        add(p, false);
+        p.position.set(x, roofY + 0.15, z);
+        add(p);
     };
-    addPoster(leftX + 0.21, 2.0, 0, Math.PI/2, 0xf1c40f);
-    addPoster(leftX + 0.21, 2.0, 2, Math.PI/2, 0xe67e22);
-    addPoster(leftX + 0.21, 2.0, -2, Math.PI/2, 0xe74c3c);
+    addPipe(0, 3, 6, 0, pipeMatY);
+    addPipe(2, 0, 4, Math.PI / 2, pipeMatP);
 
-    // ── ROOF ─────────────────────────────────────────────────────────────────
-    box(W + WALL_T*2 + 0.4, 0.4, D + WALL_T*2 + 0.4, blueMat, 0, H + 0.2, 0);
-
-    // ── FINAL ────────────────────────────────────────────────────────────────
-    group.rotation.y = -Math.PI / 2; // Face towards plaza (+X direction)
+    // ── Position + Physics ──────────────────────────────────────────────────
+    group.rotation.y = -Math.PI / 2;
     group.position.set(px, 0, pz);
     scene.add(group);
 
     if (physics && groundMaterial) {
-        addBuildingShellPhysics(
-            physics,
-            groundMaterial,
-            group,
-            buildRectDoorShellBoxes({
-                W,
-                D,
-                H,
-                wallT: WALL_T,
-                doorW,
-                lintel: { type: 'wugo', doorH }
-            })
-        );
+        addBuildingShellPhysics(physics, groundMaterial, group, buildRectDoorShellBoxes({ W, D, H, wallT: WALL_T, doorW, doorH }));
     }
 
     return {
         group,
-        doorGroup,
+        doorGroup: drG,
         id: 'wugo',
         interaction: createBuildingInteractionHandle({
             group,
