@@ -70,8 +70,8 @@ export function buildInveonBuilding(scene, physics, groundMaterial, position = [
 
     const frontZ = -(D / 2) - T / 2;
     const backZ  =  (D / 2) + T / 2;
-    const leftX  = -(W / 2) - T / 2;
-    const rightX =  (W / 2) + T / 2;
+    const leftX  = -(W / 2) - T / 2 - 0.01; // Tiny nudge to prevent Z-fighting at corners
+    const rightX =  (W / 2) + T / 2 + 0.01;
 
     // ── FLOOR — Flush with plaza (y=0.01) ───────────────────────────────────
     const tileMat = new THREE.MeshStandardMaterial({ color: 0xe8eaf6, roughness: 0.25, metalness: 0.1 });

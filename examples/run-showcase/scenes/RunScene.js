@@ -91,6 +91,7 @@ export class RunScene extends GameScene {
         this._farukBubbleTime = 0;
         this._npcFarukBubble = null;
         this._timelineContainer = null;
+        this._isDialogueActive = false;
     }
 
     setup() {
@@ -182,8 +183,25 @@ export class RunScene extends GameScene {
 
         this._dialogueUI = new DialogueUI(this);
         this._setupInteractions();
+        this._createDialogueTrigger();
+        
+        // Show Faruk dialogue immediately on game start
+        if (this._interactions[0]) {
+            this._isDialogueActive = true;
+            this._dialogueUI.show({
+                ...this._interactions[0],
+                onComplete: () => {
+                    this._isDialogueActive = false;
+                    const btn = document.getElementById('faruk-trigger-btn');
+                    if (btn) btn.style.display = 'flex';
+                }
+            });
+            const btn = document.getElementById('faruk-trigger-btn');
+            if (btn) btn.style.display = 'none';
+        }
 
         if (this.options.restoreCheckpoint) {
+
 
             this.checkpointController.restoreLatest();
         }
@@ -1022,7 +1040,12 @@ export class RunScene extends GameScene {
 
         const input = this.getSystem('input');
         if (this.hud && input) {
-            this.hud.updateCursor(input.clientX, input.clientY, this.cameraMode, input.isPointerLocked());
+            const cursorMode = (this.cameraMode === 'tps' && !this._isDialogueActive) ? 'tps' : 'isometric';
+            this.hud.updateCursor(input.clientX, input.clientY, cursorMode, input.isPointerLocked());
+        }
+
+        if (this._isDialogueActive && input?.isPointerLocked()) {
+            input.exitPointerLock();
         }
 
         if (this.flowController.consumePendingRestart()) {
@@ -1218,6 +1241,7 @@ export class RunScene extends GameScene {
         let minDist = Infinity;
 
         for (const inter of this._interactions) {
+            if (inter.id === 'info_booth') continue; // Handled via button and startup
             const dist = pPos.distanceTo(inter.pos);
             if (dist < inter.radius) {
                 if (dist < minDist) {
@@ -1244,6 +1268,59 @@ export class RunScene extends GameScene {
             this._activeInteraction = null;
             this._dialogueUI.hide();
         }
+    }
+
+    _createDialogueTrigger() {
+        const btn = document.createElement('div');
+        btn.id = 'faruk-trigger-btn';
+        btn.textContent = 'F'; // Representing Faruk
+        btn.style.position = 'fixed';
+        btn.style.right = '24px';
+        btn.style.bottom = '120px';
+        btn.style.width = '60px';
+        btn.style.height = '60px';
+        btn.style.background = '#d35400';
+        btn.style.color = '#fff';
+        btn.style.border = '4px solid #1a1a2e';
+        btn.style.borderRadius = '12px';
+        btn.style.display = 'flex';
+        btn.style.alignItems = 'center';
+        btn.style.justifyContent = 'center';
+        btn.style.fontFamily = '"Press Start 2P", cursive';
+        btn.style.fontSize = '24px';
+        btn.style.cursor = 'pointer';
+        btn.style.zIndex = '1000'; // High enough but below dialogue modal (9500)
+        btn.style.boxShadow = '6px 6px 0 rgba(0,0,0,0.4)';
+        btn.style.pointerEvents = 'auto';
+        btn.style.transition = 'transform 0.1s, background 0.1s';
+        
+        btn.onmouseover = () => { 
+            btn.style.background = '#e67e22';
+            btn.style.transform = 'scale(1.1)';
+        };
+        btn.onmouseout = () => { 
+            btn.style.background = '#d35400';
+            btn.style.transform = 'scale(1.0)';
+        };
+        
+        btn.onclick = () => {
+            if (this._interactions[0]) {
+                const triggerBtn = document.getElementById('faruk-trigger-btn');
+                if (triggerBtn) triggerBtn.style.display = 'none';
+                
+                this._isDialogueActive = true;
+                this._dialogueUI.show({
+                    ...this._interactions[0],
+                    onComplete: () => {
+                        this._isDialogueActive = false;
+                        if (triggerBtn) triggerBtn.style.display = 'flex';
+                    }
+                });
+            }
+        };
+
+        const parent = this.engine?.container || document.body;
+        parent.appendChild(btn);
     }
 }
 
