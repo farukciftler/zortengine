@@ -231,7 +231,22 @@ export function buildWugoBuilding(scene, physics, groundMaterial, position = [0,
     scene.add(group);
 
     if (physics && groundMaterial) {
-        addBuildingShellPhysics(physics, groundMaterial, group, buildRectDoorShellBoxes({ W, D, H, wallT: WALL_T, doorW, doorH }));
+        const boxes = buildRectDoorShellBoxes({ W, D, H, wallT: WALL_T, doorW, doorH });
+        
+        // Interior Colliders
+        // Sofas
+        boxes.push({ x: -4.5, y: 0.3, z: 2, w: 2.5, h: 0.6, d: 1.0 });
+        boxes.push({ x: -4.5, y: 0.3, z: -1, w: 2.5, h: 0.6, d: 1.0 });
+        
+        // Information Desk (Approximate semi-circle with two boxes or one large box)
+        boxes.push({ x: 3.5, y: 0.55, z: -2, w: 2.5, h: 1.1, d: 2.5 });
+        
+        // Kiosks
+        [2, 0, -2].forEach(z => {
+            boxes.push({ x: 5.8, y: 0.8, z, w: 0.8, h: 1.6, d: 0.5 });
+        });
+
+        addBuildingShellPhysics(physics, groundMaterial, group, boxes);
     }
 
     return {

@@ -366,19 +366,28 @@ export function buildBoynerBuilding(scene, physics, groundMaterial, position = [
 
     // ── PHYSICS — buildingPhysics.buildRectDoorShellBoxes ────────────────────
     if (physics && groundMaterial) {
-        addBuildingShellPhysics(
-            physics,
-            groundMaterial,
-            group,
-            buildRectDoorShellBoxes({
-                W,
-                D,
-                H,
-                wallT: WALL_T,
-                doorW,
-                lintel: 'boyner'
-            })
-        );
+        const boxes = buildRectDoorShellBoxes({
+            W,
+            D,
+            H,
+            wallT: WALL_T,
+            doorW,
+            lintel: 'boyner'
+        });
+
+        // Interior Colliders
+        // Clothing Racks (Grouped or individual)
+        boxes.push({ x: -4.5, y: 0.8, z: -2.0, w: 3.0, h: 1.6, d: 0.5 });
+        boxes.push({ x:  4.5, y: 0.8, z: -2.0, w: 3.0, h: 1.6, d: 0.5 });
+        boxes.push({ x: -4.5, y: 0.8, z:  2.5, w: 3.0, h: 1.6, d: 0.5 });
+        boxes.push({ x:  4.5, y: 0.8, z:  2.5, w: 3.0, h: 1.6, d: 0.5 });
+        boxes.push({ x:  0.0, y: 0.8, z:  3.5, w: 0.5, h: 1.6, d: 4.0 }); // Center back rack
+
+        // Folding Tables
+        boxes.push({ x: 0, y: 0.45, z: -1.0, w: 1.8, h: 0.9, d: 0.9 });
+        boxes.push({ x: 0, y: 0.45, z:  1.5, w: 1.8, h: 0.9, d: 0.9 });
+
+        addBuildingShellPhysics(physics, groundMaterial, group, boxes);
     }
 
     return {

@@ -206,7 +206,21 @@ export function buildNewMindBuilding(scene, physics, groundMaterial, position = 
     scene.add(group);
 
     if (physics && groundMaterial) {
-        addBuildingShellPhysics(physics, groundMaterial, group, buildRectDoorShellBoxes({ W, D, H, wallT: T, doorW: doorW + 0.2, doorH }));
+        const boxes = buildRectDoorShellBoxes({ W, D, H, wallT: T, doorW: doorW + 0.2, doorH });
+        
+        // Add Interior Colliders
+        // Server Racks
+        boxes.push({ x: -5.5, y: 1.75, z: 4, w: 1.2, h: 3.5, d: 1.2 });
+        boxes.push({ x: -4.0, y: 1.75, z: 4, w: 1.2, h: 3.5, d: 1.2 });
+        boxes.push({ x: -2.5, y: 1.75, z: 4, w: 1.2, h: 3.5, d: 1.2 });
+        
+        // Main Tech Desk
+        boxes.push({ x: 0, y: 0.4, z: 1.5 + FLOOR_Y, w: 6, h: 0.8, d: 2.5 });
+        
+        // Meeting Table (Chamber area)
+        boxes.push({ x: 4, y: 0.45, z: -2.5, w: 4, h: 0.9, d: 2 });
+
+        addBuildingShellPhysics(physics, groundMaterial, group, boxes);
     }
 
     return {

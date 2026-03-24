@@ -560,19 +560,34 @@ export function buildInveonBuilding(scene, physics, groundMaterial, position = [
     scene.add(group);
 
     if (physics && groundMaterial) {
-        addBuildingShellPhysics(
-            physics,
-            groundMaterial,
-            group,
-            buildRectDoorShellBoxes({
-                W,
-                D,
-                H,
-                wallT: T,
-                doorW,
-                lintel: { type: 'inveon', doorH, doorBaseY: 0.4 }
-            })
-        );
+        const boxes = buildRectDoorShellBoxes({
+            W,
+            D,
+            H,
+            wallT: T,
+            doorW,
+            lintel: { type: 'inveon', doorH, doorBaseY: 0 } 
+        });
+
+        // Interior Colliders
+        // Reception Desk
+        boxes.push({ x: 0, y: 0.44, z: -(D / 2) + 3.0, w: 3.5, h: 0.9, d: 0.8 });
+        
+        // Workstations - Row 1 (Grouped)
+        boxes.push({ x: 0, y: 0.4, z: -2.5, w: 12.5, h: 0.8, d: 0.8 });
+        // Workstations - Row 2 (Grouped)
+        boxes.push({ x: 0, y: 0.4, z: -0.7, w: 12.5, h: 0.8, d: 0.8 });
+        // Workstations - Row 3 (Grouped)
+        boxes.push({ x: 0, y: 0.4, z: 3.2, w: 9.0, h: 0.8, d: 0.8 });
+
+        // Server Racks
+        boxes.push({ x: rightX - 1.2, y: 1.0, z: backZ - 1.5, w: 0.8, h: 2.0, d: 0.6 });
+        boxes.push({ x: rightX - 2.2, y: 1.0, z: backZ - 1.5, w: 0.8, h: 2.0, d: 0.6 });
+
+        // Coffee Counter
+        boxes.push({ x: leftX + 1.6, y: 0.5, z: backZ - 1.2, w: 2.0, h: 1.0, d: 0.7 });
+
+        addBuildingShellPhysics(physics, groundMaterial, group, boxes);
     }
 
     return {
