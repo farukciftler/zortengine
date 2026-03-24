@@ -52,6 +52,12 @@ export class InputManager {
         this.pointerLockElement = config.pointerLockElement || this.domElement;
         this.removeListeners = [];
 
+        // Mobile/Touch state
+        this.lastTouchX = 0;
+        this.lastTouchY = 0;
+        this.touchStartTime = 0;
+        this.touchStartPos = new THREE.Vector2();
+
         if (config.autoAttach !== false) {
             this.attach();
         }
@@ -77,13 +83,70 @@ export class InputManager {
 
         this.removeListeners.push(
             this.platform.addEventListener(this.domElement, 'click', () => {
-                if (this.isFpsMode && !this.isPointerLocked()) {
+                if (this.isFpsMode && !this.isPointerLocked() && window.innerWidth > 768) {
                     this.requestPointerLock();
                     return;
                 }
 
                 this.triggerAction('attack');
             })
+        );
+
+        // Touch Support
+        this.removeListeners.push(
+            this.platform.addEventListener(this.domElement, 'touchstart', event => {
+                const touch = event.touches[0];
+                this.lastTouchX = touch.clientX;
+                this.lastTouchY = touch.clientY;
+                this.touchStartTime = Date.now();
+                this.touchStartPos.set(touch.clientX, touch.clientY);
+                
+                // Update mousePos for raycasting
+                const viewport = this.platform.getViewportSize();
+                this.mousePos.x = (touch.clientX / viewport.width) * 2 - 1;
+                this.mousePos.y = -(touch.clientY / viewport.height) * 2 + 1;
+                
+                // On iOS/Android, we often want to prevent default to avoid scrolling while playing
+                if (this.isFpsMode) {
+                   // event.preventDefault(); // Might block UI buttons if not careful
+                }
+            }, { passive: true })
+        );
+
+        this.removeListeners.push(
+            this.platform.addEventListener(this.domElement, 'touchmove', event => {
+                const touch = event.touches[0];
+                const dx = touch.clientX - this.lastTouchX;
+                const dy = touch.clientY - this.lastTouchY;
+
+                if (this.isFpsMode) {
+                    this.mouseDelta.x += dx * 2.0; // Boost sensitivity for touch
+                    this.mouseDelta.y += dy * 2.0;
+                }
+
+                this.lastTouchX = touch.clientX;
+                this.lastTouchY = touch.clientY;
+
+                const viewport = this.platform.getViewportSize();
+                this.mousePos.x = (touch.clientX / viewport.width) * 2 - 1;
+                this.mousePos.y = -(touch.clientY / viewport.height) * 2 + 1;
+                
+                if (this.isFpsMode) {
+                    event.preventDefault(); // Prevent scrolling in TPS mode
+                }
+            }, { passive: false })
+        );
+
+        this.removeListeners.push(
+            this.platform.addEventListener(this.domElement, 'touchend', event => {
+                const duration = Date.now() - this.touchStartTime;
+                const dist = this.touchStartPos.distanceTo(new THREE.Vector2(this.lastTouchX, this.lastTouchY));
+
+                // If it was a quick tap without much movement, trigger attack (tap-to-move)
+                if (duration < 300 && dist < 15) {
+                    this.triggerAction('attack');
+                }
+            }, { passive: true })
         );
 
         this.removeListeners.push(

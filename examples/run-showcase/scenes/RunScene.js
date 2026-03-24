@@ -799,7 +799,17 @@ export class RunScene extends GameScene {
                 }
                 return;
             } else if (this.cameraMode === 'tps') {
-                // Do nothing in TPS mode when clicking (just look around)
+                // TPS modunda tıkla-yürü özelliğini sadece mobilde (veya dar ekranlarda) aktif et
+                if (window.innerWidth <= 768) {
+                    const input = this.getSystem('input');
+                    const camera = this.getCamera();
+                    if (input && camera) {
+                        const intersections = input.getRaycastIntersection(camera.getThreeCamera(), this.environmentMeshes);
+                        if (intersections.length > 0) {
+                            player.getComponent('movement')?.moveToPoint(intersections[0].point);
+                        }
+                    }
+                }
                 return;
             }
         }
@@ -990,6 +1000,7 @@ export class RunScene extends GameScene {
             // Player just entered a building
             this.cameraMode = 'tps';
             this.cameraManager?.setMode('tps');
+            this.careerTimeline?.setTpsMode(true);
 
             // Sync camera to look in the direction the player is moving (180 offset for follow logic)
             if (this.player?.group) {
@@ -1011,6 +1022,7 @@ export class RunScene extends GameScene {
             // Player just exited a building
             this.cameraMode = 'isometric';
             this.cameraManager?.setMode('isometric');
+            this.careerTimeline?.setTpsMode(false);
 
             const input = this.getSystem('input');
             if (input) {
@@ -1054,7 +1066,7 @@ export class RunScene extends GameScene {
 
         this.runState.update(delta);
 
-        if (this.cameraMode === 'tps' && input?.isPointerLocked()) {
+        if (this.cameraMode === 'tps' && (input?.isPointerLocked() || window.innerWidth <= 768)) {
             const mouseDelta = input.getMouseDelta();
             this.yaw -= mouseDelta.x * 0.0025;
             this.pitch += mouseDelta.y * 0.0015;
@@ -1127,12 +1139,14 @@ export class RunScene extends GameScene {
             camera.setPreset('tps');
             input.isFpsMode = true;
             this.hud.updateInfo('TPS modu: ekrana tikla, mouse ile bak. V ile geri donebilirsin.');
+            this.careerTimeline.setTpsMode(true);
         } else {
             this.cameraMode = 'isometric';
             camera.setPreset('isometric');
             input.isFpsMode = false;
             input.exitPointerLock();
             this.hud.updateInfo('Isometric mod: WASD hareket, tik ates, Q dash.');
+            this.careerTimeline.setTpsMode(false);
         }
     }
 

@@ -53,7 +53,7 @@ export class DialogueUI {
                     box-shadow: 
                         0 8px 0 rgba(0,0,0,0.3),
                         inset -8px -8px 0 #c9b87a;
-                    padding: 32px;
+                    padding: 24px;
                     box-sizing: border-box;
                     display: flex;
                     flex-direction: column;
@@ -70,19 +70,35 @@ export class DialogueUI {
                     font-size: 14px;
                     box-shadow: 4px 4px 0 rgba(0,0,0,0.2);
                     text-transform: uppercase;
+                    z-index: 20;
+                }
+
+                .dialogue-main-container {
+                    display: flex;
+                    flex-direction: row;
+                    width: 100%;
+                    height: 100%;
+                    gap: 16px;
+                    overflow: hidden;
+                }
+
+                .dialogue-text-side {
+                    flex: 1;
+                    display: flex;
+                    flex-direction: column;
+                    min-width: 0;
                 }
 
                 .dialogue-portrait {
-                    position: absolute;
-                    right: -20px;
-                    bottom: 0px;
-                    width: 180px;
-                    height: 180px; /* Limit height to match box */
-                    z-index: 10;
+                    width: 140px;
+                    height: 160px;
+                    flex-shrink: 0;
                     display: flex;
                     align-items: flex-end;
                     justify-content: center;
                     filter: drop-shadow(4px 4px 0 rgba(0,0,0,0.3));
+                    align-self: flex-end;
+                    margin-bottom: -10px;
                 }
 
                 .dialogue-portrait img {
@@ -98,7 +114,6 @@ export class DialogueUI {
                     line-height: 1.6;
                     color: #1a1a2e;
                     overflow: hidden;
-                    margin-right: 140px; /* Space for portrait */
                 }
 
                 .dialogue-choices {
@@ -106,7 +121,6 @@ export class DialogueUI {
                     display: flex;
                     flex-direction: column;
                     gap: 8px;
-                    margin-right: 140px;
                 }
 
                 .dialogue-choice-btn {
@@ -128,7 +142,7 @@ export class DialogueUI {
 
                 .dialogue-arrow {
                     position: absolute;
-                    right: 160px;
+                    right: 20px;
                     bottom: 20px;
                     width: 0;
                     height: 0;
@@ -137,11 +151,52 @@ export class DialogueUI {
                     border-top: 15px solid #1a1a2e;
                     display: none;
                     animation: bounce 0.6s infinite alternate;
+                    z-index: 25;
                 }
 
                 @keyframes bounce {
                     from { transform: translateY(0); }
                     to { transform: translateY(5px); }
+                }
+
+                @media (max-width: 768px) {
+                    #dialogue-ui-root {
+                        height: auto;
+                        min-height: 110px;
+                        bottom: 15px;
+                    }
+                    .dialogue-box {
+                        padding: 15px;
+                        border-width: 4px;
+                    }
+                    .dialogue-main-container {
+                        gap: 10px;
+                    }
+                    .dialogue-name-tag {
+                        font-size: 10px;
+                        top: -18px;
+                        padding: 6px 12px;
+                    }
+                    .dialogue-content {
+                        font-size: 9px;
+                        line-height: 1.3;
+                    }
+                    .dialogue-portrait {
+                        width: 80px;
+                        height: 90px;
+                        margin-bottom: -5px;
+                    }
+                    .dialogue-choice-btn {
+                        font-size: 8px;
+                        padding: 6px;
+                    }
+                    .dialogue-arrow {
+                        right: 10px;
+                        bottom: 10px;
+                        border-left-width: 6px;
+                        border-right-width: 6px;
+                        border-top-width: 10px;
+                    }
                 }
             `;
             document.head.appendChild(style);
@@ -152,9 +207,13 @@ export class DialogueUI {
         this._root.innerHTML = `
             <div class="dialogue-box">
                 <div class="dialogue-name-tag"></div>
-                <div class="dialogue-portrait"></div>
-                <div class="dialogue-content"></div>
-                <div class="dialogue-choices"></div>
+                <div class="dialogue-main-container">
+                    <div class="dialogue-text-side">
+                        <div class="dialogue-content"></div>
+                        <div class="dialogue-choices"></div>
+                    </div>
+                    <div class="dialogue-portrait"></div>
+                </div>
                 <div class="dialogue-arrow"></div>
             </div>
         `;
@@ -168,8 +227,13 @@ export class DialogueUI {
         this._choiceContainer = this._root.querySelector('.dialogue-choices');
         this._arrowEl = this._root.querySelector('.dialogue-arrow');
         
+        // Handle touch to prevent movement under UI
+        this._root.addEventListener('touchstart', (e) => e.stopPropagation(), { passive: true });
+        this._root.addEventListener('touchend', (e) => e.stopPropagation(), { passive: true });
+
         // Handle clicking to skip/next
-        this._root.addEventListener('click', () => {
+        this._root.addEventListener('click', (e) => {
+            e.stopPropagation();
             if (this._isTyping) {
                 this._skipTyping();
             } else if (this._activeConfig && !this._activeConfig.choices) {

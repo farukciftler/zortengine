@@ -82,7 +82,7 @@ export class PlayerMovementController extends Component {
         let moveDir;
 
         // Path following logic
-        if (this.path && this.path.length > 0 && this.mode === 'isometric') {
+        if (this.path && this.path.length > 0) {
             const nextPoint = this.path[this.pathIndex];
             const dist = new THREE.Vector3().subVectors(nextPoint, this.owner.group.position);
             dist.y = 0;
@@ -102,7 +102,7 @@ export class PlayerMovementController extends Component {
             } else {
                 moveDir = dist.normalize();
             }
-        } else if (this.targetPosition && this.mode === 'isometric') {
+        } else if (this.targetPosition) {
             const diff = new THREE.Vector3().subVectors(this.targetPosition, this.owner.group.position);
             diff.y = 0;
             if (diff.length() < 0.25) {
@@ -144,7 +144,7 @@ export class PlayerMovementController extends Component {
     }
 
     moveToPoint(point) {
-        if (this.mode === 'isometric' && point) {
+        if (point) {
             this.targetPosition = point.clone();
             this.targetPosition.y = 0;
             this.path = [];
@@ -153,7 +153,7 @@ export class PlayerMovementController extends Component {
     }
 
     setPath(path, onComplete = null) {
-        if (this.mode === 'isometric' && path && path.length > 0) {
+        if (path && path.length > 0) {
             this.path = path;
             this.pathIndex = 0;
             this.targetPosition = null;
@@ -163,10 +163,8 @@ export class PlayerMovementController extends Component {
 
     setMode(mode) {
         this.mode = mode;
-        if (mode === 'tps') {
-            this.path = [];
-            this.onPathComplete = null;
-        }
+        // Don't clear path on mode switch anymore to allow walking to point in TPS too
+        // But we might want to clear it if we want mode switch to be a hard stop
     }
 
     triggerDash(direction, speed = 16, duration = 0.14) {

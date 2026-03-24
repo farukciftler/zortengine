@@ -22,14 +22,15 @@ export class CareerTimelineHud {
                 display: flex;
                 align-items: center;
                 pointer-events: none;
-                transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+                transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1), top 0.4s, right 0.4s;
             }
             .timeline-root.collapsed {
                 transform: translate(308px, -50%);
             }
+            
             /* Focused State (Inside Building) */
             .timeline-root.focused {
-                transform: translate(0, -50%) !important;
+                transform: translate(0, -50%);
                 right: 20px;
             }
             .timeline-root.focused .timeline-toggle {
@@ -40,7 +41,7 @@ export class CareerTimelineHud {
             }
             .timeline-root.focused .timeline-container {
                 opacity: 1;
-                background: rgba(10, 10, 15, 0.85); /* Slightly more transparent */
+                background: rgba(10, 10, 15, 0.85);
                 border-color: #f1c40f;
             }
             .timeline-root.focused .timeline-item:not(.active-focus) {
@@ -49,7 +50,43 @@ export class CareerTimelineHud {
             .timeline-root.focused .timeline-item.active-focus {
                 border-color: #f1c40f;
                 background: rgba(241, 196, 15, 0.1);
-                pointer-events: none; /* Already inside, no need to click teleport */
+                pointer-events: none;
+            }
+
+            /* Mobile & TPS Specific Overrides */
+            @media (max-width: 768px) {
+                .timeline-root.tps-mode {
+                    top: 15px !important;
+                    right: 15px !important;
+                    transform: none !important;
+                    flex-direction: column;
+                    align-items: flex-end;
+                    z-index: 9999;
+                }
+                .timeline-root.tps-mode.collapsed {
+                    transform: none !important;
+                }
+                .timeline-root.tps-mode.collapsed .timeline-container {
+                    display: none;
+                }
+                .timeline-root.tps-mode.focused {
+                    transform: none !important;
+                    top: 15px !important;
+                }
+                .timeline-root.tps-mode .timeline-toggle {
+                    width: auto;
+                    min-width: 100px;
+                    height: 30px;
+                    writing-mode: horizontal-tb;
+                    border: 3px solid #000;
+                    margin-bottom: 5px;
+                    font-size: 11px;
+                    padding: 0 10px;
+                }
+                .timeline-root.tps-mode .timeline-container {
+                    width: 260px;
+                    max-height: 60vh;
+                }
             }
 
             .timeline-toggle {
@@ -160,11 +197,16 @@ export class CareerTimelineHud {
         const toggle = document.createElement('div');
         toggle.className = 'timeline-toggle';
         toggle.innerText = 'CAREER PATH';
-        toggle.onclick = () => this.root.classList.toggle('collapsed');
+        toggle.onclick = (e) => {
+            e.stopPropagation();
+            this.root.classList.toggle('collapsed');
+        };
         this.root.appendChild(toggle);
 
         this.container = document.createElement('div');
         this.container.className = 'timeline-container';
+        this.container.onclick = (e) => e.stopPropagation(); 
+        this.container.onmousedown = (e) => e.stopPropagation(); // Pre-emptive stop
         
         const header = document.createElement('div');
         header.className = 'timeline-header';
@@ -227,6 +269,11 @@ export class CareerTimelineHud {
 
         this.root.appendChild(this.container);
         document.body.appendChild(this.root);
+
+        // Collapse by default on mobile
+        if (window.innerWidth <= 768) {
+            this.root.classList.add('collapsed');
+        }
     }
 
     setFocusedBuilding(buildingId) {
@@ -246,7 +293,17 @@ export class CareerTimelineHud {
             });
         } else {
             this.root.classList.remove('focused');
+            this.root.classList.add('collapsed');
             this.experienceItems.forEach(item => item.classList.remove('active-focus'));
+        }
+    }
+
+    setTpsMode(enabled) {
+        if (!this.root) return;
+        if (enabled) {
+            this.root.classList.add('tps-mode');
+        } else {
+            this.root.classList.remove('tps-mode');
         }
     }
 
