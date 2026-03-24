@@ -52,6 +52,8 @@ import { buildMainStreet, getWestSidewalkBounds } from '../buildings/StreetLayou
 import { StreetTrafficManager } from '../buildings/StreetTraffic.js';
 import { SidewalkNpc } from '../actors/SidewalkNpc.js';
 import { SidewalkNpcController } from '../actors/SidewalkNpcController.js';
+import { SittingNpcController } from '../actors/SittingNpcController.js';
+import { NavigationSystem } from '../runtime/NavigationSystem.js';
 import {
     getDoorWorldPosition,
     isPlayerInsideBuildingFloor
@@ -399,6 +401,7 @@ export class RunScene extends GameScene {
         this._interactiveBuildings.push(wugo);
 
         this._buildPlaza(physics);
+        this._navSystem = new NavigationSystem(getWestSidewalkBounds());
         this._spawnSidewalkNpcs(physics);
     }
 
@@ -437,9 +440,10 @@ export class RunScene extends GameScene {
                 physics,
                 body,
                 bounds,
+                navSystem: this._navSystem,
+                players: this.players,
                 rng: this.rng,
-                moveSpeed: 2.45,
-                alongStreetOnly: true
+                moveSpeed: 2.45
             }));
             this.add(npc);
             this._sidewalkNpcs.push(npc);
@@ -982,6 +986,12 @@ export class RunScene extends GameScene {
         }
     }
     onUpdate(delta) {
+        // Animate sitting NPCs on benches
+        if (this.sittingNpcs) {
+            const time = this.engine.time;
+            this.sittingNpcs.forEach(npc => npc.update(delta, time));
+        }
+
         const input = this.getSystem('input');
         if (this.hud && input) {
             this.hud.updateCursor(input.clientX, input.clientY, this.cameraMode, input.isPointerLocked());
@@ -1122,7 +1132,13 @@ export class RunScene extends GameScene {
     }
 
     _buildPlaza(physics) {
-        buildMainStreet(this.threeScene, this.environmentMeshes, physics, this.propMaterial);
+        const result = buildMainStreet(this.threeScene, this.environmentMeshes, physics, this.propMaterial);
+        
+        // Setup animation for sitting NPCs
+        this.sittingNpcs = (result?.sittingBenches || []).map(sitBench => {
+            return new SittingNpcController(sitBench.parts);
+        });
+
         this._streetTraffic = new StreetTrafficManager(this.threeScene, this.environmentMeshes, {
             physics,
             propMaterial: this.propMaterial

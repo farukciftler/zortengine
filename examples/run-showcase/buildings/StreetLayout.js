@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { createStreetLight, createBench, createTrashCan, createPlanter } from './StreetProps.js';
+import { SittingNpcBench } from './SittingNpcBench.js';
 
 /**
  * Ana cadde + mağaza tarafı taş kaldırım. Doğu kaldırım yok; harita yolun ötesinde biter.
@@ -374,17 +375,18 @@ function decorateStreet(scene, environmentMeshes, physics, propMaterial) {
         // So local +X points to the road. 
         // If we want it pointing to World +X, we need rotation.y = 0.
         light.rotation.y = 0;
-        light.position.set(-11.5, 0.06, z);
+        const yPos = 0.05;
+        light.position.set(-11.5, yPos, z);
         scene.add(light);
 
         if (physics && propMaterial) {
             const body = physics.createBox(
                 0.4, 6, 0.4, 0,
-                { x: -11.5, y: 3, z },
+                { x: -11.5, y: 3 + yPos, z },
                 light.quaternion,
                 { material: propMaterial }
             );
-            physics.addBody(body, light);
+            physics.addBody(body, light, { offset: new THREE.Vector3(0, -3, 0) });
         }
 
         // Add to environment meshes only the pole for collision/occlusion if needed
@@ -393,51 +395,64 @@ function decorateStreet(scene, environmentMeshes, physics, propMaterial) {
 
     // 2. Benches and Planters (alternating)
     const midZPositions = [-37.5, -22.5, -7.5, 7.5, 22.5, 37.5];
+    const sittingBenches = [];
+
     for (let i = 0; i < midZPositions.length; i++) {
         const z = midZPositions[i];
         if (i % 2 === 0) {
-            const bench = createBench();
-            bench.rotation.y = Math.PI / 2; // Facing the road (+X)
-            bench.position.set(-18, 0.06, z);
-            scene.add(bench);
+            let bench;
+            let rotationY = Math.PI / 2; // Default facing road (+X)
 
+            if (i === 0 || i === 4) {
+                // Use a Sitting NPC variant for some benches
+                const sitBench = new SittingNpcBench(scene, -18, z, rotationY);
+                bench = sitBench.group;
+                sittingBenches.push(sitBench);
+            } else {
+                bench = createBench();
+                bench.rotation.y = rotationY;
+                bench.position.set(-18, 0.05, z);
+                scene.add(bench);
+            }
+
+            const bY = 0.5; // Half of height 1
             if (physics && propMaterial) {
                 const body = physics.createBox(
                     1.4, 1, 3.2, 0,
-                    { x: -18, y: 0.5, z: z },
+                    { x: -18, y: bY + 0.05, z: z },
                     bench.quaternion, // Sync rotation!
                     { material: propMaterial }
                 );
-                physics.addBody(body, bench);
+                physics.addBody(body, bench, { offset: new THREE.Vector3(0, -0.5, 0) });
             }
 
             // Add a trash can nearby
             const trash = createTrashCan();
-            trash.position.set(-18.5, 0.06, z + 2.5);
+            trash.position.set(-18.5, 0.05, z + 2.5);
             scene.add(trash);
 
             if (physics && propMaterial) {
                 const body = physics.createBox(
                     0.7, 1.0, 0.7, 0,
-                    { x: -18.5, y: 0.5, z: z + 2.5 },
+                    { x: -18.5, y: 0.5 + 0.05, z: z + 2.5 },
                     trash.quaternion,
                     { material: propMaterial }
                 );
-                physics.addBody(body, trash);
+                physics.addBody(body, trash, { offset: new THREE.Vector3(0, -0.5, 0) });
             }
         } else {
             const planter = createPlanter();
-            planter.position.set(-18, 0.06, z);
+            planter.position.set(-18, 0.05, z);
             scene.add(planter);
 
             if (physics && propMaterial) {
                 const body = physics.createBox(
                     1.5, 0.6, 1.5, 0,
-                    { x: -18, y: 0.3, z: z },
+                    { x: -18, y: 0.3 + 0.05, z: z },
                     null,
                     { material: propMaterial }
                 );
-                physics.addBody(body, planter);
+                physics.addBody(body, planter, { offset: new THREE.Vector3(0, -0.3, 0) });
             }
         }
     }
@@ -448,19 +463,21 @@ function decorateStreet(scene, environmentMeshes, physics, propMaterial) {
         const spots = [bz - 5, bz + 5];
         for (const sz of spots) {
             const p = createPlanter();
-            p.position.set(-18, 0.06, sz);
+            p.position.set(-18, 0.05, sz);
             scene.add(p);
 
             if (physics && propMaterial) {
                 const body = physics.createBox(
                     1.5, 0.6, 1.5, 0,
-                    { x: -18, y: 0.3, z: sz },
+                    { x: -18, y: 0.3 + 0.05, z: sz },
                     null,
                     { material: propMaterial }
                 );
-                physics.addBody(body, p);
+                physics.addBody(body, p, { offset: new THREE.Vector3(0, -0.3, 0) });
             }
         }
     });
+
+    return { sittingBenches };
 }
 
