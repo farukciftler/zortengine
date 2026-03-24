@@ -48,6 +48,7 @@ import { NpcFarukBubbleOverlay } from '../ui/NpcFarukBubbleOverlay.js';
 import { buildBoynerBuilding } from '../buildings/BoynerBuilding.js';
 import { buildInveonBuilding } from '../buildings/InveonBuilding.js';
 import { buildWugoBuilding } from '../buildings/WugoBuilding.js';
+import { buildNewMindBuilding } from '../buildings/NewMindBuilding.js';
 import { buildInfoBooth } from '../buildings/InfoBooth.js';
 import { buildMainStreet, getWestSidewalkBounds } from '../buildings/StreetLayout.js';
 import { StreetTrafficManager } from '../buildings/StreetTraffic.js';
@@ -137,6 +138,7 @@ export class RunScene extends GameScene {
         this.hudPresenter = new RunHudPresenter(this, this.hud);
         this.hudPresenter.initialize();
         this._interactiveBuildings = []; // Track buildings for door/camera logic
+        this._lastActiveBuildingId = null; 
         this.cameraMode = 'isometric';
         this.checkpointController = new RunCheckpointController(this, this.saveManager);
         this.combatCoordinator = new RunCombatCoordinator(this);
@@ -433,6 +435,10 @@ export class RunScene extends GameScene {
         // 3. WUGO — event app
         const wugo = buildWugoBuilding(this.threeScene, physics, this.groundMaterial, [-30, 0, 25]);
         this._interactiveBuildings.push(wugo);
+
+        // 4. NEWMIND — AI office
+        const newmind = buildNewMindBuilding(this.threeScene, physics, this.groundMaterial, [-30, 0, 50]);
+        this._interactiveBuildings.push(newmind);
 
         this._buildPlaza(physics);
         this._navSystem = new NavigationSystem(getWestSidewalkBounds());
@@ -985,13 +991,16 @@ export class RunScene extends GameScene {
             const shouldOpen = distToEntrance < openDist;
             const targetRotation = shouldOpen ? -Math.PI / 1.6 : 0; // Swing out
 
-            if (doorGroup) { // Single door (Boyner)
+            if (doorGroup) { // Single door (Boyner-style)
                 doorGroup.rotation.y += (targetRotation - doorGroup.rotation.y) * 0.1;
-            } else if (doors) { // Double doors (Inveon)
+            } else if (doors && doors.length > 0) { // Double doors or Array-based single door
                 const targetL = shouldOpen ? -Math.PI / 1.8 : 0;
-                const targetR = shouldOpen ? Math.PI / 1.8 : 0;
                 doors[0].rotation.y += (targetL - doors[0].rotation.y) * 0.1;
-                doors[1].rotation.y += (targetR - doors[1].rotation.y) * 0.1;
+                
+                if (doors.length > 1 && doors[1]) {
+                    const targetR = shouldOpen ? Math.PI / 1.8 : 0;
+                    doors[1].rotation.y += (targetR - doors[1].rotation.y) * 0.1;
+                }
             }
         }
 
@@ -1035,8 +1044,11 @@ export class RunScene extends GameScene {
             this._wasInsideBuilding = false;
         }
 
-        // Focused HUD logic: show only the current building's card when inside
-        this.careerTimeline?.setFocusedBuilding(activeBuildingId);
+        // Focused HUD logic: only update if focusing changed to avoid forcing state every frame
+        if (activeBuildingId !== this._lastActiveBuildingId) {
+            this.careerTimeline?.setFocusedBuilding(activeBuildingId);
+            this._lastActiveBuildingId = activeBuildingId;
+        }
     }
     onUpdate(delta) {
         // Animate sitting NPCs on benches

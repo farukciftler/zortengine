@@ -18,7 +18,7 @@ export class CareerTimelineHud {
                 right: 0;
                 top: 50%;
                 transform: translate(0, -50%);
-                z-index: 2000;
+                z-index: 100000;
                 display: flex;
                 align-items: center;
                 pointer-events: none;
@@ -55,25 +55,25 @@ export class CareerTimelineHud {
 
             /* Mobile & TPS Specific Overrides */
             @media (max-width: 768px) {
-                .timeline-root.tps-mode {
+                .timeline-root {
                     top: 15px !important;
                     right: 15px !important;
                     transform: none !important;
                     flex-direction: column;
                     align-items: flex-end;
-                    z-index: 9999;
+                    z-index: 99999;
                 }
-                .timeline-root.tps-mode.collapsed {
+                .timeline-root.collapsed {
                     transform: none !important;
                 }
-                .timeline-root.tps-mode.collapsed .timeline-container {
+                .timeline-root.collapsed .timeline-container {
                     display: none;
                 }
-                .timeline-root.tps-mode.focused {
+                .timeline-root.focused {
                     transform: none !important;
                     top: 15px !important;
                 }
-                .timeline-root.tps-mode .timeline-toggle {
+                .timeline-root .timeline-toggle {
                     width: auto;
                     min-width: 100px;
                     height: 30px;
@@ -83,7 +83,7 @@ export class CareerTimelineHud {
                     font-size: 11px;
                     padding: 0 10px;
                 }
-                .timeline-root.tps-mode .timeline-container {
+                .timeline-root .timeline-container {
                     width: 260px;
                     max-height: 60vh;
                 }
@@ -108,7 +108,7 @@ export class CareerTimelineHud {
                 image-rendering: pixelated;
                 box-shadow: -4px 4px 0px rgba(0,0,0,0.5);
                 transition: transform 0.2s, background 0.2s;
-                z-index: 2001;
+                z-index: 100001;
             }
             .timeline-toggle:hover {
                 transform: scale(1.05);
@@ -197,10 +197,15 @@ export class CareerTimelineHud {
         const toggle = document.createElement('div');
         toggle.className = 'timeline-toggle';
         toggle.innerText = 'CAREER PATH';
-        toggle.onclick = (e) => {
+        
+        const toggleHandler = (e) => {
+            e.preventDefault();
             e.stopPropagation();
             this.root.classList.toggle('collapsed');
         };
+        
+        toggle.onmousedown = toggleHandler;
+        toggle.ontouchstart = toggleHandler;
         this.root.appendChild(toggle);
 
         this.container = document.createElement('div');
@@ -220,7 +225,7 @@ export class CareerTimelineHud {
                 name: 'BOYNER', 
                 title: 'Senior Product Manager',
                 period: 'Jan 2025 – Present',
-                desc: 'Leading ML initiatives for PRD automation and fraud engine transformation. Integrated AI tools with Insider for advanced segmentation.',
+                desc: 'Leading ML initiatives for PRD automation and delivery analytics while driving Boyner’s fraud engine transformation. Integrated AI tools with Insider.',
                 buildingId: 'boyner' 
             },
             { 
@@ -229,6 +234,13 @@ export class CareerTimelineHud {
                 period: 'Jul 2023 – May 2024',
                 desc: 'Optimized user engagement and retention for event discovery app. Developed feature roadmaps and expanded product-market fit.',
                 buildingId: 'wugo' 
+            },
+            { 
+                name: 'NEWMIND', 
+                title: 'Software Developer',
+                period: 'Mar 2021 – Jan 2022',
+                desc: 'Built .NET and PHP APIs, worked on microservices for legal tech platforms. Made reporting faster and more efficient.',
+                buildingId: 'newmind' 
             },
             { 
                 name: 'INVEON', 
