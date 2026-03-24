@@ -44,10 +44,24 @@ import { RunBootstrap } from '../runtime/RunBootstrap.js';
 import { MetaProgression } from '../runtime/MetaProgression.js';
 import { RunState } from '../runtime/RunState.js';
 import { RunHud } from '../ui/RunHud.js';
+import { NpcFarukBubbleOverlay } from '../ui/NpcFarukBubbleOverlay.js';
 import { buildBoynerBuilding } from '../buildings/BoynerBuilding.js';
 import { buildInveonBuilding } from '../buildings/InveonBuilding.js';
 import { buildWugoBuilding } from '../buildings/WugoBuilding.js';
-import { buildBench, buildPlanter, buildSquarePattern, buildStreetLamp, buildFence } from '../buildings/SquareElements.js';
+import { buildMainStreet, getWestSidewalkBounds } from '../buildings/StreetLayout.js';
+import { StreetTrafficManager } from '../buildings/StreetTraffic.js';
+import { SidewalkNpc } from '../actors/SidewalkNpc.js';
+import { SidewalkNpcController } from '../actors/SidewalkNpcController.js';
+import {
+    getDoorWorldPosition,
+    isPlayerInsideBuildingFloor
+} from '../buildings/buildingPhysics.js';
+
+/** cannon-es: zemin/bina kutuları=1, oyuncu=2, yaya NPC=4 — NPC↔NPC çarpışması kapalı */
+const COLLISION_GROUP_STATIC = 1;
+const COLLISION_GROUP_PLAYER = 2;
+const COLLISION_GROUP_NPC = 4;
+const COLLISION_MASK_NPC = COLLISION_GROUP_STATIC | COLLISION_GROUP_PLAYER;
 
 export class RunScene extends GameScene {
     constructor(options = {}) {
@@ -67,6 +81,9 @@ export class RunScene extends GameScene {
         this.waveDirector = null;
         this.networkPeers = new Map();
         this.remotePlayers = new Map();
+        this._sidewalkNpcs = [];
+        this._farukBubbleTime = 0;
+        this._npcFarukBubble = null;
     }
 
     setup() {
@@ -128,11 +145,23 @@ export class RunScene extends GameScene {
         this._createLightsFromDefinition(WORLD_LAYOUT.lights);
         this._buildWorldFromDefinition(WORLD_LAYOUT, physics);
         this._createPlayers(physics, input, particles, cameraManager);
+        this._npcFarukBubble = new NpcFarukBubbleOverlay(this);
         this._setupPickups();
         this._setupExtraction();
         this._setupInputRoutes(input);
         this._setupAbilities(abilities, input, particles, cameraManager);
         this._applyLoadoutModifiers();
+
+        this.registerSystem(
+            'streetTrafficStep',
+            {
+                update: delta => {
+                    const p = this._getPrimaryTarget()?.group?.position;
+                    this._streetTraffic?.update(delta, p);
+                }
+            },
+            { priority: 99 }
+        );
         // this._enterRoom(ROOM_GRAPH[0].id);
         this.checkpointController.save('setup');
         this.replicationController.connect();
@@ -148,6 +177,8 @@ export class RunScene extends GameScene {
     onExit() {
         this.replicationController?.disconnect();
         this.hudPresenter?.dispose();
+        this._npcFarukBubble?.dispose();
+        this._npcFarukBubble = null;
     }
 
     _resolveLoadoutId() {
@@ -355,183 +386,75 @@ export class RunScene extends GameScene {
     }
 
     _buildCareerBuildings(physics) {
-        // Boyner — dedicated retail store builder
-        const boyner = buildBoynerBuilding(this.threeScene, physics, this.groundMaterial, [-20, 0, -20]);
+        // 1. BOYNER — interactive store
+        const boyner = buildBoynerBuilding(this.threeScene, physics, this.groundMaterial, [-30, 0, -25]);
         this._interactiveBuildings.push(boyner);
 
-        // INVEON — dedicated software office builder
-        const inveon = buildInveonBuilding(this.threeScene, physics, this.groundMaterial, [0, 0, -35]);
+        // 2. INVEON — software office
+        const inveon = buildInveonBuilding(this.threeScene, physics, this.groundMaterial, [-30, 0, 0]);
         this._interactiveBuildings.push(inveon);
 
-        // WUGO — Event discovery app building
-        const wugo = buildWugoBuilding(this.threeScene, physics, this.groundMaterial, [-30, 0, 5]);
+        // 3. WUGO — event app
+        const wugo = buildWugoBuilding(this.threeScene, physics, this.groundMaterial, [-30, 0, 25]);
         this._interactiveBuildings.push(wugo);
 
         this._buildPlaza(physics);
-
-        const companies = [
-            {
-                name: 'MakeItProduct',
-                title: 'Founder & Lead',
-                color: 0x8e44ad,
-                emissive: 0x4a0070,
-                position: [20, 0, -20],
-                size: [7, 9, 7],
-                shape: 'box',
-                accentColor: 0xd670f0,
-            },
-            {
-                name: 'PeP FinTech',
-                title: 'Senior Dev',
-                color: 0x27ae60,
-                emissive: 0x0b5430,
-                position: [30, 0, 5],
-                size: [6, 8, 6],
-                shape: 'box',
-                accentColor: 0x58d68d,
-            },
-            {
-                name: 'New Mind',
-                title: 'Software Dev',
-                color: 0xe67e22,
-                emissive: 0x7e4000,
-                position: [-20, 0, 25],
-                size: [5, 6, 5],
-                shape: 'box',
-                accentColor: 0xf0a562,
-            },
-            {
-                name: 'Locup Digital',
-                title: 'CEO & Founder',
-                color: 0x16a085,
-                emissive: 0x004d40,
-                position: [20, 0, 25],
-                size: [5, 5, 5],
-                shape: 'box',
-                accentColor: 0x48c9b0,
-            },
-        ];
-
-        for (const company of companies) {
-            // Main building body
-            const [w, h, d] = company.size;
-            const bodyGeo = new THREE.BoxGeometry(w, h, d);
-            const bodyMat = new THREE.MeshStandardMaterial({
-                color: company.color,
-                emissive: company.emissive,
-                emissiveIntensity: 0.3,
-                roughness: 0.5,
-                metalness: 0.3,
-            });
-            const body = new THREE.Mesh(bodyGeo, bodyMat);
-            body.castShadow = true;
-            body.receiveShadow = true;
-            body.position.set(company.position[0], h / 2, company.position[2]);
-            this.threeScene.add(body);
-            this.environmentMeshes.push(body);
-
-            // Physics body for the building
-            if (physics) {
-                physics.addBody(
-                    physics.createBox(w, h, d, 0, body.position, null, { material: this.groundMaterial }),
-                    body
-                );
-            }
-
-            // Rooftop (flat accent slab)
-            const roofGeo = new THREE.BoxGeometry(w + 0.6, 0.4, d + 0.6);
-            const roofMat = new THREE.MeshStandardMaterial({
-                color: company.accentColor,
-                emissive: company.accentColor,
-                emissiveIntensity: 0.5,
-                roughness: 0.3,
-                metalness: 0.5,
-            });
-            const roof = new THREE.Mesh(roofGeo, roofMat);
-            roof.position.set(company.position[0], h + 0.2, company.position[2]);
-            this.threeScene.add(roof);
-
-            // Edge glow strips (vertical lines on corners)
-            const stripH = h;
-            const stripGeo = new THREE.BoxGeometry(0.15, stripH, 0.15);
-            const stripMat = new THREE.MeshStandardMaterial({
-                color: company.accentColor,
-                emissive: company.accentColor,
-                emissiveIntensity: 1.2,
-                roughness: 0.2,
-            });
-            const offX = w / 2;
-            const offZ = d / 2;
-            const corners = [
-                [offX, offZ], [-offX, offZ],
-                [offX, -offZ], [-offX, -offZ]
-            ];
-            for (const [cx, cz] of corners) {
-                const strip = new THREE.Mesh(stripGeo, stripMat);
-                strip.position.set(company.position[0] + cx, h / 2, company.position[2] + cz);
-                this.threeScene.add(strip);
-            }
-
-            // Floating name label above building
-            const canvas = document.createElement('canvas');
-            canvas.width = 512;
-            canvas.height = 128;
-            const ctx = canvas.getContext('2d');
-            ctx.clearRect(0, 0, 512, 128);
-            ctx.fillStyle = 'rgba(0,0,0,0.65)';
-            const radius = 16;
-            ctx.beginPath();
-            ctx.moveTo(radius, 0);
-            ctx.lineTo(512 - radius, 0);
-            ctx.quadraticCurveTo(512, 0, 512, radius);
-            ctx.lineTo(512, 128 - radius);
-            ctx.quadraticCurveTo(512, 128, 512 - radius, 128);
-            ctx.lineTo(radius, 128);
-            ctx.quadraticCurveTo(0, 128, 0, 128 - radius);
-            ctx.lineTo(0, radius);
-            ctx.quadraticCurveTo(0, 0, radius, 0);
-            ctx.closePath();
-            ctx.fill();
-
-            // Accent border
-            ctx.strokeStyle = `#${company.accentColor.toString(16).padStart(6, '0')}`;
-            ctx.lineWidth = 4;
-            ctx.stroke();
-
-            // Company name
-            ctx.fillStyle = '#ffffff';
-            ctx.font = 'bold 42px Arial';
-            ctx.textAlign = 'center';
-            ctx.textBaseline = 'middle';
-            ctx.fillText(company.name, 256, 52);
-
-            // Title
-            ctx.fillStyle = `#${company.accentColor.toString(16).padStart(6, '0')}`;
-            ctx.font = '24px Arial';
-            ctx.fillText(company.title, 256, 92);
-
-            const texture = new THREE.CanvasTexture(canvas);
-            const labelGeo = new THREE.PlaneGeometry(7, 1.8);
-            const labelMat = new THREE.MeshBasicMaterial({
-                map: texture,
-                transparent: true,
-                depthWrite: false,
-                side: THREE.DoubleSide
-            });
-            const label = new THREE.Mesh(labelGeo, labelMat);
-            label.position.set(company.position[0], h + 2.5, company.position[2]);
-            this.threeScene.add(label);
-            this._careerLabels = this._careerLabels || [];
-            this._careerLabels.push(label);
-        }
+        this._spawnSidewalkNpcs(physics);
     }
 
+    _spawnSidewalkNpcs(physics) {
+        const bounds = getWestSidewalkBounds();
+        const colors = [0xc0392b, 0x2980b9, 0x27ae60, 0x8e44ad, 0xd35400, 0x16a085];
+        /** Caddeye yakın kaldırım (bina gövdelerinden uzak) */
+        const spawnPoints = [
+            [-18, -35],
+            [-15, -12],
+            [-16, 38],
+            [-14, 15],
+            [-17, 22]
+        ];
+        this._sidewalkNpcs = [];
+        for (let i = 0; i < spawnPoints.length; i++) {
+            const [x, z] = spawnPoints[i];
+            const npc = new SidewalkNpc(null, x, z, {
+                colorSuit: colors[i % colors.length],
+                radius: 0.6,
+                walkAnimSpeed: 6.0
+            });
+            const body = physics.createCharacterBody(0.6, { x, y: 5, z }, 2.2, {
+                mass: 78,
+                material: this.propMaterial,
+                friction: 0.0,
+                restitution: 0.0,
+                linearDamping: 0.82,
+                angularDamping: 1.0,
+                collisionFilterGroup: COLLISION_GROUP_NPC,
+                collisionFilterMask: COLLISION_MASK_NPC
+            });
+            physics.addBody(body, npc.group);
+            npc.body = body;
+            npc.addComponent('npcMove', new SidewalkNpcController({
+                physics,
+                body,
+                bounds,
+                rng: this.rng,
+                moveSpeed: 2.45,
+                alongStreetOnly: true
+            }));
+            this.add(npc);
+            this._sidewalkNpcs.push(npc);
+        }
+        for (const npc of this._sidewalkNpcs) {
+            const move = npc.getComponent('npcMove');
+            if (move) move.peerNpcs = this._sidewalkNpcs;
+        }
+    }
 
     _createPlayers(physics, input, particles, cameraManager) {
         const defaultPlayer = this._createPlayer({
             profile: 'default',
             colorSuit: 0xe74c3c,
-            spawn: new THREE.Vector3(0, 5, 0)
+            spawn: new THREE.Vector3(-24, 5, 0)
         }, physics, input, particles, cameraManager);
         this.player = defaultPlayer;
 
@@ -539,7 +462,7 @@ export class RunScene extends GameScene {
             this.supportPlayer = this._createPlayer({
                 profile: 'coop',
                 colorSuit: 0x2563eb,
-                spawn: new THREE.Vector3(2, 5, 1)
+                spawn: new THREE.Vector3(-26, 5, 2)
             }, physics, input, particles, cameraManager);
         }
     }
@@ -562,7 +485,9 @@ export class RunScene extends GameScene {
             friction: 0.0,
             restitution: 0.0,
             linearDamping: 0.82,
-            angularDamping: 1.0
+            angularDamping: 1.0,
+            collisionFilterGroup: COLLISION_GROUP_PLAYER,
+            collisionFilterMask: -1
         });
         physics.addBody(body, actor.group);
         actor.addComponent('movement', new PlayerMovementController({
@@ -987,36 +912,25 @@ export class RunScene extends GameScene {
         if (!this.player || !this.player.group) return;
 
         const playerPos = this.player.group.position;
-        // 1. Detection with Hysteresis (to avoid camera flickering at threshold)
-        const exitBuffer = 1.0; // 1m buffer to keep you 'inside' longer when exiting
+        // 1. İçeride tespit: buildingPhysics (yerel zemin + histerezis)
         let anyInside = false;
 
         for (const building of this._interactiveBuildings) {
-            const { bounds, doorGroup, doors } = building;
-            const distX = Math.abs(playerPos.x - bounds.x);
-            const distZ = Math.abs(playerPos.z - bounds.z);
+            const { doorGroup, doors, interaction } = building;
+            if (!interaction) continue;
 
-            // Use tight check for entering, loose for staying
-            const halfW = bounds.w / 2;
-            const halfD = bounds.d / 2;
-            const isInside = this._wasInsideBuilding 
-                ? (distX < halfW + exitBuffer && distZ < halfD + exitBuffer)
-                : (distX < halfW - 0.5 && distZ < halfD - 0.5);
+            const isInside = isPlayerInsideBuildingFloor(
+                playerPos,
+                interaction,
+                this._wasInsideBuilding
+            );
 
             if (isInside) anyInside = true;
 
-            // 2. Door Animation Logic
-            // Default entrance is world +z from center. If building has entranceOffset, use it.
-            const entrancePos = new THREE.Vector3(bounds.x, 0, bounds.z);
-            if (building.entranceOffset) {
-                entrancePos.add(building.entranceOffset);
-            } else {
-                entrancePos.z += (bounds.d / 2);
-            }
-
+            const entrancePos = getDoorWorldPosition(interaction);
             const distToEntrance = playerPos.distanceTo(entrancePos);
-
-            const shouldOpen = distToEntrance < 6;
+            const openDist = interaction.doorOpenDistance ?? 6;
+            const shouldOpen = distToEntrance < openDist;
             const targetRotation = shouldOpen ? -Math.PI / 1.6 : 0; // Swing out
 
             if (doorGroup) { // Single door (Boyner)
@@ -1125,15 +1039,8 @@ export class RunScene extends GameScene {
         this._processHazards(delta);
         this._updateBuildingInteractions(delta);
 
-        // Career building labels: billboard effect (always face the camera)
-        if (this._careerLabels && this._careerLabels.length > 0) {
-            const camera = this.getCamera?.()?.getThreeCamera?.();
-            if (camera) {
-                for (const label of this._careerLabels) {
-                    label.lookAt(camera.position);
-                }
-            }
-        }
+        this._farukBubbleTime += delta;
+        this._npcFarukBubble?.update(delta, this._farukBubbleTime);
 
         this.replicationController.syncLocalState();
     }
@@ -1215,27 +1122,10 @@ export class RunScene extends GameScene {
     }
 
     _buildPlaza(physics) {
-        // 1. Expanded Central Square Floor Pattern (80x80)
-        buildSquarePattern(this.threeScene, 0, 0, 80, 80);
-        
-        // 2. ONLY Outermost Perimeter Fences (80x80 Boundary)
-        const borders = [
-            buildFence(this.threeScene, physics, this.groundMaterial, [-40, -40], [40, -40]),
-            buildFence(this.threeScene, physics, this.groundMaterial, [-40, -40], [-40, 40]),
-            buildFence(this.threeScene, physics, this.groundMaterial, [40, -40], [40, 40]),
-            buildFence(this.threeScene, physics, this.groundMaterial, [-40, 40], [40, 40])
-        ];
-
-        // Add to environment meshes to ensure player and beam raycasts hit them
-        for (const fence of borders) {
-            fence.traverse(child => {
-                if (child.isMesh) this.environmentMeshes.push(child);
-            });
-        }
-
-        /* 
-           Benches, Planters, Lamps and Interior building fences REMOVED.
-           Only the large outer square boundary remains.
-        */
+        buildMainStreet(this.threeScene, this.environmentMeshes);
+        this._streetTraffic = new StreetTrafficManager(this.threeScene, this.environmentMeshes, {
+            physics,
+            propMaterial: this.propMaterial
+        });
     }
 }

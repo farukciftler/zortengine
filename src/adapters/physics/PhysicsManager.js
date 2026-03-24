@@ -82,7 +82,9 @@ export class PhysicsManager {
             friction: options.friction ?? 0.0,
             restitution: options.restitution ?? 0.0,
             gravityScale: options.gravityScale ?? 1.0,
-            allowSleep: options.allowSleep ?? false
+            allowSleep: options.allowSleep ?? false,
+            collisionFilterGroup: options.collisionFilterGroup,
+            collisionFilterMask: options.collisionFilterMask
         });
         body.userData = {
             ...(body.userData || {}),
@@ -158,6 +160,13 @@ export class PhysicsManager {
         if (options.mass !== undefined && body.mass !== options.mass) {
             body.mass = options.mass;
             body.updateMassProperties();
+        }
+
+        if (options.collisionFilterGroup !== undefined) {
+            body.collisionFilterGroup = options.collisionFilterGroup;
+        }
+        if (options.collisionFilterMask !== undefined) {
+            body.collisionFilterMask = options.collisionFilterMask;
         }
 
         if (options.linearDamping !== undefined) {

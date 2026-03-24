@@ -1,11 +1,16 @@
 import * as THREE from 'three';
+import {
+    addBuildingShellPhysics,
+    buildRectDoorShellBoxes,
+    createBuildingInteractionHandle
+} from './buildingPhysics.js';
 
 /**
  * BoynerBuilding — 4-walled enclosed clothing store.
  * Changes:
  *  - Awning/canopy removed
  *  - Interior clothing items added (racks, mannequins, folding table)
- *  - Sign canvas horizontally flipped to compensate group.rotation.y = PI
+ *  - Sign canvas horizontally flipped (group.rotation.y = -PI/2)
  */
 export function buildBoynerBuilding(scene, physics, groundMaterial, position = [0, 0, 0]) {
     const [px, , pz] = position;
@@ -355,31 +360,36 @@ export function buildBoynerBuilding(scene, physics, groundMaterial, position = [
     });
 
     // ── POSITION + ROTATION ───────────────────────────────────────────────────
-    group.rotation.y = Math.PI;
+    group.rotation.y = -Math.PI / 2; // Face world +X (plaza center)
     group.position.set(px, 0, pz);
     scene.add(group);
 
-    // ── PHYSICS — Separate walls to allow entry ──────────────────────────────
-    // NOTE: Building is rotated PI, so world-front (door) is at pz + D/2
+    // ── PHYSICS — buildingPhysics.buildRectDoorShellBoxes ────────────────────
     if (physics && groundMaterial) {
-        const wallH = H;
-        // Visual BACK (world -z)
-        physics.addBody(physics.createBox(W, wallH, WALL_T, 0, new THREE.Vector3(px, wallH/2, pz - D/2), null, { material: groundMaterial }));
-        // Left wall
-        physics.addBody(physics.createBox(WALL_T, wallH, D, 0, new THREE.Vector3(px - W/2, wallH/2, pz), null, { material: groundMaterial }));
-        // Right wall
-        physics.addBody(physics.createBox(WALL_T, wallH, D, 0, new THREE.Vector3(px + W/2, wallH/2, pz), null, { material: groundMaterial }));
-        
-        // Visual FRONT (world +z) — with door gap
-        const frontWallW = (W - doorW) / 2;
-        physics.addBody(physics.createBox(frontWallW, wallH, WALL_T, 0, new THREE.Vector3(px - W/2 + frontWallW/2, wallH/2, pz + D/2), null, { material: groundMaterial }));
-        physics.addBody(physics.createBox(frontWallW, wallH, WALL_T, 0, new THREE.Vector3(px + W/2 - frontWallW/2, wallH/2, pz + D/2), null, { material: groundMaterial }));
+        addBuildingShellPhysics(
+            physics,
+            groundMaterial,
+            group,
+            buildRectDoorShellBoxes({
+                W,
+                D,
+                H,
+                wallT: WALL_T,
+                doorW,
+                lintel: 'boyner'
+            })
+        );
     }
 
-    return { 
-        group, 
-        doorGroup, 
+    return {
+        group,
+        doorGroup,
         id: 'boyner',
-        bounds: { x: px, z: pz, w: W, d: D } 
+        interaction: createBuildingInteractionHandle({
+            group,
+            W,
+            D,
+            doorLocalZ: frontZ
+        })
     };
 }

@@ -6,11 +6,6 @@ import {
 import { AudioManager } from 'zortengine/audio';
 import { ParticleManager } from 'zortengine/render';
 import {
-    DebugOverlaySystem,
-    EventTraceSystem,
-    InspectorPanelSystem
-} from 'zortengine/devtools';
-import {
     AbilitySystem,
     DamageSystem,
     ModifierSystem,
@@ -51,9 +46,6 @@ export class RunBootstrap {
             parent: this.scene.engine.container
         }), { priority: 200 });
         this.scene.registerSystem('audio', new AudioManager(cameraManager), { priority: 20 });
-        this.scene.registerSystem('debugOverlay', new DebugOverlaySystem({ ui }), { priority: 300 });
-        this.scene.registerSystem('eventTrace', new EventTraceSystem({ ui }), { priority: 301 });
-        this.scene.registerSystem('inspectorPanel', new InspectorPanelSystem({ ui }), { priority: 302 });
 
         cameraManager.setPreset('2.5d');
         this.scene.setCamera(cameraManager);

@@ -1,0 +1,329 @@
+import * as THREE from 'three';
+
+/**
+ * Ana cadde + mağaza tarafı taş kaldırım. Doğu kaldırım yok; harita yolun ötesinde biter.
+ */
+
+const ROAD_HALF_WIDTH = 9;
+export const STREET_Z_HALF = 58;
+const SIDEWALK_WEST_X0 = -42;
+const SIDEWALK_WEST_X1 = -11;
+
+/** İki şerit +Z, iki şerit −Z (karşı yön). */
+export const LANE_DEFS = [
+    { x: -6.75, dir: 1 },
+    { x: -2.25, dir: 1 },
+    { x: 2.25, dir: -1 },
+    { x: 6.75, dir: -1 }
+];
+
+/** Aynı yönde bitişik şerit (sollama): 0↔1, 2↔3 */
+export function lanePairAlternate(laneIndex) {
+    if (laneIndex === 0) return 1;
+    if (laneIndex === 1) return 0;
+    if (laneIndex === 2) return 3;
+    if (laneIndex === 3) return 2;
+    return null;
+}
+
+export function getRoadZBounds() {
+    return {
+        zMin: -STREET_Z_HALF + 2,
+        zMax: STREET_Z_HALF - 2
+    };
+}
+
+/** Mağaza kaldırımı içinde yürüme alanı (yol ve bina kenarından pay). */
+export function getWestSidewalkBounds() {
+    return {
+        xMin: -40,
+        xMax: -12,
+        zMin: -STREET_Z_HALF + 2,
+        zMax: STREET_Z_HALF - 2
+    };
+}
+
+/**
+ * Kariyer binaları dünya XZ ayak izi (group y=-π/2: wx=cx−lz, wz=cz+lx).
+ * NPC hedefleri bu kutuların dışında kalmalı.
+ */
+export const NPC_BUILDING_EXCLUSIONS = [
+    { xMin: -36.8, xMax: -23.2, zMin: -33.8, zMax: -16.2 },
+    { xMin: -37.8, xMax: -22.2, zMin: -9.8, zMax: 9.8 },
+    { xMin: -35.8, xMax: -24.2, zMin: 17.8, zMax: 32.2 }
+];
+
+export function isNpcWalkBlockedByBuilding(x, z) {
+    return NPC_BUILDING_EXCLUSIONS.some(
+        b => x >= b.xMin && x <= b.xMax && z >= b.zMin && z <= b.zMax
+    );
+}
+
+function pushEnv(list, obj) {
+    obj.traverse?.(ch => {
+        if (ch.isMesh) {
+            ch.castShadow = true;
+            ch.receiveShadow = true;
+        }
+    });
+    if (obj.isMesh) {
+        obj.castShadow = true;
+        obj.receiveShadow = true;
+    }
+    list.push(obj);
+    return obj;
+}
+
+/** Düzensiz taş döşeme — canvas dokusu */
+function createStonePavementTexture() {
+    const c = document.createElement('canvas');
+    c.width = 512;
+    c.height = 512;
+    const ctx = c.getContext('2d');
+    ctx.fillStyle = '#6e6e6c';
+    ctx.fillRect(0, 0, 512, 512);
+    const base = [105, 108, 106];
+    for (let row = 0; row < 14; row++) {
+        for (let col = 0; col < 14; col++) {
+            const ox = col * 36 + (row % 2) * 18;
+            const oy = row * 36;
+            const w = 32 + Math.random() * 6;
+            const h = 30 + Math.random() * 8;
+            const jitter = () => (Math.random() - 0.5) * 8;
+            ctx.fillStyle = `rgb(${base[0] + jitter()},${base[1] + jitter()},${base[2] + jitter()})`;
+            ctx.beginPath();
+            const rx = 4;
+            ctx.moveTo(ox + rx, oy);
+            ctx.lineTo(ox + w - rx, oy);
+            ctx.quadraticCurveTo(ox + w, oy, ox + w, oy + rx);
+            ctx.lineTo(ox + w, oy + h - rx);
+            ctx.quadraticCurveTo(ox + w, oy + h, ox + w - rx, oy + h);
+            ctx.lineTo(ox + rx, oy + h);
+            ctx.quadraticCurveTo(ox, oy + h, ox, oy + h - rx);
+            ctx.lineTo(ox, oy + rx);
+            ctx.quadraticCurveTo(ox, oy, ox + rx, oy);
+            ctx.closePath();
+            ctx.fill();
+        }
+    }
+    ctx.strokeStyle = '#4a4a48';
+    ctx.lineWidth = 2;
+    for (let i = 0; i < 18; i++) {
+        ctx.beginPath();
+        ctx.moveTo(Math.random() * 512, Math.random() * 512);
+        ctx.lineTo(Math.random() * 512, Math.random() * 512);
+        ctx.stroke();
+    }
+    const tex = new THREE.CanvasTexture(c);
+    tex.wrapS = THREE.RepeatWrapping;
+    tex.wrapT = THREE.RepeatWrapping;
+    tex.repeat.set(6, 18);
+    tex.colorSpace = THREE.SRGBColorSpace;
+    return tex;
+}
+
+/**
+ * Düşük poli ama okunaklı otomobil (şasi, kabin, cam, jant, far).
+ * @param {number} bodyColor
+ * @returns {THREE.Group}
+ */
+export function createDetailedCarGroup(bodyColor) {
+    const group = new THREE.Group();
+    const paint = new THREE.MeshStandardMaterial({
+        color: bodyColor,
+        roughness: 0.38,
+        metalness: 0.55,
+        envMapIntensity: 0.9
+    });
+    const plastic = new THREE.MeshStandardMaterial({ color: 0x1a1a1e, roughness: 0.65, metalness: 0.15 });
+    const glassMat = new THREE.MeshStandardMaterial({
+        color: 0x0d1520,
+        roughness: 0.08,
+        metalness: 0.65,
+        transparent: true,
+        opacity: 0.82
+    });
+    const rubber = new THREE.MeshStandardMaterial({ color: 0x0a0a0a, roughness: 0.98, metalness: 0.02 });
+    const chrome = new THREE.MeshStandardMaterial({ color: 0xd5dbe0, roughness: 0.18, metalness: 0.88 });
+    const emissiveHead = new THREE.MeshStandardMaterial({
+        color: 0xfff8e8,
+        emissive: 0xffe8b8,
+        emissiveIntensity: 0.45,
+        roughness: 0.35
+    });
+    const emissiveTail = new THREE.MeshStandardMaterial({
+        color: 0x8b0000,
+        emissive: 0xff2200,
+        emissiveIntensity: 0.35,
+        roughness: 0.4
+    });
+
+    const wr = 0.34;
+    const chassis = new THREE.Mesh(new THREE.BoxGeometry(1.92, 0.52, 4.35), paint);
+    chassis.position.set(0, wr + 0.26, 0);
+    group.add(chassis);
+
+    const skirt = new THREE.Mesh(new THREE.BoxGeometry(1.98, 0.12, 4.42), plastic);
+    skirt.position.set(0, wr + 0.06, 0);
+    group.add(skirt);
+
+    const cabin = new THREE.Mesh(new THREE.BoxGeometry(1.78, 0.68, 2.15), paint);
+    cabin.position.set(0, wr + 0.52 + 0.34, -0.2);
+    group.add(cabin);
+
+    const roof = new THREE.Mesh(new THREE.BoxGeometry(1.65, 0.1, 1.75), paint);
+    roof.position.set(0, wr + 0.52 + 0.68 + 0.05, -0.15);
+    group.add(roof);
+
+    const hood = new THREE.Mesh(new THREE.BoxGeometry(1.75, 0.22, 1.15), paint);
+    hood.position.set(0, wr + 0.45, 1.15);
+    group.add(hood);
+
+    const trunk = new THREE.Mesh(new THREE.BoxGeometry(1.75, 0.2, 0.95), paint);
+    trunk.position.set(0, wr + 0.42, -1.35);
+    group.add(trunk);
+
+    const wind = new THREE.Mesh(new THREE.PlaneGeometry(1.55, 0.62), glassMat);
+    wind.position.set(0, wr + 0.95, 0.72);
+    wind.rotation.x = -0.32;
+    group.add(wind);
+
+    const rearGlass = new THREE.Mesh(new THREE.PlaneGeometry(1.5, 0.45), glassMat);
+    rearGlass.position.set(0, wr + 0.88, -0.95);
+    rearGlass.rotation.x = 0.28;
+    group.add(rearGlass);
+
+    const bumperF = new THREE.Mesh(new THREE.BoxGeometry(1.85, 0.2, 0.22), plastic);
+    bumperF.position.set(0, wr + 0.18, 2.28);
+    group.add(bumperF);
+    const bumperR = new THREE.Mesh(new THREE.BoxGeometry(1.85, 0.2, 0.22), plastic);
+    bumperR.position.set(0, wr + 0.18, -2.28);
+    group.add(bumperR);
+
+    const wheelGeo = new THREE.CylinderGeometry(wr, wr, 0.22, 20);
+    wheelGeo.rotateZ(Math.PI / 2);
+    const rimGeo = new THREE.CylinderGeometry(0.2, 0.2, 0.24, 14);
+    rimGeo.rotateZ(Math.PI / 2);
+    [[-0.86, 1.32], [0.86, 1.32], [-0.86, -1.32], [0.86, -1.32]].forEach(([wx, wz]) => {
+        const w = new THREE.Mesh(wheelGeo, rubber);
+        w.position.set(wx, wr, wz);
+        group.add(w);
+        const rim = new THREE.Mesh(rimGeo, chrome);
+        rim.position.set(wx, wr, wz);
+        group.add(rim);
+    });
+
+    [[-0.55, 2.18], [0.55, 2.18]].forEach(([hx, hz]) => {
+        const h = new THREE.Mesh(new THREE.BoxGeometry(0.38, 0.14, 0.08), emissiveHead);
+        h.position.set(hx, wr + 0.35, hz);
+        group.add(h);
+    });
+    [[-0.5, -2.2], [0.5, -2.2]].forEach(([tx, tz]) => {
+        const t = new THREE.Mesh(new THREE.BoxGeometry(0.32, 0.12, 0.06), emissiveTail);
+        t.position.set(tx, wr + 0.32, tz);
+        group.add(t);
+    });
+
+    const mirrorL = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.1, 0.18), chrome);
+    mirrorL.position.set(-1.02, wr + 0.78, 0.45);
+    group.add(mirrorL);
+    const mirrorR = mirrorL.clone();
+    mirrorR.position.x = 1.02;
+    group.add(mirrorR);
+
+    group.traverse(o => {
+        if (o.isMesh) {
+            o.castShadow = true;
+            o.receiveShadow = true;
+        }
+    });
+    return group;
+}
+
+/**
+ * @param {THREE.Scene} scene
+ * @param {Array<THREE.Object3D>} environmentMeshes
+ */
+export function buildMainStreet(scene, environmentMeshes) {
+    const asphaltMat = new THREE.MeshStandardMaterial({
+        color: 0x2a2a2a,
+        roughness: 0.92,
+        metalness: 0.06
+    });
+    const curbMat = new THREE.MeshStandardMaterial({ color: 0x6a6a68, roughness: 0.82 });
+    const stoneTex = createStonePavementTexture();
+    const sidewalkMat = new THREE.MeshStandardMaterial({
+        map: stoneTex,
+        roughness: 0.88,
+        metalness: 0.02
+    });
+    const lineYellow = new THREE.MeshBasicMaterial({ color: 0xf1c40f });
+    const lineWhite = new THREE.MeshBasicMaterial({ color: 0xf2f2f2 });
+
+    const road = new THREE.Mesh(
+        new THREE.PlaneGeometry(ROAD_HALF_WIDTH * 2, STREET_Z_HALF * 2),
+        asphaltMat
+    );
+    road.rotation.x = -Math.PI / 2;
+    road.position.set(0, 0.045, 0);
+    scene.add(road);
+    pushEnv(environmentMeshes, road);
+
+    const swW = new THREE.Mesh(
+        new THREE.PlaneGeometry(SIDEWALK_WEST_X1 - SIDEWALK_WEST_X0, STREET_Z_HALF * 2),
+        sidewalkMat
+    );
+    swW.rotation.x = -Math.PI / 2;
+    swW.position.set((SIDEWALK_WEST_X0 + SIDEWALK_WEST_X1) / 2, 0.052, 0);
+    scene.add(swW);
+    pushEnv(environmentMeshes, swW);
+
+    const curbH = 0.14;
+    const curbLen = STREET_Z_HALF * 2;
+    const westCurb = new THREE.Mesh(new THREE.BoxGeometry(0.28, curbH, curbLen), curbMat);
+    westCurb.position.set(-ROAD_HALF_WIDTH - 0.14, curbH / 2 + 0.02, 0);
+    scene.add(westCurb);
+    pushEnv(environmentMeshes, westCurb);
+
+    const eastCurb = new THREE.Mesh(new THREE.BoxGeometry(0.28, curbH, curbLen), curbMat);
+    eastCurb.position.set(ROAD_HALF_WIDTH + 0.14, curbH / 2 + 0.02, 0);
+    scene.add(eastCurb);
+    pushEnv(environmentMeshes, eastCurb);
+
+    const centerLine = new THREE.Mesh(
+        new THREE.BoxGeometry(0.36, 0.03, curbLen - 4),
+        lineYellow
+    );
+    centerLine.position.set(0, 0.08, 0);
+    scene.add(centerLine);
+    pushEnv(environmentMeshes, centerLine);
+
+    const dashLen = 3;
+    const dashGap = 3;
+    /** Kuzey yönü iki şerit arası (−6.75 ile −2.25 ortası), güney yönü (2.25 ile 6.75 ortası). */
+    for (let z = -STREET_Z_HALF + 2; z < STREET_Z_HALF - 2; z += dashLen + dashGap) {
+        [-4.5, 4.5].forEach(lx => {
+            const d = new THREE.Mesh(
+                new THREE.BoxGeometry(0.12, 0.02, dashLen),
+                lineWhite
+            );
+            d.position.set(lx, 0.07, z + dashLen / 2);
+            scene.add(d);
+            pushEnv(environmentMeshes, d);
+        });
+    }
+
+    const edgeGeo = new THREE.BoxGeometry(0.1, 0.02, curbLen - 4);
+    [-ROAD_HALF_WIDTH + 0.15, ROAD_HALF_WIDTH - 0.15].forEach(ex => {
+        const e = new THREE.Mesh(edgeGeo, lineWhite);
+        e.position.set(ex, 0.07, 0);
+        scene.add(e);
+        pushEnv(environmentMeshes, e);
+    });
+
+    return {
+        roadHalfWidth: ROAD_HALF_WIDTH,
+        streetZHalf: STREET_Z_HALF
+    };
+}
+

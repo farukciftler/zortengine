@@ -1,4 +1,9 @@
 import * as THREE from 'three';
+import {
+    addBuildingShellPhysics,
+    buildRectDoorShellBoxes,
+    createBuildingInteractionHandle
+} from './buildingPhysics.js';
 
 /**
  * InveonBuilding — 4-walled software development office.
@@ -8,7 +13,7 @@ import * as THREE from 'three';
  *  - Full-height curtain-wall glass front
  *  - Interior: workstations, monitors, chairs, server rack, whiteboard, coffee corner
  *  - Flat roof with HVAC unit
- *  - Roof parapet + lit "INVEON" sign (canvas mirrored, group.rotation.y = PI)
+ *  - Roof parapet + lit "INVEON" sign (canvas mirrored, group.rotation.y = -PI/2)
  */
 export function buildInveonBuilding(scene, physics, groundMaterial, position = [0, 0, 0]) {
     const [px, , pz] = position;
@@ -208,11 +213,14 @@ export function buildInveonBuilding(scene, physics, groundMaterial, position = [
     box(T, pH, D + T * 2 + 0.6, accentMat, leftX - 0.05, H + 0.4 + pH / 2, 0);
     box(T, pH, D + T * 2 + 0.6, accentMat, rightX + 0.05, H + 0.4 + pH / 2, 0);
 
-    // ── "INVEON" SIGN — mirrored canvas (group.rotation.y = PI) ──────────────
+    // ── "INVEON" SIGN — canvas yatay aynalı (group -90° ile okunur yüz, Boyner ile aynı mantık)
     const signY = H + 0.4 + pH + 0.5 + 0.85;
     const signCanvas = document.createElement('canvas');
     signCanvas.width = 1024; signCanvas.height = 210;
     const sc = signCanvas.getContext('2d');
+    sc.save();
+    sc.translate(1024, 0);
+    sc.scale(-1, 1);
     // Background
     sc.fillStyle = '#1565c0';
     sc.fillRect(0, 0, 1024, 210);
@@ -234,13 +242,14 @@ export function buildInveonBuilding(scene, physics, groundMaterial, position = [
     sc.strokeStyle = '#64b5f6';
     sc.lineWidth = 5;
     sc.beginPath(); sc.moveTo(150, 170); sc.lineTo(874, 170); sc.stroke();
+    sc.restore();
 
     const signTex = new THREE.CanvasTexture(signCanvas);
     const signBoard = new THREE.Mesh(
         new THREE.PlaneGeometry(W - 1, 2.0),
         new THREE.MeshBasicMaterial({ map: signTex, transparent: true, side: THREE.DoubleSide })
     );
-    signBoard.rotation.y = Math.PI; // Face local -z (outward)
+    // Boyner ile aynı: canvas aynalı, ekstra rotation yok (metin düz okunur)
     signBoard.position.set(0, signY, frontZ - 0.24);
     group.add(signBoard);
     // Backing panel (depth 0.2, center at 0.12 means face is at 0.22)
@@ -511,32 +520,36 @@ export function buildInveonBuilding(scene, physics, groundMaterial, position = [
     placard.position.set(0, 1.16, -(D / 2) + 2.61);
     group.add(placard);
 
-    // ── POSITION + ROTATION ───────────────────────────────────────────────────
-    group.rotation.y = Math.PI;   // same orientation as Boyner
+    // ── POSITION + ROTATION — Boyner / Wugo ile aynı: plaza merkezine doğru +X cephe
+    group.rotation.y = -Math.PI / 2;
     group.position.set(px, 0, pz);
     scene.add(group);
 
-    // ── PHYSICS — Separate walls to allow entry ──────────────────────────────
-    // NOTE: Building is rotated PI, so world-front (door) is at pz + D/2
     if (physics && groundMaterial) {
-        const wallH = H;
-        // Visual BACK (world -z)
-        physics.addBody(physics.createBox(W, wallH, T, 0, new THREE.Vector3(px, wallH/2, pz - D/2), null, { material: groundMaterial }));
-        // Left wall
-        physics.addBody(physics.createBox(T, wallH, D, 0, new THREE.Vector3(px - W/2, wallH/2, pz), null, { material: groundMaterial }));
-        // Right wall
-        physics.addBody(physics.createBox(T, wallH, D, 0, new THREE.Vector3(px + W/2, wallH/2, pz), null, { material: groundMaterial }));
-        
-        // Visual FRONT (world +z) — with door gap
-        const frontWallW = (W - doorW) / 2;
-        physics.addBody(physics.createBox(frontWallW, wallH, T, 0, new THREE.Vector3(px - W/2 + frontWallW/2, wallH/2, pz + D/2), null, { material: groundMaterial }));
-        physics.addBody(physics.createBox(frontWallW, wallH, T, 0, new THREE.Vector3(px + W/2 - frontWallW/2, wallH/2, pz + D/2), null, { material: groundMaterial }));
+        addBuildingShellPhysics(
+            physics,
+            groundMaterial,
+            group,
+            buildRectDoorShellBoxes({
+                W,
+                D,
+                H,
+                wallT: T,
+                doorW,
+                lintel: { type: 'inveon', doorH, doorBaseY: 0.4 }
+            })
+        );
     }
 
-    return { 
-        group, 
-        doors: [doorL, doorR], 
-        id: 'inveon', 
-        bounds: { x: px, z: pz, w: W, d: D } 
+    return {
+        group,
+        doors: [doorL, doorR],
+        id: 'inveon',
+        interaction: createBuildingInteractionHandle({
+            group,
+            W,
+            D,
+            doorLocalZ: frontZ
+        })
     };
 }

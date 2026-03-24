@@ -1,4 +1,9 @@
 import * as THREE from 'three';
+import {
+    addBuildingShellPhysics,
+    buildRectDoorShellBoxes,
+    createBuildingInteractionHandle
+} from './buildingPhysics.js';
 
 /**
  * WugoBuilding — Event Discovery App Office/Store.
@@ -240,32 +245,31 @@ export function buildWugoBuilding(scene, physics, groundMaterial, position = [0,
     group.position.set(px, 0, pz);
     scene.add(group);
 
-    // ── PHYSICS — Corrected for 90-degree rotated building ─────────────────────
     if (physics && groundMaterial) {
-        const wallH = H;
-        // World FRONT (visual door) is World px + D/2
-        // World BACK is World px - D/2
-        // World LEFT is World pz + W/2
-        // World RIGHT is World pz - W/2
-
-        // Back wall (World -X)
-        physics.addBody(physics.createBox(WALL_T, wallH, W, 0, new THREE.Vector3(px - D/2, wallH/2, pz), null, { material: groundMaterial }));
-        // Left wall (World +Z)
-        physics.addBody(physics.createBox(D, wallH, WALL_T, 0, new THREE.Vector3(px, wallH/2, pz + W/2), null, { material: groundMaterial }));
-        // Right wall (World -Z)
-        physics.addBody(physics.createBox(D, wallH, WALL_T, 0, new THREE.Vector3(px, wallH/2, pz - W/2), null, { material: groundMaterial }));
-        
-        // Front walls with gap (World +X)
-        const frontWallW = (W - doorW) / 2;
-        physics.addBody(physics.createBox(WALL_T, wallH, frontWallW, 0, new THREE.Vector3(px + D/2, wallH/2, pz - W/2 + frontWallW/2), null, { material: groundMaterial }));
-        physics.addBody(physics.createBox(WALL_T, wallH, frontWallW, 0, new THREE.Vector3(px + D/2, wallH/2, pz + W/2 - frontWallW/2), null, { material: groundMaterial }));
+        addBuildingShellPhysics(
+            physics,
+            groundMaterial,
+            group,
+            buildRectDoorShellBoxes({
+                W,
+                D,
+                H,
+                wallT: WALL_T,
+                doorW,
+                lintel: { type: 'wugo', doorH }
+            })
+        );
     }
 
     return {
         group,
         doorGroup,
         id: 'wugo',
-        bounds: { x: px, z: pz, w: D, d: W }, // Visual world dims
-        entranceOffset: new THREE.Vector3(D/2, 0, 0)
+        interaction: createBuildingInteractionHandle({
+            group,
+            W,
+            D,
+            doorLocalZ: frontZ
+        })
     };
 }
