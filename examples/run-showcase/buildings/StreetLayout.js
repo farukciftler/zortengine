@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { createStreetLight, createBench, createTrashCan, createPlanter } from './StreetProps.js';
 
 /**
  * Ana cadde + mağaza tarafı taş kaldırım. Doğu kaldırım yok; harita yolun ötesinde biter.
@@ -244,7 +245,7 @@ export function createDetailedCarGroup(bodyColor) {
  * @param {THREE.Scene} scene
  * @param {Array<THREE.Object3D>} environmentMeshes
  */
-export function buildMainStreet(scene, environmentMeshes) {
+export function buildMainStreet(scene, environmentMeshes, physics, propMaterial) {
     const asphaltMat = new THREE.MeshStandardMaterial({
         color: 0x2a2a2a,
         roughness: 0.92,
@@ -321,9 +322,117 @@ export function buildMainStreet(scene, environmentMeshes) {
         pushEnv(environmentMeshes, e);
     });
 
+    decorateStreet(scene, environmentMeshes, physics, propMaterial);
+
     return {
         roadHalfWidth: ROAD_HALF_WIDTH,
         streetZHalf: STREET_Z_HALF
     };
+}
+
+/**
+ * Adds decorative props (lights, benches, etc.) along the western sidewalk.
+ */
+function decorateStreet(scene, environmentMeshes, physics, propMaterial) {
+    const lightZPositions = [-45, -30, -15, 0, 15, 30, 45];
+
+    // 1. Street Lights
+    for (const z of lightZPositions) {
+        const light = createStreetLight();
+        light.rotation.y = -Math.PI / 2; // Arm points toward the road (+X)
+        // Adjust arm direction: rotation.y = -PI/2 means local +Z points to World -X
+        // Wait, local arm is at +X world (if local X arm points to world Z?)
+        // Let's check createStreetLight: arm is at X=0.5, head at 1.1, bulb at 1.1
+        // So local +X points to the road. 
+        // If we want it pointing to World +X, we need rotation.y = 0.
+        light.rotation.y = 0;
+        light.position.set(-11.5, 0.06, z);
+        scene.add(light);
+
+        if (physics && propMaterial) {
+            const body = physics.createBox(
+                0.4, 6, 0.4, 0,
+                { x: -11.5, y: 3, z },
+                light.quaternion,
+                { material: propMaterial }
+            );
+            physics.addBody(body, light);
+        }
+
+        // Add to environment meshes only the pole for collision/occlusion if needed
+        environmentMeshes.push(light);
+    }
+
+    // 2. Benches and Planters (alternating)
+    const midZPositions = [-37.5, -22.5, -7.5, 7.5, 22.5, 37.5];
+    for (let i = 0; i < midZPositions.length; i++) {
+        const z = midZPositions[i];
+        if (i % 2 === 0) {
+            const bench = createBench();
+            bench.rotation.y = Math.PI / 2; // Facing the road (+X)
+            bench.position.set(-18, 0.06, z);
+            scene.add(bench);
+
+            if (physics && propMaterial) {
+                const body = physics.createBox(
+                    1.4, 1, 3.2, 0,
+                    { x: -18, y: 0.5, z: z },
+                    bench.quaternion, // Sync rotation!
+                    { material: propMaterial }
+                );
+                physics.addBody(body, bench);
+            }
+
+            // Add a trash can nearby
+            const trash = createTrashCan();
+            trash.position.set(-18.5, 0.06, z + 2.5);
+            scene.add(trash);
+
+            if (physics && propMaterial) {
+                const body = physics.createBox(
+                    0.7, 1.0, 0.7, 0,
+                    { x: -18.5, y: 0.5, z: z + 2.5 },
+                    trash.quaternion,
+                    { material: propMaterial }
+                );
+                physics.addBody(body, trash);
+            }
+        } else {
+            const planter = createPlanter();
+            planter.position.set(-18, 0.06, z);
+            scene.add(planter);
+
+            if (physics && propMaterial) {
+                const body = physics.createBox(
+                    1.5, 0.6, 1.5, 0,
+                    { x: -18, y: 0.3, z: z },
+                    null,
+                    { material: propMaterial }
+                );
+                physics.addBody(body, planter);
+            }
+        }
+    }
+
+    // 3. Extra planters near building entrances (at x=0 local to buildings)
+    // Buildings are at z = -25, 0, 25
+    [-25, 0, 25].forEach(bz => {
+        const spots = [bz - 5, bz + 5];
+        for (const sz of spots) {
+            const p = createPlanter();
+            p.position.set(-18, 0.06, sz);
+            scene.add(p);
+
+            if (physics && propMaterial) {
+                const body = physics.createBox(
+                    1.5, 0.6, 1.5, 0,
+                    { x: -18, y: 0.3, z: sz },
+                    null,
+                    { material: propMaterial }
+                );
+                physics.addBody(body, p);
+            }
+        }
+    });
 }
 

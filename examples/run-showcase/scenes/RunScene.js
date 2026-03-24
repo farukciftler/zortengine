@@ -1122,7 +1122,7 @@ export class RunScene extends GameScene {
     }
 
     _buildPlaza(physics) {
-        buildMainStreet(this.threeScene, this.environmentMeshes);
+        buildMainStreet(this.threeScene, this.environmentMeshes, physics, this.propMaterial);
         this._streetTraffic = new StreetTrafficManager(this.threeScene, this.environmentMeshes, {
             physics,
             propMaterial: this.propMaterial
