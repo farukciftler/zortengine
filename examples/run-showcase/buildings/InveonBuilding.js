@@ -89,14 +89,14 @@ export function buildInveonBuilding(scene, physics, groundMaterial, position = [
         if (i === 0) continue; // Don't put a column in front of the door at x=0
         box(0.5, H, T * 1.2, concreteMat, i * colSpacing, H / 2, frontZ);
     }
-    // Left and right edge columns
-    box(0.5, H, T * 1.2, concreteMat, -(W / 2) + 0.25, H / 2, frontZ);
-    box(0.5, H, T * 1.2, concreteMat,  (W / 2) - 0.25, H / 2, frontZ);
+    // Left and right edge columns (widened to penetrate side walls and avoid flickering)
+    box(0.7, H, T * 1.2, concreteMat, -(W / 2) + 0.15, H / 2, frontZ);
+    box(0.7, H, T * 1.2, concreteMat,  (W / 2) - 0.15, H / 2, frontZ);
 
-    // Horizontal spandrel bands (floor-line separators)
-    box(W, 0.4, T, darkConcrete, 0, 0.5, frontZ);   // sill
-    box(W, 0.6, T, darkConcrete, 0, H - 0.3, frontZ); // lintel
-    box(W, 0.3, T, darkConcrete, 0, H / 2, frontZ);   // mid spandrel
+    // Horizontal spandrel bands (widened to reach into side walls)
+    box(W + T * 2, 0.4, T, darkConcrete, 0, 0.5, frontZ);   // sill
+    box(W + T * 2, 0.6, T, darkConcrete, 0, H - 0.3, frontZ); // lintel
+    box(W + T * 2, 0.3, T, darkConcrete, 0, H / 2, frontZ);   // mid spandrel
 
     // Glass panels per bay (upper and lower half of each bay)
     const bayW = colSpacing - 0.55;
