@@ -77,8 +77,7 @@ export class DialogueUI {
                     right: -20px;
                     bottom: 0px;
                     width: 180px;
-                    height: 220px;
-                    background: none;
+                    height: 180px; /* Limit height to match box */
                     z-index: 10;
                     display: flex;
                     align-items: flex-end;
@@ -89,6 +88,7 @@ export class DialogueUI {
                 .dialogue-portrait img {
                     max-width: 100%;
                     max-height: 100%;
+                    object-fit: contain;
                     image-rendering: pixelated;
                 }
 

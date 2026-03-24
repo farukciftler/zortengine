@@ -136,7 +136,7 @@ export class RunScene extends GameScene {
         this.hudPresenter = new RunHudPresenter(this, this.hud);
         this.hudPresenter.initialize();
         this._interactiveBuildings = []; // Track buildings for door/camera logic
-        this.cameraMode = 'isometric'; 
+        this.cameraMode = 'isometric';
         this.checkpointController = new RunCheckpointController(this, this.saveManager);
         this.combatCoordinator = new RunCombatCoordinator(this);
         this.flowController = new RunFlowController(this);
@@ -162,7 +162,7 @@ export class RunScene extends GameScene {
         this._setupInputRoutes(input);
         this._setupAbilities(abilities, input, particles, cameraManager);
         this._applyLoadoutModifiers();
-        
+
         // Midpoint between Inveon (z=0) and Wugo (z=25), aligned with Inveon's face
         this._infoBooth = buildInfoBooth(this.threeScene, physics, this.propMaterial, [-24.1, 0, 11.5]);
 
@@ -961,7 +961,7 @@ export class RunScene extends GameScene {
                 doorGroup.rotation.y += (targetRotation - doorGroup.rotation.y) * 0.1;
             } else if (doors) { // Double doors (Inveon)
                 const targetL = shouldOpen ? -Math.PI / 1.8 : 0;
-                const targetR = shouldOpen ?  Math.PI / 1.8 : 0;
+                const targetR = shouldOpen ? Math.PI / 1.8 : 0;
                 doors[0].rotation.y += (targetL - doors[0].rotation.y) * 0.1;
                 doors[1].rotation.y += (targetR - doors[1].rotation.y) * 0.1;
             }
@@ -972,10 +972,10 @@ export class RunScene extends GameScene {
             // Player just entered a building
             this.cameraMode = 'tps';
             this.cameraManager?.setMode('tps');
-            
+
             // Sync camera to look in the direction the player is moving (180 offset for follow logic)
             if (this.player?.group) {
-                this.yaw = this.player.group.rotation.y + Math.PI; 
+                this.yaw = this.player.group.rotation.y + Math.PI;
                 this.pitch = 0.3;
                 const input = this.getSystem('input');
                 if (input) {
@@ -993,7 +993,7 @@ export class RunScene extends GameScene {
             // Player just exited a building
             this.cameraMode = 'isometric';
             this.cameraManager?.setMode('isometric');
-            
+
             const input = this.getSystem('input');
             if (input) {
                 input.isFpsMode = false;
@@ -1098,7 +1098,7 @@ export class RunScene extends GameScene {
         const input = this.getSystem('input');
         const camera = this.getCamera();
         if (!input || !camera) return;
- 
+
         if (this.cameraMode === 'isometric' || this.cameraMode === '2.5d') {
             this.cameraMode = 'tps';
             camera.setPreset('tps');
@@ -1106,7 +1106,7 @@ export class RunScene extends GameScene {
             this.hud.updateInfo('TPS modu: ekrana tikla, mouse ile bak. V ile geri donebilirsin.');
         } else {
             this.cameraMode = 'isometric';
-            camera.setPreset('isometric'); 
+            camera.setPreset('isometric');
             input.isFpsMode = false;
             input.exitPointerLock();
             this.hud.updateInfo('Isometric mod: WASD hareket, tik ates, Q dash.');
@@ -1164,7 +1164,7 @@ export class RunScene extends GameScene {
 
     _buildPlaza(physics) {
         const result = buildMainStreet(this.threeScene, this.environmentMeshes, physics, this.propMaterial);
-        
+
         // Setup animation for sitting NPCs
         this.sittingNpcs = (result?.sittingBenches || []).map(sitBench => {
             return new SittingNpcController(sitBench.parts);
@@ -1182,12 +1182,12 @@ export class RunScene extends GameScene {
                 id: 'info_booth',
                 pos: new THREE.Vector3(-24.1, 0, 11.5),
                 radius: 4.5,
-                name: 'Lizzy',
-                portraitUrl: './lizzy_portrait.png',
-                text: 'Merhaba! Ben Lizzy. ZortEngine Showcase şehrine hoş geldiniz! Size nasıl yardımcı olabilirim?',
+                name: 'Faruk',
+                portraitUrl: './farukchar.png',
+                text: 'Merhaba! Ben Faruk. ZortEngine Showcase dünyasına hoş geldin! Sana nasıl yardımcı olabilirim?',
                 choices: [
-                    { 
-                        text: 'Buralarda ne var?', 
+                    {
+                        text: 'Buralarda ne var?',
                         nextText: 'Hemen yanımızda Boyner mağazası, karşıda Inveon ofisi ve ileride Wugo etkinlik alanı var. Hepsi çok havalı!',
                         nextChoices: [
                             { text: 'Boyner nerede?', nextText: 'Tam solunuzdaki büyük bina! İçeride harika kıyafetler bulabilirsiniz (yakında!).' },
@@ -1195,12 +1195,12 @@ export class RunScene extends GameScene {
                             { text: 'Teşekkürler!', nextText: 'Rica ederim, iyi gezmeler!' }
                         ]
                     },
-                    { 
-                        text: 'Sen kimsin?', 
-                        nextText: 'Ben bu şehrin resmi rehberiyim! Her türlü sorunuzu bana sorabilirsiniz.',
+                    {
+                        text: 'Sen kimsin?',
+                        nextText: 'Ben bu motorun mimarıyım! Her türlü teknik sorunuzu bana sorabilirsiniz.',
                         nextChoices: [
-                            { text: 'Mesai saatlerin?', nextText: '7/24 buradayım, pixel karakter olmanın avantajları!' },
-                            { text: 'Anladım.', nextText: 'Harika! Başka bir sorunuz var mı?' }
+                            { text: 'ZortEngine nedir?', nextText: 'Minimal, modüler ve yüksek performanslı bir 3D oyun motoru!' },
+                            { text: 'Anladım.', nextText: 'Harika! Başka bir sorun var mı?' }
                         ]
                     },
                     { text: 'Sadece bakınıyorum.', nextText: 'Tabii ki! Keyifli keşifler dilerim.' }
