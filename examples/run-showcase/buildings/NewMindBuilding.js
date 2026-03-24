@@ -1,4 +1,4 @@
-ayimport * as THREE from 'three';
+import * as THREE from 'three';
 import {
     addBuildingShellPhysics,
     buildRectDoorShellBoxes,
