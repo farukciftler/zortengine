@@ -52,7 +52,9 @@ export function getWestSidewalkBounds() {
 export const NPC_BUILDING_EXCLUSIONS = [
     { xMin: -36.8, xMax: -23.2, zMin: -33.8, zMax: -16.2 },
     { xMin: -37.8, xMax: -22.2, zMin: -9.8, zMax: 9.8 },
-    { xMin: -35.8, xMax: -24.2, zMin: 17.8, zMax: 32.2 }
+    { xMin: -35.8, xMax: -24.2, zMin: 17.8, zMax: 32.2 },
+    // Info Booth at [-24.1, 11.5]
+    { xMin: -25.2, xMax: -23.0, zMin: 10.4, zMax: 12.6 }
 ];
 
 /** 

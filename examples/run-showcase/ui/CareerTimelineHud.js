@@ -214,6 +214,17 @@ export class CareerTimelineHud {
             this.experienceItems.set(exp.buildingId, item);
         });
 
+        // Add Footer Links
+        const footer = document.createElement('div');
+        footer.style.marginTop = '10px';
+        footer.style.display = 'flex';
+        footer.style.gap = '10px';
+        footer.innerHTML = `
+            <a href="https://linkedin.com" target="_blank" style="flex:1; background:#0077b5; color:white; text-align:center; padding:5px; text-decoration:none; font-family:'Courier New'; font-size:12px; border:2px solid #000;">LINKEDIN</a>
+            <a href="https://zortproductions.com" target="_blank" style="flex:1; background:#2ecc71; color:white; text-align:center; padding:5px; text-decoration:none; font-family:'Courier New'; font-size:12px; border:2px solid #000;">PORTFOLIO</a>
+        `;
+        this.container.appendChild(footer);
+
         this.root.appendChild(this.container);
         document.body.appendChild(this.root);
     }

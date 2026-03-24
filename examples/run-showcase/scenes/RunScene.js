@@ -48,6 +48,7 @@ import { NpcFarukBubbleOverlay } from '../ui/NpcFarukBubbleOverlay.js';
 import { buildBoynerBuilding } from '../buildings/BoynerBuilding.js';
 import { buildInveonBuilding } from '../buildings/InveonBuilding.js';
 import { buildWugoBuilding } from '../buildings/WugoBuilding.js';
+import { buildInfoBooth } from '../buildings/InfoBooth.js';
 import { buildMainStreet, getWestSidewalkBounds } from '../buildings/StreetLayout.js';
 import { StreetTrafficManager } from '../buildings/StreetTraffic.js';
 import { SidewalkNpc } from '../actors/SidewalkNpc.js';
@@ -59,6 +60,8 @@ import {
     isPlayerInsideBuildingFloor
 } from '../buildings/buildingPhysics.js';
 import { CareerTimelineHud } from '../ui/CareerTimelineHud.js';
+import { DialogueUI } from '../ui/DialogueUI.js';
+
 
 /** cannon-es: zemin/bina kutuları=1, oyuncu=2, yaya NPC=4 — NPC↔NPC çarpışması kapalı */
 const COLLISION_GROUP_STATIC = 1;
@@ -159,6 +162,9 @@ export class RunScene extends GameScene {
         this._setupInputRoutes(input);
         this._setupAbilities(abilities, input, particles, cameraManager);
         this._applyLoadoutModifiers();
+        
+        // Midpoint between Inveon (z=0) and Wugo (z=25), aligned with Inveon's face
+        this._infoBooth = buildInfoBooth(this.threeScene, physics, this.propMaterial, [-24.1, 0, 11.5]);
 
         this.registerSystem(
             'streetTrafficStep',
@@ -174,7 +180,11 @@ export class RunScene extends GameScene {
         this.checkpointController.save('setup');
         this.replicationController.connect();
 
+        this._dialogueUI = new DialogueUI(this);
+        this._setupInteractions();
+
         if (this.options.restoreCheckpoint) {
+
             this.checkpointController.restoreLatest();
         }
         if (this.options.replayData) {
@@ -1005,6 +1015,11 @@ export class RunScene extends GameScene {
             this.sittingNpcs.forEach(npc => npc.update(delta, time));
         }
 
+        // Update Info Booth (NPC animation)
+        if (this._infoBooth) {
+            this._infoBooth.update(delta, this.engine.time);
+        }
+
         const input = this.getSystem('input');
         if (this.hud && input) {
             this.hud.updateCursor(input.clientX, input.clientY, this.cameraMode, input.isPointerLocked());
@@ -1038,6 +1053,9 @@ export class RunScene extends GameScene {
         if (this.players.every(player => !player.getComponent('health')?.isAlive())) {
             this._failRun();
         }
+
+        this._updateInteractions(delta, this.engine.time);
+
 
         if (this.waveDirector && this.runState.status === 'active' && !this.choiceActive) {
             this.waveDirector.update(delta);
@@ -1156,6 +1174,76 @@ export class RunScene extends GameScene {
             physics,
             propMaterial: this.propMaterial
         });
+    }
+
+    _setupInteractions() {
+        this._interactions = [
+            {
+                id: 'info_booth',
+                pos: new THREE.Vector3(-24.1, 0, 11.5),
+                radius: 4.5,
+                name: 'Lizzy',
+                portraitUrl: './lizzy_portrait.png',
+                text: 'Merhaba! Ben Lizzy. ZortEngine Showcase şehrine hoş geldiniz! Size nasıl yardımcı olabilirim?',
+                choices: [
+                    { 
+                        text: 'Buralarda ne var?', 
+                        nextText: 'Hemen yanımızda Boyner mağazası, karşıda Inveon ofisi ve ileride Wugo etkinlik alanı var. Hepsi çok havalı!',
+                        nextChoices: [
+                            { text: 'Boyner nerede?', nextText: 'Tam solunuzdaki büyük bina! İçeride harika kıyafetler bulabilirsiniz (yakında!).' },
+                            { text: 'Inveon ne yapar?', nextText: 'Onlar harika yazılımlar geliştiriyor! Ofisleri yolun hemen karşısında.' },
+                            { text: 'Teşekkürler!', nextText: 'Rica ederim, iyi gezmeler!' }
+                        ]
+                    },
+                    { 
+                        text: 'Sen kimsin?', 
+                        nextText: 'Ben bu şehrin resmi rehberiyim! Her türlü sorunuzu bana sorabilirsiniz.',
+                        nextChoices: [
+                            { text: 'Mesai saatlerin?', nextText: '7/24 buradayım, pixel karakter olmanın avantajları!' },
+                            { text: 'Anladım.', nextText: 'Harika! Başka bir sorunuz var mı?' }
+                        ]
+                    },
+                    { text: 'Sadece bakınıyorum.', nextText: 'Tabii ki! Keyifli keşifler dilerim.' }
+                ]
+            }
+        ];
+        this._activeInteraction = null;
+    }
+
+    _updateInteractions(delta, time) {
+        if (!this.player || !this._dialogueUI) return;
+
+        const pPos = this.player.group.position;
+        let bestInteraction = null;
+        let minDist = Infinity;
+
+        for (const inter of this._interactions) {
+            const dist = pPos.distanceTo(inter.pos);
+            if (dist < inter.radius) {
+                if (dist < minDist) {
+                    minDist = dist;
+                    bestInteraction = inter;
+                }
+            }
+        }
+
+        if (bestInteraction && !this._activeInteraction) {
+            // Check if looking at the NPC or just automatic? 
+            // Let's do automatic for now but with a "Press E" if possible.
+            // But since the user wants a dialogue right away, let's show it.
+            // Actually, showing it once when entering radius is better.
+            this._activeInteraction = bestInteraction;
+            this._dialogueUI.show({
+                ...bestInteraction,
+                onComplete: () => {
+                    // Interaction finished, but we don't want to re-trigger immediately
+                    // Maybe add a cooldown or wait until player leaves and re-enters
+                }
+            });
+        } else if (!bestInteraction && this._activeInteraction) {
+            this._activeInteraction = null;
+            this._dialogueUI.hide();
+        }
     }
 }
 
