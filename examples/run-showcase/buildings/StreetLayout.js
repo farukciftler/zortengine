@@ -54,10 +54,38 @@ export const NPC_BUILDING_EXCLUSIONS = [
     { xMin: -35.8, xMax: -24.2, zMin: 17.8, zMax: 32.2 }
 ];
 
+/** 
+ * Circular Obstacles for Steering Avoidance 
+ */
+export const STREET_OBSTACLES = [
+    // Street Lights
+    ...[-45, -30, -15, 0, 15, 30, 45].map(z => ({ x: -11.5, z, radius: 1.0 })),
+    // Benches and Trash stations (using multiple circles for the long shape)
+    ...[-37.5, -7.5, 22.5].flatMap(z => [
+        { x: -18, z: z - 1.2, radius: 1.2 },
+        { x: -18, z, radius: 1.2 },
+        { x: -18, z: z + 1.2, radius: 1.2 },
+        { x: -19, z: z + 2.5, radius: 0.8 } // Trash can
+    ]),
+    // Planters
+    ...[-22.5, 7.5, 37.5].map(z => ({ x: -18, z, radius: 1.4 })),
+    // Extra Entrance Planters
+    ...[-30, -20, -5, 5, 20, 30].map(z => ({ x: -18, z, radius: 1.4 }))
+];
+
+/** 
+ * Dedicated safe patrol lanes along the sidewalk.
+ */
+export const NPC_PATROL_PATHS = [
+    { x: -20.8, name: 'inner' }, // Between buildings and props
+    { x: -14.8, name: 'outer' }  // Between props and road
+];
+
 export function isNpcWalkBlockedByBuilding(x, z) {
-    return NPC_BUILDING_EXCLUSIONS.some(
+    const isBuildingBlocked = NPC_BUILDING_EXCLUSIONS.some(
         b => x >= b.xMin && x <= b.xMax && z >= b.zMin && z <= b.zMax
     );
+    return isBuildingBlocked;
 }
 
 function pushEnv(list, obj) {
