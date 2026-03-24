@@ -113,7 +113,8 @@ export function createBuildingInteractionHandle(opts) {
         doorLocal: new THREE.Vector3(0, 0, doorLocalZ),
         doorOpenDistance,
         enterMargin,
-        exitBuffer
+        exitBuffer,
+        buildingName: opts.buildingName
     };
 }
 

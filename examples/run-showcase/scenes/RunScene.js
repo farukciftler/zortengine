@@ -58,6 +58,7 @@ import {
     getDoorWorldPosition,
     isPlayerInsideBuildingFloor
 } from '../buildings/buildingPhysics.js';
+import { CareerTimelineHud } from '../ui/CareerTimelineHud.js';
 
 /** cannon-es: zemin/bina kutuları=1, oyuncu=2, yaya NPC=4 — NPC↔NPC çarpışması kapalı */
 const COLLISION_GROUP_STATIC = 1;
@@ -86,6 +87,7 @@ export class RunScene extends GameScene {
         this._sidewalkNpcs = [];
         this._farukBubbleTime = 0;
         this._npcFarukBubble = null;
+        this._timelineContainer = null;
     }
 
     setup() {
@@ -98,6 +100,10 @@ export class RunScene extends GameScene {
             seed: this.seed,
             loadoutId: this.loadout.id
         });
+
+        this.careerTimeline = new CareerTimelineHud(this);
+        this.careerTimeline.setup();
+
         this.saveManager = new SaveManager({
             namespace: 'zortengine-run'
         });
@@ -919,6 +925,7 @@ export class RunScene extends GameScene {
         // 1. İçeride tespit: buildingPhysics (yerel zemin + histerezis)
         let anyInside = false;
 
+        let activeBuildingId = null;
         for (const building of this._interactiveBuildings) {
             const { doorGroup, doors, interaction } = building;
             if (!interaction) continue;
@@ -929,7 +936,10 @@ export class RunScene extends GameScene {
                 this._wasInsideBuilding
             );
 
-            if (isInside) anyInside = true;
+            if (isInside) {
+                anyInside = true;
+                activeBuildingId = interaction.buildingName;
+            }
 
             const entrancePos = getDoorWorldPosition(interaction);
             const distToEntrance = playerPos.distanceTo(entrancePos);
@@ -984,6 +994,9 @@ export class RunScene extends GameScene {
             if (movement) movement.setMode('isometric');
             this._wasInsideBuilding = false;
         }
+
+        // Focused HUD logic: show only the current building's card when inside
+        this.careerTimeline?.setFocusedBuilding(activeBuildingId);
     }
     onUpdate(delta) {
         // Animate sitting NPCs on benches
@@ -1145,3 +1158,4 @@ export class RunScene extends GameScene {
         });
     }
 }
+

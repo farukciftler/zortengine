@@ -22,6 +22,9 @@ export class PlayerMovementController extends Component {
         this.dashTimer = 0;
         this.jumpRequested = false;
         this.jumpCooldownTimer = 0;
+        this.path = [];
+        this.pathIndex = 0;
+        this.onPathComplete = null;
         this._jumpListener = command => {
             if ((command?.profile || 'default') === this.profile) {
                 this.jumpRequested = true;
@@ -40,6 +43,7 @@ export class PlayerMovementController extends Component {
         if (this.input) {
             this.input.off('jump', this._jumpListener);
         }
+        this.onPathComplete = null;
         super.onDetach();
     }
 
@@ -71,10 +75,34 @@ export class PlayerMovementController extends Component {
         const move = this.input.getMovementVector(this.profile);
         if (move.x !== 0 || move.z !== 0) {
             this.targetPosition = null; // Manual input cancels click-to-move
+            this.path = []; // Path clear on input
+            this.onPathComplete = null;
         }
 
         let moveDir;
-        if (this.targetPosition && this.mode === 'isometric') {
+
+        // Path following logic
+        if (this.path && this.path.length > 0 && this.mode === 'isometric') {
+            const nextPoint = this.path[this.pathIndex];
+            const dist = new THREE.Vector3().subVectors(nextPoint, this.owner.group.position);
+            dist.y = 0;
+            if (dist.length() < 0.35) {
+                this.pathIndex++;
+                if (this.pathIndex >= this.path.length) {
+                    this.path = [];
+                    moveDir = new THREE.Vector3();
+                    if (this.onPathComplete) {
+                        const cb = this.onPathComplete;
+                        this.onPathComplete = null;
+                        cb();
+                    }
+                } else {
+                    moveDir = dist.normalize();
+                }
+            } else {
+                moveDir = dist.normalize();
+            }
+        } else if (this.targetPosition && this.mode === 'isometric') {
             const diff = new THREE.Vector3().subVectors(this.targetPosition, this.owner.group.position);
             diff.y = 0;
             if (diff.length() < 0.25) {
@@ -119,11 +147,26 @@ export class PlayerMovementController extends Component {
         if (this.mode === 'isometric' && point) {
             this.targetPosition = point.clone();
             this.targetPosition.y = 0;
+            this.path = [];
+            this.onPathComplete = null;
+        }
+    }
+
+    setPath(path, onComplete = null) {
+        if (this.mode === 'isometric' && path && path.length > 0) {
+            this.path = path;
+            this.pathIndex = 0;
+            this.targetPosition = null;
+            this.onPathComplete = onComplete;
         }
     }
 
     setMode(mode) {
         this.mode = mode;
+        if (mode === 'tps') {
+            this.path = [];
+            this.onPathComplete = null;
+        }
     }
 
     triggerDash(direction, speed = 16, duration = 0.14) {

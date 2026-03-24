@@ -269,7 +269,8 @@ export function buildWugoBuilding(scene, physics, groundMaterial, position = [0,
             group,
             W,
             D,
-            doorLocalZ: frontZ
+            doorLocalZ: frontZ,
+            buildingName: 'wugo'
         })
     };
 }

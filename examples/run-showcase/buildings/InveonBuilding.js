@@ -549,7 +549,8 @@ export function buildInveonBuilding(scene, physics, groundMaterial, position = [
             group,
             W,
             D,
-            doorLocalZ: frontZ
+            doorLocalZ: frontZ,
+            buildingName: 'inveon'
         })
     };
 }

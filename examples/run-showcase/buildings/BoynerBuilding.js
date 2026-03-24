@@ -389,7 +389,8 @@ export function buildBoynerBuilding(scene, physics, groundMaterial, position = [
             group,
             W,
             D,
-            doorLocalZ: frontZ
+            doorLocalZ: frontZ,
+            buildingName: 'boyner'
         })
     };
 }
