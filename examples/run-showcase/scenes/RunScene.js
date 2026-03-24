@@ -62,6 +62,7 @@ import {
 } from '../buildings/buildingPhysics.js';
 import { CareerTimelineHud } from '../ui/CareerTimelineHud.js';
 import { DialogueUI } from '../ui/DialogueUI.js';
+import { BannerPlane } from '../actors/BannerPlane.js';
 
 
 /** cannon-es: zemin/bina kutuları=1, oyuncu=2, yaya NPC=4 — NPC↔NPC çarpışması kapalı */
@@ -169,12 +170,23 @@ export class RunScene extends GameScene {
         // Midpoint between Inveon (z=0) and Wugo (z=25), aligned with Inveon's face
         this._infoBooth = buildInfoBooth(this.threeScene, physics, this.propMaterial, [-24.1, 0, 11.5]);
 
+        // Banner Plane
+        this._bannerPlane = new BannerPlane(this.threeScene, {
+            text: 'FARUK CIFTLER — AI PM',
+            altitude: 50,
+            speed: 14,
+            radius: 130,
+            bannerColor: '#0d47a1'
+        });
+        this._bannerPlane.setup();
+
         this.registerSystem(
             'streetTrafficStep',
             {
                 update: delta => {
                     const p = this._getPrimaryTarget()?.group?.position;
                     this._streetTraffic?.update(delta, p);
+                    this._bannerPlane?.update(delta);
                 }
             },
             { priority: 99 }

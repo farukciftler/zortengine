@@ -7,8 +7,8 @@ import { SittingNpcBench } from './SittingNpcBench.js';
  */
 
 const ROAD_HALF_WIDTH = 9;
-export const STREET_Z_HALF = 58;
-const SIDEWALK_WEST_X0 = -42;
+export const STREET_Z_HALF = 72;
+const SIDEWALK_WEST_X0 = -44;
 const SIDEWALK_WEST_X1 = -11;
 
 /** İki şerit +Z, iki şerit −Z (karşı yön). */
@@ -38,7 +38,7 @@ export function getRoadZBounds() {
 /** Mağaza kaldırımı içinde yürüme alanı (yol ve bina kenarından pay). */
 export function getWestSidewalkBounds() {
     return {
-        xMin: -40,
+        xMin: -42,
         xMax: -12,
         zMin: -STREET_Z_HALF + 2,
         zMax: STREET_Z_HALF - 2
@@ -53,6 +53,9 @@ export const NPC_BUILDING_EXCLUSIONS = [
     { xMin: -36.8, xMax: -23.2, zMin: -33.8, zMax: -16.2 },
     { xMin: -37.8, xMax: -22.2, zMin: -9.8, zMax: 9.8 },
     { xMin: -35.8, xMax: -24.2, zMin: 17.8, zMax: 32.2 },
+    { xMin: -35.8, xMax: -24.2, zMin: 17.8, zMax: 32.2 },
+    // NewMind at [-30, 0, 50] (W=16, D=12 -> so x from -38 to -22, z from 44 to 56)
+    { xMin: -38.0, xMax: -22.0, zMin: 44.0, zMax: 56.0 },
     // Info Booth at [-24.1, 11.5]
     { xMin: -25.2, xMax: -23.0, zMin: 10.4, zMax: 12.6 }
 ];
@@ -62,18 +65,18 @@ export const NPC_BUILDING_EXCLUSIONS = [
  */
 export const STREET_OBSTACLES = [
     // Street Lights
-    ...[-45, -30, -15, 0, 15, 30, 45].map(z => ({ x: -11.5, z, radius: 1.0 })),
+    ...[-60, -45, -30, -15, 0, 15, 30, 45, 60].map(z => ({ x: -11.5, z, radius: 1.0 })),
     // Benches and Trash stations (using multiple circles for the long shape)
-    ...[-37.5, -7.5, 22.5].flatMap(z => [
+    ...[-37.5, -7.5, 22.5, 52.5].flatMap(z => [
         { x: -18, z: z - 1.2, radius: 1.2 },
         { x: -18, z, radius: 1.2 },
         { x: -18, z: z + 1.2, radius: 1.2 },
         { x: -19, z: z + 2.5, radius: 0.8 } // Trash can
     ]),
     // Planters
-    ...[-22.5, 7.5, 37.5].map(z => ({ x: -18, z, radius: 1.4 })),
+    ...[-52.5, -22.5, 7.5, 37.5, 67.5].map(z => ({ x: -18, z, radius: 1.4 })),
     // Extra Entrance Planters
-    ...[-30, -20, -5, 5, 20, 30].map(z => ({ x: -18, z, radius: 1.4 }))
+    ...[-30, -20, -5, 5, 20, 30, 45, 55].map(z => ({ x: -18, z, radius: 1.4 }))
 ];
 
 /** 
@@ -365,7 +368,7 @@ export function buildMainStreet(scene, environmentMeshes, physics, propMaterial)
  * Adds decorative props (lights, benches, etc.) along the western sidewalk.
  */
 function decorateStreet(scene, environmentMeshes, physics, propMaterial) {
-    const lightZPositions = [-45, -30, -15, 0, 15, 30, 45];
+    const lightZPositions = [-60, -45, -30, -15, 0, 15, 30, 45, 60];
 
     // 1. Street Lights
     for (const z of lightZPositions) {
@@ -396,7 +399,7 @@ function decorateStreet(scene, environmentMeshes, physics, propMaterial) {
     }
 
     // 2. Benches and Planters (alternating)
-    const midZPositions = [-37.5, -22.5, -7.5, 7.5, 22.5, 37.5];
+    const midZPositions = [-52.5, -37.5, -22.5, -7.5, 7.5, 22.5, 37.5, 52.5, 67.5];
     const sittingBenches = [];
 
     for (let i = 0; i < midZPositions.length; i++) {
@@ -405,7 +408,7 @@ function decorateStreet(scene, environmentMeshes, physics, propMaterial) {
             let bench;
             let rotationY = Math.PI / 2; // Default facing road (+X)
 
-            if (i === 0 || i === 4) {
+            if (i === 1 || i === 5 || i === 7) {
                 // Use a Sitting NPC variant for some benches
                 const sitBench = new SittingNpcBench(scene, -18, z, rotationY);
                 bench = sitBench.group;
@@ -460,8 +463,8 @@ function decorateStreet(scene, environmentMeshes, physics, propMaterial) {
     }
 
     // 3. Extra planters near building entrances (at x=0 local to buildings)
-    // Buildings are at z = -25, 0, 25
-    [-25, 0, 25].forEach(bz => {
+    // Buildings are at z = -25, 0, 25, 50
+    [-25, 0, 25, 50].forEach(bz => {
         const spots = [bz - 5, bz + 5];
         for (const sz of spots) {
             const p = createPlanter();

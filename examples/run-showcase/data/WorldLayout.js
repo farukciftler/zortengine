@@ -5,16 +5,16 @@ export const WORLD_LAYOUT = {
             color: 0xffffff,
             intensity: 0.9,
             position: [10, 20, 10],
-            shadowBounds: 75,
-            far: 120
+            shadowBounds: 100,
+            far: 160
         }
     },
     props: [
         {
             prefabId: 'ground',
-            position: [-20, 0, 0],
-            size: [70, 130],
-            material: { color: 0x2d6a3e }
+            position: [-20, 0, 10],
+            size: [80, 160],
+            material: { color: 0x555555 }
         }
     ],
     hazards: [],
