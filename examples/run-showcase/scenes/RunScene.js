@@ -454,7 +454,7 @@ export class RunScene extends GameScene {
         const defaultPlayer = this._createPlayer({
             profile: 'default',
             colorSuit: 0xe74c3c,
-            spawn: new THREE.Vector3(-24, 5, 0)
+            spawn: new THREE.Vector3(-16, 5, 0)
         }, physics, input, particles, cameraManager);
         this.player = defaultPlayer;
 
@@ -462,7 +462,7 @@ export class RunScene extends GameScene {
             this.supportPlayer = this._createPlayer({
                 profile: 'coop',
                 colorSuit: 0x2563eb,
-                spawn: new THREE.Vector3(-26, 5, 2)
+                spawn: new THREE.Vector3(-16, 5, 2)
             }, physics, input, particles, cameraManager);
         }
     }
