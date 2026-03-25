@@ -4,6 +4,7 @@ import {
     buildRectDoorShellBoxes,
     createBuildingInteractionHandle
 } from './buildingPhysics.js';
+import { resources } from './ResourceLibrary.js';
 
 /**
  * WugoBuilding — Modern Event Discovery Hub.
@@ -22,19 +23,21 @@ export function buildWugoBuilding(scene, physics, groundMaterial, position = [0,
     const FLOOR_Y = 0.011;
 
     // ── Palette ───────────────────────────────────────────────────────────────
-    const blueMat      = new THREE.MeshStandardMaterial({ color: 0x1565c0, roughness: 0.4, metalness: 0.15 });
-    const lightBlueMat = new THREE.MeshStandardMaterial({ color: 0xbbdefb, roughness: 0.6 });
-    const whiteMat     = new THREE.MeshStandardMaterial({ color: 0xfafafa, roughness: 0.5 });
-    const darkMat      = new THREE.MeshStandardMaterial({ color: 0x1a1a2e, roughness: 0.7, metalness: 0.1 });
-    const accentMat    = new THREE.MeshStandardMaterial({ color: 0xff6f00, emissive: 0x993300, emissiveIntensity: 0.25, roughness: 0.35, metalness: 0.2 });
-    const glassMat     = new THREE.MeshStandardMaterial({
+    const blueMat = resources.getMaterial('wugo_blue', () => new THREE.MeshStandardMaterial({ color: 0x1565c0, roughness: 0.4, metalness: 0.15 }));
+    const lightBlueMat = resources.getMaterial('wugo_light_blue', () => new THREE.MeshStandardMaterial({ color: 0xbbdefb, roughness: 0.6 }));
+    const whiteMat = resources.getMaterial('shared_white', () => new THREE.MeshStandardMaterial({ color: 0xfafafa, roughness: 0.5 }));
+    const darkMat = resources.getMaterial('dark_navy', () => new THREE.MeshStandardMaterial({ color: 0x1a1a2e, roughness: 0.7, metalness: 0.1 }));
+    const accentMat = resources.getMaterial('wugo_accent', () => new THREE.MeshStandardMaterial({ color: 0xff6f00, emissive: 0x993300, emissiveIntensity: 0.25, roughness: 0.35, metalness: 0.2 }));
+    const glassMat = resources.getMaterial('wugo_glass', () => new THREE.MeshStandardMaterial({
         color: 0xaed6f1, transparent: true, opacity: 0.25,
         roughness: 0.05, metalness: 0.5, side: THREE.DoubleSide, depthWrite: false
-    });
-    const frameMat     = new THREE.MeshStandardMaterial({ color: 0x2d2d2d, roughness: 0.4, metalness: 0.8 });
-    const steelMat     = new THREE.MeshStandardMaterial({ color: 0xbdc3c7, metalness: 0.9, roughness: 0.1 });
-    const woodMat      = new THREE.MeshStandardMaterial({ color: 0x8d6e3e, roughness: 0.7 });
-    const colMat       = new THREE.MeshStandardMaterial({ color: 0xcfd8dc, roughness: 0.5, metalness: 0.3 });
+    }));
+    const frameMat = resources.getMaterial('dark_frame', () => new THREE.MeshStandardMaterial({ color: 0x2d2d2d, roughness: 0.4, metalness: 0.8 }));
+    const steelMat = resources.getMaterial('shared_steel', () => new THREE.MeshStandardMaterial({ color: 0xbdc3c7, metalness: 0.9, roughness: 0.1 }));
+    const woodMat = resources.getMaterial('wugo_wood', () => new THREE.MeshStandardMaterial({ color: 0x8d6e3e, roughness: 0.7 }));
+    const colMat = resources.getMaterial('wugo_column', () => new THREE.MeshStandardMaterial({ color: 0xcfd8dc, roughness: 0.5, metalness: 0.3 }));
+    const intFloorMat = resources.getMaterial('wugo_floor', () => new THREE.MeshStandardMaterial({ color: 0xe3f2fd, roughness: 0.45 }));
+    const recMat = resources.getMaterial('wugo_rec_blue', () => new THREE.MeshStandardMaterial({ color: 0x1565c0, roughness: 0.5, metalness: 0.3 }));
 
     // ── Helpers ───────────────────────────────────────────────────────────────
     const add = (mesh, shadow = true) => {
@@ -43,14 +46,13 @@ export function buildWugoBuilding(scene, physics, groundMaterial, position = [0,
         return mesh;
     };
     const box = (w, h, d, mat, x, y, z) => {
-        const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat);
+        const m = new THREE.Mesh(resources.getBox(w, h, d), mat);
         m.position.set(x, y, z);
         return add(m);
     };
 
     // ── Interior Floor ───────────────────────────────────────────────────────
-    const intFloorMat = new THREE.MeshStandardMaterial({ color: 0xe3f2fd, roughness: 0.45 });
-    const floor = new THREE.Mesh(new THREE.PlaneGeometry(W + WALL_T * 2, D + WALL_T * 2), intFloorMat);
+    const floor = new THREE.Mesh(resources.getPlane(W + WALL_T * 2, D + WALL_T * 2), intFloorMat);
     floor.rotation.x = -Math.PI / 2;
     floor.position.set(0, FLOOR_Y, 0);
     add(floor);
@@ -80,7 +82,7 @@ export function buildWugoBuilding(scene, physics, groundMaterial, position = [0,
         box(WALL_T * 0.4, fh, WALL_T * 0.4, frameMat, cx, cy, cz); // mullion
     };
     [-4.5, 4.5].forEach(cx => {
-        const g = new THREE.Mesh(new THREE.PlaneGeometry(3.5, winH), glassMat);
+        const g = new THREE.Mesh(resources.getPlane(3.5, winH), glassMat);
         g.position.set(cx, winY, frontZ - 0.01);
         add(g, false);
         addWindowFrame(cx, winY, frontZ - 0.05, 3.65, winH + 0.1);
@@ -89,7 +91,7 @@ export function buildWugoBuilding(scene, physics, groundMaterial, position = [0,
     // ── BACK WALL ────────────────────────────────────────────────────────────
     box(W, H * 0.55, WALL_T, blueMat, 0, H * 0.55 / 2, backZ);
     box(W, H * 0.25, WALL_T, blueMat, 0, H - H * 0.25 / 2, backZ);
-    const backGlass = new THREE.Mesh(new THREE.PlaneGeometry(W - 2, H * 0.2), glassMat);
+    const backGlass = new THREE.Mesh(resources.getPlane(W - 2, H * 0.2), glassMat);
     backGlass.rotation.y = Math.PI;
     backGlass.position.set(0, H * 0.55 + H * 0.1, backZ + 0.01);
     add(backGlass, false);
@@ -105,7 +107,7 @@ export function buildWugoBuilding(scene, physics, groundMaterial, position = [0,
     const sideWinH = H - 2.2;
     const sideWinW = (D - 4) / 2 - 0.3;
     [-2.5, 2.5].forEach(zo => {
-        const sg = new THREE.Mesh(new THREE.PlaneGeometry(sideWinW, sideWinH), glassMat);
+        const sg = new THREE.Mesh(resources.getPlane(sideWinW, sideWinH), glassMat);
         sg.rotation.y = Math.PI / 2;
         sg.position.set(leftX - 0.01, 1.0 + sideWinH / 2, zo);
         add(sg, false);
@@ -120,7 +122,7 @@ export function buildWugoBuilding(scene, physics, groundMaterial, position = [0,
     box(WALL_T, H, 1.0, blueMat, rightX, H / 2, (D / 2) - 0.5);
     box(WALL_T, H, 0.6, blueMat, rightX, H / 2, 0);
     [-2.5, 2.5].forEach(zo => {
-        const sg = new THREE.Mesh(new THREE.PlaneGeometry(sideWinW, sideWinH), glassMat);
+        const sg = new THREE.Mesh(resources.getPlane(sideWinW, sideWinH), glassMat);
         sg.rotation.y = -Math.PI / 2;
         sg.position.set(rightX + 0.01, 1.0 + sideWinH / 2, zo);
         add(sg, false);
@@ -133,23 +135,23 @@ export function buildWugoBuilding(scene, physics, groundMaterial, position = [0,
     doorGroup.position.set(-doorW / 2, 0, frontZ);
     group.add(doorGroup);
 
-    const doorGlass = new THREE.Mesh(new THREE.PlaneGeometry(doorW, doorH), glassMat);
+    const doorGlass = new THREE.Mesh(resources.getPlane(doorW, doorH), glassMat);
     doorGlass.position.set(doorW / 2, doorH / 2 + 0.1, 0.04);
     doorGroup.add(doorGlass);
 
-    const doorFrameGeo = new THREE.BoxGeometry(0.12, doorH, WALL_T * 0.5);
+    const doorFrameGeo = resources.getBox(0.12, doorH, WALL_T * 0.5);
     const df1 = new THREE.Mesh(doorFrameGeo, frameMat);
     df1.position.set(0, doorH / 2 + 0.1, 0);
     doorGroup.add(df1);
     const df2 = new THREE.Mesh(doorFrameGeo, frameMat);
     df2.position.set(doorW, doorH / 2 + 0.1, 0);
     doorGroup.add(df2);
-    const topDoorF = new THREE.Mesh(new THREE.BoxGeometry(doorW + 0.12, 0.12, WALL_T * 0.5), frameMat);
+    const topDoorF = new THREE.Mesh(resources.getBox(doorW + 0.12, 0.12, WALL_T * 0.5), frameMat);
     topDoorF.position.set(doorW / 2, doorH + 0.1, 0);
     doorGroup.add(topDoorF);
 
     // Handle
-    const handleBar = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 0.6, 8), steelMat);
+    const handleBar = new THREE.Mesh(resources.getCylinder(0.04, 0.04, 0.6, 8), steelMat);
     handleBar.position.set(doorW - 0.2, 1.2, 0.12);
     handleBar.rotation.z = Math.PI / 2;
     doorGroup.add(handleBar);
@@ -159,11 +161,11 @@ export function buildWugoBuilding(scene, physics, groundMaterial, position = [0,
 
     // ── DECORATIVE COLUMNS (facade) ──────────────────────────────────────────
     [-6, -1.8, 1.8, 6].forEach(cx => {
-        const col = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.24, H + 0.4, 10), colMat);
+        const col = new THREE.Mesh(resources.getCylinder(0.2, 0.24, H + 0.4, 10), colMat);
         col.position.set(cx, (H + 0.4) / 2, frontZ - 0.2);
         col.castShadow = true;
         group.add(col);
-        const cap = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.2, 0.2, 10), colMat);
+        const cap = new THREE.Mesh(resources.getCylinder(0.3, 0.2, 0.2, 10), colMat);
         cap.position.set(cx, H + 0.5, frontZ - 0.2);
         group.add(cap);
     });
@@ -178,7 +180,7 @@ export function buildWugoBuilding(scene, physics, groundMaterial, position = [0,
 
     // HVAC
     box(2.5, 1.0, 1.5, steelMat, -3, H + 0.8, 2);
-    const fan1 = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.4, 0.1, 16), frameMat);
+    const fan1 = new THREE.Mesh(resources.getCylinder(0.4, 0.4, 0.1, 16), frameMat);
     fan1.position.set(-3, H + 1.55, 2); add(fan1);
     box(2.5, 1.0, 1.5, steelMat, 3, H + 0.8, -2);
 
@@ -197,7 +199,7 @@ export function buildWugoBuilding(scene, physics, groundMaterial, position = [0,
     sCtx.restore();
     const signTex = new THREE.CanvasTexture(signCanvas);
     const signBoard = new THREE.Mesh(
-        new THREE.PlaneGeometry(W - 1, 1.8),
+        resources.getPlane(W - 1, 1.8),
         new THREE.MeshBasicMaterial({ map: signTex, side: THREE.DoubleSide })
     );
     signBoard.position.set(0, signY, frontZ - 0.25);
@@ -207,7 +209,6 @@ export function buildWugoBuilding(scene, physics, groundMaterial, position = [0,
     // ── INTERIOR ─────────────────────────────────────────────────────────────
 
     // Ticket Desk
-    const recMat = new THREE.MeshStandardMaterial({ color: 0x1565c0, roughness: 0.5, metalness: 0.3 });
     box(3.5, 0.88, 0.75, recMat, 2, 0.44, -(D / 2) + 2.5);
     box(3.5, 0.06, 0.75, recMat, 2, 0.92, -(D / 2) + 2.5);
     box(3.5, 0.45, 0.08, recMat, 2, 1.16, -(D / 2) + 2.15);
@@ -219,7 +220,7 @@ export function buildWugoBuilding(scene, physics, groundMaterial, position = [0,
     dCtx.fillStyle = '#fff'; dCtx.font = 'bold 36px Arial'; dCtx.textAlign = 'center'; dCtx.textBaseline = 'middle';
     dCtx.fillText('WUGO', 128, 32);
     const dTex = new THREE.CanvasTexture(deskCanvas);
-    const dPlacard = new THREE.Mesh(new THREE.PlaneGeometry(1.5, 0.37), new THREE.MeshBasicMaterial({ map: dTex, side: THREE.DoubleSide }));
+    const dPlacard = new THREE.Mesh(resources.getPlane(1.5, 0.37), new THREE.MeshBasicMaterial({ map: dTex, side: THREE.DoubleSide }));
     dPlacard.rotation.y = Math.PI;
     dPlacard.position.set(2, 1.16, -(D / 2) + 2.12);
     group.add(dPlacard);
@@ -228,19 +229,19 @@ export function buildWugoBuilding(scene, physics, groundMaterial, position = [0,
     const addSofa = (x, z, ry) => {
         const sg = new THREE.Group();
         // Seat
-        const seat = new THREE.Mesh(new THREE.BoxGeometry(2.2, 0.45, 0.9), lightBlueMat);
+        const seat = new THREE.Mesh(resources.getBox(2.2, 0.45, 0.9), lightBlueMat);
         seat.position.y = 0.22; sg.add(seat);
         // Back
-        const back = new THREE.Mesh(new THREE.BoxGeometry(2.2, 0.6, 0.2), blueMat);
+        const back = new THREE.Mesh(resources.getBox(2.2, 0.6, 0.2), blueMat);
         back.position.set(0, 0.55, 0.35); sg.add(back);
         // Arms
-        const arm = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.5, 0.9), blueMat);
+        const arm = new THREE.Mesh(resources.getBox(0.2, 0.5, 0.9), blueMat);
         [-1.0, 1.0].forEach(ax => {
             const a = arm.clone(); a.position.set(ax, 0.45, 0); sg.add(a);
         });
         // Legs
         [[-0.9, -0.35], [0.9, -0.35], [-0.9, 0.35], [0.9, 0.35]].forEach(([lx, lz]) => {
-            const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 0.15, 6), steelMat);
+            const leg = new THREE.Mesh(resources.getCylinder(0.04, 0.04, 0.15, 6), steelMat);
             leg.position.set(lx, 0.075, lz); sg.add(leg);
         });
 
@@ -255,8 +256,8 @@ export function buildWugoBuilding(scene, physics, groundMaterial, position = [0,
     const addScreen = (x, y, z, ry, label, color) => {
         const scG = new THREE.Group();
         box(2.5, 1.5, 0.1, frameMat, 0, 0, 0).parent = scG;
-        const screen = new THREE.Mesh(new THREE.PlaneGeometry(2.3, 1.3),
-            new THREE.MeshStandardMaterial({ color: 0x111111, emissive: color, emissiveIntensity: 0.8 }));
+        const screen = new THREE.Mesh(resources.getPlane(2.3, 1.3),
+            resources.getMaterial('wugo_screen_' + color, () => new THREE.MeshStandardMaterial({ color: 0x111111, emissive: color, emissiveIntensity: 0.8 })));
         screen.position.z = 0.06; scG.add(screen);
         const c2 = document.createElement('canvas'); c2.width = 256; c2.height = 128;
         const cx2 = c2.getContext('2d');
@@ -264,7 +265,7 @@ export function buildWugoBuilding(scene, physics, groundMaterial, position = [0,
         cx2.fillStyle = '#fff'; cx2.font = 'bold 28px Arial'; cx2.textAlign = 'center';
         cx2.fillText(label, 128, 64);
         const tex2 = new THREE.CanvasTexture(c2);
-        const labelMesh = new THREE.Mesh(new THREE.PlaneGeometry(2, 1), new THREE.MeshBasicMaterial({ map: tex2, transparent: true }));
+        const labelMesh = new THREE.Mesh(resources.getPlane(2, 1), new THREE.MeshBasicMaterial({ map: tex2, transparent: true }));
         labelMesh.position.z = 0.07; scG.add(labelMesh);
         scG.position.set(x, y, z);
         scG.rotation.y = ry;
@@ -278,13 +279,13 @@ export function buildWugoBuilding(scene, physics, groundMaterial, position = [0,
     const addKiosk = (x, z, ry) => {
         const kg = new THREE.Group();
         // Body
-        const body = new THREE.Mesh(new THREE.BoxGeometry(0.6, 1.5, 0.4), frameMat);
+        const body = new THREE.Mesh(resources.getBox(0.6, 1.5, 0.4), frameMat);
         body.position.y = 0.75; kg.add(body);
         // Screen
-        const screen = new THREE.Mesh(new THREE.PlaneGeometry(0.5, 0.4), new THREE.MeshBasicMaterial({ color: 0x00bcd4 }));
+        const screen = new THREE.Mesh(resources.getPlane(0.5, 0.4), resources.getMaterial('shared_kiosk_screen', () => new THREE.MeshBasicMaterial({ color: 0x00bcd4 })));
         screen.position.set(0, 1.1, 0.21); kg.add(screen);
         // Base
-        const base = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.35, 0.05, 12), steelMat);
+        const base = new THREE.Mesh(resources.getCylinder(0.3, 0.35, 0.05, 12), steelMat);
         base.position.y = 0.025; kg.add(base);
 
         kg.position.set(x, FLOOR_Y, z);
@@ -297,8 +298,8 @@ export function buildWugoBuilding(scene, physics, groundMaterial, position = [0,
     // Event Posters on left wall
     const posterColors = [0xf1c40f, 0xe67e22, 0xe74c3c];
     [-2, 0, 2].forEach((zo, i) => {
-        const p = new THREE.Mesh(new THREE.PlaneGeometry(0.8, 1.1),
-            new THREE.MeshStandardMaterial({ color: posterColors[i], roughness: 0.9 }));
+        const p = new THREE.Mesh(resources.getPlane(0.8, 1.1),
+            resources.getMaterial('poster_' + posterColors[i], () => new THREE.MeshStandardMaterial({ color: posterColors[i], roughness: 0.9 })));
         p.position.set(leftX + 0.21, 2.5, zo);
         p.rotation.y = Math.PI / 2;
         add(p, false);

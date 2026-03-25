@@ -282,10 +282,8 @@ export class CareerTimelineHud {
         this.root.appendChild(this.container);
         document.body.appendChild(this.root);
 
-        // Collapse by default on mobile
-        if (window.innerWidth <= 768) {
-            this.root.classList.add('collapsed');
-        }
+        // Collapse by default
+        this.root.classList.add('collapsed');
     }
 
     setFocusedBuilding(buildingId) {

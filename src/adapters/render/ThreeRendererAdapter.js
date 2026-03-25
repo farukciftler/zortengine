@@ -114,6 +114,34 @@ export class ThreeRendererAdapter {
         this.renderer?.setPixelRatio?.(ratio);
     }
 
+    /**
+     * Recursively disposes of a Three.js object tree to free up GPU and RAM.
+     * @param {THREE.Object3D} object 
+     */
+    static deepDispose(object) {
+        if (!object) return;
+
+        object.traverse(child => {
+            if (child.isMesh) {
+                if (child.geometry) {
+                    child.geometry.dispose();
+                }
+
+                if (child.material) {
+                    if (Array.isArray(child.material)) {
+                        child.material.forEach(m => m.dispose());
+                    } else {
+                        child.material.dispose();
+                    }
+                }
+            }
+        });
+    }
+
+    disposeObject(object) {
+        ThreeRendererAdapter.deepDispose(object);
+    }
+
     dispose() {
         this.renderer?.dispose?.();
         this.renderer = null;

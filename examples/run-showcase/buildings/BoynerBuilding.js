@@ -4,6 +4,7 @@ import {
     buildRectDoorShellBoxes,
     createBuildingInteractionHandle
 } from './buildingPhysics.js';
+import { resources } from './ResourceLibrary.js';
 
 /**
  * BoynerBuilding — 4-walled enclosed clothing store.
@@ -24,19 +25,22 @@ export function buildBoynerBuilding(scene, physics, groundMaterial, position = [
     const FLOOR_Y = 0.011;
 
     // ── Palette ───────────────────────────────────────────────────────────────
-    const brickMat    = new THREE.MeshStandardMaterial({ color: 0xd6b896, roughness: 0.88, metalness: 0.02 });
-    const concreteMat = new THREE.MeshStandardMaterial({ color: 0x9e9e9e, roughness: 0.9, metalness: 0.05 });
-    const restMaterial = new THREE.MeshStandardMaterial({ color: 0x2c3e50 }); // optional placeholder if needed
-    const darkMat   = new THREE.MeshStandardMaterial({ color: 0x1a1a2e, roughness: 0.7, metalness: 0.1 });
-    const accentMat = new THREE.MeshStandardMaterial({
+    const brickMat = resources.getMaterial('boyner_brick', () => new THREE.MeshStandardMaterial({ color: 0xd6b896, roughness: 0.88, metalness: 0.02 }));
+    const concreteMat = resources.getMaterial('concrete_gray', () => new THREE.MeshStandardMaterial({ color: 0x9e9e9e, roughness: 0.9, metalness: 0.05 }));
+    const darkMat = resources.getMaterial('dark_navy', () => new THREE.MeshStandardMaterial({ color: 0x1a1a2e, roughness: 0.7, metalness: 0.1 }));
+    const accentMat = resources.getMaterial('boyner_accent', () => new THREE.MeshStandardMaterial({
         color: 0xb5161e, emissive: 0x7a0009, emissiveIntensity: 0.3, roughness: 0.4, metalness: 0.2
-    });
-    const glassMat  = new THREE.MeshStandardMaterial({
+    }));
+    const glassMat = resources.getMaterial('shared_glass', () => new THREE.MeshStandardMaterial({
         color: 0x9ecde8, transparent: true, opacity: 0.28,
         roughness: 0.05, metalness: 0.5, side: THREE.DoubleSide, depthWrite: false
-    });
-    const frameMat  = new THREE.MeshStandardMaterial({ color: 0x2d2d2d, roughness: 0.4, metalness: 0.8 });
-    const colMat    = new THREE.MeshStandardMaterial({ color: 0xe8d5b7, roughness: 0.7 });
+    }));
+    const frameMat = resources.getMaterial('dark_frame', () => new THREE.MeshStandardMaterial({ color: 0x2d2d2d, roughness: 0.4, metalness: 0.8 }));
+    const colMat = resources.getMaterial('boyner_column', () => new THREE.MeshStandardMaterial({ color: 0xe8d5b7, roughness: 0.7 }));
+    const handleMat = resources.getMaterial('gold_handle', () => new THREE.MeshStandardMaterial({ color: 0xd4af37, metalness: 0.9, roughness: 0.15 }));
+    const woodMat = resources.getMaterial('furniture_wood', () => new THREE.MeshStandardMaterial({ color: 0x8B5E3C, roughness: 0.8 }));
+    const metalPole = resources.getMaterial('furniture_metal', () => new THREE.MeshStandardMaterial({ color: 0xaaaaaa, metalness: 0.9, roughness: 0.2 }));
+    const intFloorMat = resources.getMaterial('boyner_floor', () => new THREE.MeshStandardMaterial({ color: 0xf4e8d0, roughness: 0.6 }));
 
     // ── Helper ────────────────────────────────────────────────────────────────
     const add = (mesh, shadow = true) => {
@@ -45,14 +49,13 @@ export function buildBoynerBuilding(scene, physics, groundMaterial, position = [
         return mesh;
     };
     const box = (w, h, d, mat, x, y, z) => {
-        const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat);
+        const m = new THREE.Mesh(resources.getBox(w, h, d), mat);
         m.position.set(x, y, z);
         return add(m);
     };
 
     // ── FLOOR — Flush with plaza (y=0.01) ───────────────────────────────────
-    const intFloorMat = new THREE.MeshStandardMaterial({ color: 0xf4e8d0, roughness: 0.6 });
-    const floorGeo = new THREE.PlaneGeometry(W + WALL_T * 2, D + WALL_T * 2);
+    const floorGeo = resources.getPlane(W + WALL_T * 2, D + WALL_T * 2);
     const floor = new THREE.Mesh(floorGeo, intFloorMat);
     floor.rotation.x = -Math.PI / 2;
     floor.position.set(0, 0.011, 0); // Tiny offset to avoid z-fight with plaza
@@ -71,20 +74,18 @@ export function buildBoynerBuilding(scene, physics, groundMaterial, position = [
     const winH = H - 1.6;
     const winY = 0.8 + winH / 2;
     const addPane = (x, z, w, h, ry = 0) => {
-        const g = new THREE.Mesh(new THREE.PlaneGeometry(w, h), glassMat);
+        const g = new THREE.Mesh(resources.getPlane(w, h), glassMat);
         g.rotation.y = ry;
-        g.position.set(x, y => y, z);
-        // inline position fix
         g.position.set(x, winY, z);
         add(g, false);
         return g;
     };
 
-    const lglass = new THREE.Mesh(new THREE.PlaneGeometry(3.8, winH), glassMat);
+    const lglass = new THREE.Mesh(resources.getPlane(3.8, winH), glassMat);
     lglass.position.set(-5.5, winY, frontZ - 0.01);
     add(lglass, false);
 
-    const rglass = new THREE.Mesh(new THREE.PlaneGeometry(3.8, winH), glassMat);
+    const rglass = new THREE.Mesh(resources.getPlane(3.8, winH), glassMat);
     rglass.position.set(5.5, winY, frontZ - 0.01);
     add(rglass, false);
 
@@ -108,12 +109,12 @@ export function buildBoynerBuilding(scene, physics, groundMaterial, position = [
     doorGroup.position.set(-doorW / 2, 0, frontZ);
     group.add(doorGroup);
 
-    const doorGlass = new THREE.Mesh(new THREE.PlaneGeometry(doorW, doorH), glassMat);
+    const doorGlass = new THREE.Mesh(resources.getPlane(doorW, doorH), glassMat);
     doorGlass.position.set(doorW / 2, doorH / 2 + 0.1, 0.04);
     doorGroup.add(doorGlass);
 
     // Frame on the door itself
-    const doorFrameGeo = new THREE.BoxGeometry(0.12, doorH, WALL_T * 0.5);
+    const doorFrameGeo = resources.getBox(0.12, doorH, WALL_T * 0.5);
     const df1 = new THREE.Mesh(doorFrameGeo, frameMat);
     df1.position.set(0, doorH / 2 + 0.1, 0);
     doorGroup.add(df1);
@@ -122,14 +123,13 @@ export function buildBoynerBuilding(scene, physics, groundMaterial, position = [
     df2.position.set(doorW, doorH / 2 + 0.1, 0);
     doorGroup.add(df2);
 
-    const topF = new THREE.Mesh(new THREE.BoxGeometry(doorW + 0.12, 0.12, WALL_T * 0.5), frameMat);
+    const topF = new THREE.Mesh(resources.getBox(doorW + 0.12, 0.12, WALL_T * 0.5), frameMat);
     topF.position.set(doorW / 2, doorH + 0.1, 0);
     doorGroup.add(topF);
 
     // Handle
-    const handleMat = new THREE.MeshStandardMaterial({ color: 0xd4af37, metalness: 0.9, roughness: 0.15 });
     const hGroup = new THREE.Group();
-    const hBar = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 0.6, 8), handleMat);
+    const hBar = new THREE.Mesh(resources.getCylinder(0.04, 0.04, 0.6, 8), handleMat);
     hBar.position.y = 0.3;
     hGroup.add(hBar);
     hGroup.position.set(doorW - 0.2, 1.2, 0.1);
@@ -143,7 +143,7 @@ export function buildBoynerBuilding(scene, physics, groundMaterial, position = [
     const backZ = (D / 2) + WALL_T / 2;
     box(W, H * 0.55, WALL_T, brickMat, 0, H * 0.55 / 2, backZ);
     box(W, H * 0.25, WALL_T, brickMat, 0, H - H * 0.25 / 2, backZ);
-    const backGlass = new THREE.Mesh(new THREE.PlaneGeometry(W - 2, H * 0.2), glassMat);
+    const backGlass = new THREE.Mesh(resources.getPlane(W - 2, H * 0.2), glassMat);
     backGlass.rotation.y = Math.PI;
     backGlass.position.set(0, H * 0.55 + H * 0.1, backZ + 0.01);
     add(backGlass, false);
@@ -160,7 +160,7 @@ export function buildBoynerBuilding(scene, physics, groundMaterial, position = [
     const sideWinH = H - 2.2;
     const sideWinW = (D - 4) / 2 - 0.3;
     [-3.2, 3.2].forEach(zo => {
-        const sg = new THREE.Mesh(new THREE.PlaneGeometry(sideWinW, sideWinH), glassMat);
+        const sg = new THREE.Mesh(resources.getPlane(sideWinW, sideWinH), glassMat);
         sg.rotation.y = Math.PI / 2;
         sg.position.set(leftX - 0.01, 1.0 + sideWinH / 2, zo);
         add(sg, false);
@@ -176,7 +176,7 @@ export function buildBoynerBuilding(scene, physics, groundMaterial, position = [
     box(WALL_T, H, 1.0, brickMat, rightX, H/2,  (D/2) - 0.5);
     box(WALL_T, H, 0.6, brickMat, rightX, H/2, 0);
     [-3.2, 3.2].forEach(zo => {
-        const sg = new THREE.Mesh(new THREE.PlaneGeometry(sideWinW, sideWinH), glassMat);
+        const sg = new THREE.Mesh(resources.getPlane(sideWinW, sideWinH), glassMat);
         sg.rotation.y = -Math.PI / 2;
         sg.position.set(rightX + 0.01, 1.0 + sideWinH / 2, zo);
         add(sg, false);
@@ -187,8 +187,6 @@ export function buildBoynerBuilding(scene, physics, groundMaterial, position = [
     // (Removed old bulky interior floor)
 
     // ── INTERIOR FURNISHINGS ──────────────────────────────────────────────────
-    const woodMat    = new THREE.MeshStandardMaterial({ color: 0x8B5E3C, roughness: 0.8 });
-    const metalPole  = new THREE.MeshStandardMaterial({ color: 0xaaaaaa, metalness: 0.9, roughness: 0.2 });
     const clothColors = [0xe74c3c, 0x3498db, 0x2ecc71, 0x9b59b6, 0xf39c12, 0x1abc9c, 0xe91e63];
 
     // Helper: clothing rack (horizontal bar + 2 vertical legs)
@@ -196,16 +194,16 @@ export function buildBoynerBuilding(scene, physics, groundMaterial, position = [
         const rg = new THREE.Group();
         const y = y_height;
         // Horizontal bar
-        const bar = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, rackW, 8), metalPole);
+        const bar = new THREE.Mesh(resources.getCylinder(0.04, 0.04, rackW, 8), metalPole);
         bar.rotation.z = Math.PI / 2;
         rg.add(bar);
         // Two legs
         [-rackW/2 + 0.05, rackW/2 - 0.05].forEach(lx => {
-            const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, y, 8), metalPole);
+            const leg = new THREE.Mesh(resources.getCylinder(0.04, 0.04, y, 8), metalPole);
             leg.position.set(lx, -y/2, 0);
             rg.add(leg);
             // Feet
-            const foot = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.15, 0.05, 8), metalPole);
+            const foot = new THREE.Mesh(resources.getCylinder(0.15, 0.15, 0.05, 8), metalPole);
             foot.position.set(lx, -y + 0.025, 0);
             rg.add(foot);
         });
@@ -214,8 +212,8 @@ export function buildBoynerBuilding(scene, physics, groundMaterial, position = [
         for (let i = 0; i < count; i++) {
             const col = clothColors[i % clothColors.length];
             const garment = new THREE.Mesh(
-                new THREE.BoxGeometry(0.28, 0.55, 0.04),
-                new THREE.MeshStandardMaterial({ color: col, roughness: 0.9 })
+                resources.getBox(0.28, 0.55, 0.04),
+                resources.getMaterial('cloth_' + col, () => new THREE.MeshStandardMaterial({ color: col, roughness: 0.9 }))
             );
             garment.position.set(-rackW/2 + 0.2 + i * 0.35, -0.32, 0);
             rg.add(garment);
@@ -237,11 +235,11 @@ export function buildBoynerBuilding(scene, physics, groundMaterial, position = [
         const mg = new THREE.Group();
         const bodyMc = new THREE.MeshStandardMaterial({ color, roughness: 0.8 });
         // Torso
-        const torso = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.75, 0.3), bodyMc);
+        const torso = new THREE.Mesh(resources.getBox(0.5, 0.75, 0.3), bodyMc);
         torso.position.y = 1.15;
         mg.add(torso);
         // Neck
-        const neck = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.07, 0.18, 8), bodyMc);
+        const neck = new THREE.Mesh(resources.getCylinder(0.07, 0.07, 0.18, 8), bodyMc);
         neck.position.y = 1.62;
         mg.add(neck);
         // Head (sphere)
@@ -249,22 +247,22 @@ export function buildBoynerBuilding(scene, physics, groundMaterial, position = [
         head.position.y = 1.9;
         mg.add(head);
         // Hips
-        const hips = new THREE.Mesh(new THREE.BoxGeometry(0.45, 0.4, 0.28), bodyMc);
+        const hips = new THREE.Mesh(resources.getBox(0.45, 0.4, 0.28), bodyMc);
         hips.position.y = 0.72;
         mg.add(hips);
         // Stand pole
-        const standPole = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.65, 8), metalPole);
+        const standPole = new THREE.Mesh(resources.getCylinder(0.03, 0.03, 0.65, 8), metalPole);
         standPole.position.y = 0.33;
         mg.add(standPole);
         // Base disc
-        const base = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.22, 0.05, 16), metalPole);
+        const base = new THREE.Mesh(resources.getCylinder(0.22, 0.22, 0.05, 16), metalPole);
         base.position.y = 0.025;
         mg.add(base);
         // Clothes on mannequin: a dress/shirt quad
         const dressColor = clothColors[Math.floor(Math.random() * clothColors.length)];
         const dress = new THREE.Mesh(
-            new THREE.BoxGeometry(0.55, 0.9, 0.08),
-            new THREE.MeshStandardMaterial({ color: dressColor, roughness: 0.85 })
+            resources.getBox(0.55, 0.9, 0.08),
+            resources.getMaterial('cloth_' + dressColor, () => new THREE.MeshStandardMaterial({ color: dressColor, roughness: 0.85 }))
         );
         dress.position.y = 0.9;
         dress.position.z = 0.17;
@@ -285,12 +283,12 @@ export function buildBoynerBuilding(scene, physics, groundMaterial, position = [
     const addFoldTable = (x, z, ry = 0) => {
         const tg = new THREE.Group();
         // Table surface
-        const top = new THREE.Mesh(new THREE.BoxGeometry(1.8, 0.08, 0.9), woodMat);
+        const top = new THREE.Mesh(resources.getBox(1.8, 0.08, 0.9), woodMat);
         top.position.y = 0.82;
         tg.add(top);
         // 4 legs
         [[-0.8, -0.4], [0.8, -0.4], [-0.8, 0.4], [0.8, 0.4]].forEach(([lx, lz]) => {
-            const leg = new THREE.Mesh(new THREE.BoxGeometry(0.07, 0.82, 0.07), woodMat);
+            const leg = new THREE.Mesh(resources.getBox(0.07, 0.82, 0.07), woodMat);
             leg.position.set(lx, 0.41, lz);
             tg.add(leg);
         });
@@ -298,8 +296,8 @@ export function buildBoynerBuilding(scene, physics, groundMaterial, position = [
         for (let s = 0; s < 3; s++) {
             const col = clothColors[s % clothColors.length];
             const folded = new THREE.Mesh(
-                new THREE.BoxGeometry(0.5, 0.07, 0.35),
-                new THREE.MeshStandardMaterial({ color: col, roughness: 0.9 })
+                resources.getBox(0.5, 0.07, 0.35),
+                resources.getMaterial('cloth_' + col, () => new THREE.MeshStandardMaterial({ color: col, roughness: 0.9 }))
             );
             folded.position.set(-0.5 + s * 0.5, 0.9 + s * 0.075, 0);
             tg.add(folded);
@@ -341,7 +339,7 @@ export function buildBoynerBuilding(scene, physics, groundMaterial, position = [
     sCtx.restore();
     const signTex = new THREE.CanvasTexture(signCanvas);
     const signBoard = new THREE.Mesh(
-        new THREE.PlaneGeometry(W - 1, 1.8),
+        resources.getPlane(W - 1, 1.8),
         new THREE.MeshBasicMaterial({ map: signTex, side: THREE.DoubleSide })
     );
     signBoard.position.set(0, signY, frontZ - 0.25);
@@ -350,11 +348,11 @@ export function buildBoynerBuilding(scene, physics, groundMaterial, position = [
 
     // ── DECORATIVE COLUMNS (front facade, no awning) ──────────────────────────
     [-7, -3.2, 3.2, 7].forEach(cx => {
-        const col = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.26, H + 0.4, 10), colMat);
+        const col = new THREE.Mesh(resources.getCylinder(0.22, 0.26, H + 0.4, 10), colMat);
         col.position.set(cx, (H + 0.4) / 2, frontZ - 0.2);
         col.castShadow = true;
         group.add(col);
-        const cap = new THREE.Mesh(new THREE.CylinderGeometry(0.32, 0.22, 0.2, 10), colMat);
+        const cap = new THREE.Mesh(resources.getCylinder(0.32, 0.22, 0.2, 10), colMat);
         cap.position.set(cx, H + 0.5, frontZ - 0.2);
         group.add(cap);
     });

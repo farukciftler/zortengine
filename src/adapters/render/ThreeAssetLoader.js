@@ -18,7 +18,12 @@ export class ThreeAssetLoader extends AssetLoader {
         this.registerCapability('audio', {
             load: definition => new Promise((resolve, reject) => {
                 this.audioLoader.load(definition.url, resolve, undefined, reject);
-            })
+            }),
+            dispose: resource => {
+                if (resource && typeof resource.stop === 'function') resource.stop();
+                // Audio buffers are handled by the browser/Web Audio API, 
+                // but we can clear references if needed.
+            }
         });
 
         this.registerCapability('model', {
@@ -27,6 +32,26 @@ export class ThreeAssetLoader extends AssetLoader {
                 return new Promise((resolve, reject) => {
                     loader.load(definition.url, resolve, undefined, reject);
                 });
+            },
+            dispose: resource => {
+                if (!resource || !resource.scene) return;
+                
+                // Deep disposal of GLTF scene resources
+                resource.scene.traverse(node => {
+                    if (node.isMesh) {
+                        node.geometry?.dispose();
+                        if (Array.isArray(node.material)) {
+                            node.material.forEach(m => m.dispose());
+                        } else {
+                            node.material?.dispose();
+                        }
+                    }
+                });
+                
+                // Remove from parent if still attached
+                if (resource.scene.parent) {
+                    resource.scene.parent.remove(resource.scene);
+                }
             }
         });
     }

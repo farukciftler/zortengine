@@ -132,7 +132,7 @@ export class GameScene {
         return object;
     }
 
-    remove(object) {
+    remove(object, options = {}) {
         const index = this.objects.indexOf(object);
         if (index !== -1) {
             this.objects.splice(index, 1);
@@ -152,6 +152,14 @@ export class GameScene {
 
         if (typeof object.onRemovedFromScene === 'function') {
             object.onRemovedFromScene(this);
+        }
+
+        // RAM Optimization: Optional deep disposal
+        if (options.dispose !== false && this.engine?.renderAdapter?.disposeObject) {
+            const node = object.getNativeNode?.() || object.group || object.mesh || object;
+            if (node?.isObject3D) {
+                this.engine.renderAdapter.disposeObject(node);
+            }
         }
 
         this.engine?.inspector?.unregisterObject?.(this.name, object);
@@ -222,7 +230,7 @@ export class GameScene {
     }
 
     dispose() {
-        [...this.objects].forEach(object => this.remove(object));
+        [...this.objects].forEach(object => this.remove(object, { dispose: true }));
         this.releaseOwnedAssets();
         this.systems.dispose();
     }

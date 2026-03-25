@@ -4,6 +4,7 @@ import {
     buildRectDoorShellBoxes,
     createBuildingInteractionHandle
 } from './buildingPhysics.js';
+import { resources } from './ResourceLibrary.js';
 
 /**
  * InveonBuilding — 4-walled software development office.
@@ -27,29 +28,30 @@ export function buildInveonBuilding(scene, physics, groundMaterial, position = [
     const FLOOR_Y = 0.011;
 
     // ── Palette ───────────────────────────────────────────────────────────────
-    const concreteMat  = new THREE.MeshStandardMaterial({ color: 0xd0cec8, roughness: 0.85, metalness: 0.05 });
-    const darkConcrete = new THREE.MeshStandardMaterial({ color: 0x3a3a3c, roughness: 0.9, metalness: 0.05 });
-    const accentMat    = new THREE.MeshStandardMaterial({
+    const concreteMat = resources.getMaterial('concrete_gray', () => new THREE.MeshStandardMaterial({ color: 0xd0cec8, roughness: 0.85, metalness: 0.05 }));
+    const darkConcrete = resources.getMaterial('dark_concrete', () => new THREE.MeshStandardMaterial({ color: 0x3a3a3c, roughness: 0.9, metalness: 0.05 }));
+    const accentMat = resources.getMaterial('inveon_accent', () => new THREE.MeshStandardMaterial({
         color: 0x1565c0, emissive: 0x0d3b7a, emissiveIntensity: 0.35,
         roughness: 0.3, metalness: 0.4
-    });
-    const steelMat     = new THREE.MeshStandardMaterial({ color: 0x9e9e9e, roughness: 0.3, metalness: 0.9 });
-    const glassMat     = new THREE.MeshStandardMaterial({
+    }));
+    const steelMat = resources.getMaterial('shared_steel', () => new THREE.MeshStandardMaterial({ color: 0x9e9e9e, roughness: 0.3, metalness: 0.9 }));
+    const glassMat = resources.getMaterial('shared_glass', () => new THREE.MeshStandardMaterial({
         color: 0xaed6f1, transparent: true, opacity: 0.22,
         roughness: 0.05, metalness: 0.6, side: THREE.DoubleSide, depthWrite: false
-    });
-    const glassDark    = new THREE.MeshStandardMaterial({
+    }));
+    const glassDark = resources.getMaterial('inveon_glass_dark', () => new THREE.MeshStandardMaterial({
         color: 0x2c3e50, transparent: true, opacity: 0.35,
         roughness: 0.05, metalness: 0.7, side: THREE.DoubleSide, depthWrite: false
-    });
-    const frameMat     = new THREE.MeshStandardMaterial({ color: 0x263238, roughness: 0.4, metalness: 0.85 });
-    const woodMat      = new THREE.MeshStandardMaterial({ color: 0x8d6e63, roughness: 0.75 });
-    const whiteboardM  = new THREE.MeshStandardMaterial({ color: 0xfafafa, roughness: 0.6 });
-    const screenMat    = new THREE.MeshStandardMaterial({
+    }));
+    const frameMat = resources.getMaterial('dark_frame', () => new THREE.MeshStandardMaterial({ color: 0x263238, roughness: 0.4, metalness: 0.85 }));
+    const woodMat = resources.getMaterial('furniture_wood', () => new THREE.MeshStandardMaterial({ color: 0x8d6e63, roughness: 0.75 }));
+    const whiteboardM = resources.getMaterial('whiteboard', () => new THREE.MeshStandardMaterial({ color: 0xfafafa, roughness: 0.6 }));
+    const screenMat = resources.getMaterial('monitor_screen', () => new THREE.MeshStandardMaterial({
         color: 0x0a1628, emissive: 0x1565c0, emissiveIntensity: 0.7, roughness: 0.1
-    });
-    const chairMat     = new THREE.MeshStandardMaterial({ color: 0x212121, roughness: 0.8, metalness: 0.2 });
-    const keyboardMat  = new THREE.MeshStandardMaterial({ color: 0x37474f, roughness: 0.85 });
+    }));
+    const chairMat = resources.getMaterial('office_chair', () => new THREE.MeshStandardMaterial({ color: 0x212121, roughness: 0.8, metalness: 0.2 }));
+    const keyboardMat = resources.getMaterial('keyboard', () => new THREE.MeshStandardMaterial({ color: 0x37474f, roughness: 0.85 }));
+    const tileMat = resources.getMaterial('inveon_floor', () => new THREE.MeshStandardMaterial({ color: 0xe8eaf6, roughness: 0.25, metalness: 0.1 }));
 
     // ── Helpers ───────────────────────────────────────────────────────────────
     const add = (mesh, shadow = true) => {
@@ -58,12 +60,12 @@ export function buildInveonBuilding(scene, physics, groundMaterial, position = [
         return mesh;
     };
     const box = (w, h, d, mat, x, y, z) => {
-        const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat);
+        const m = new THREE.Mesh(resources.getBox(w, h, d), mat);
         m.position.set(x, y, z);
         return add(m);
     };
     const cyl = (rt, rb, h, mat, x, y, z, segs = 12) => {
-        const m = new THREE.Mesh(new THREE.CylinderGeometry(rt, rb, h, segs), mat);
+        const m = new THREE.Mesh(resources.getCylinder(rt, rb, h, segs), mat);
         m.position.set(x, y, z);
         return add(m);
     };
@@ -74,8 +76,7 @@ export function buildInveonBuilding(scene, physics, groundMaterial, position = [
     const rightX =  (W / 2) + T / 2 + 0.01;
 
     // ── FLOOR — Flush with plaza (y=0.01) ───────────────────────────────────
-    const tileMat = new THREE.MeshStandardMaterial({ color: 0xe8eaf6, roughness: 0.25, metalness: 0.1 });
-    const floorGeo = new THREE.PlaneGeometry(W + T * 2, D + T * 2);
+    const floorGeo = resources.getPlane(W + T * 2, D + T * 2);
     const floor = new THREE.Mesh(floorGeo, tileMat);
     floor.rotation.x = -Math.PI / 2;
     floor.position.set(0, FLOOR_Y, 0); 
@@ -104,11 +105,11 @@ export function buildInveonBuilding(scene, physics, groundMaterial, position = [
     const bayOffsets = [-colSpacing, colSpacing];
     bayOffsets.forEach(bx => {
         // Lower glass panel
-        const lg = new THREE.Mesh(new THREE.PlaneGeometry(bayW, H / 2 - 0.65), glassMat);
+        const lg = new THREE.Mesh(resources.getPlane(bayW, H / 2 - 0.65), glassMat);
         lg.position.set(bx, H / 4 + 0.4, frontZ - 0.02);
         add(lg, false);
         // Upper glass panel
-        const ug = new THREE.Mesh(new THREE.PlaneGeometry(bayW, H / 2 - 0.6), glassDark);
+        const ug = new THREE.Mesh(resources.getPlane(bayW, H / 2 - 0.6), glassDark);
         ug.position.set(bx, H * 0.75 - 0.15, frontZ - 0.02);
         add(ug, false);
         // Vertical steel mullions
@@ -133,22 +134,22 @@ export function buildInveonBuilding(scene, physics, groundMaterial, position = [
     group.add(doorR);
 
     // Door glass panels (centered on pivots)
-    const dlMesh = new THREE.Mesh(new THREE.PlaneGeometry(doorW / 2, doorH), glassMat);
+    const dlMesh = new THREE.Mesh(resources.getPlane(doorW / 2, doorH), glassMat);
     dlMesh.position.set(doorW / 4, doorH / 2, 0.05);
     doorL.add(dlMesh);
 
-    const drMesh = new THREE.Mesh(new THREE.PlaneGeometry(doorW / 2, doorH), glassMat);
+    const drMesh = new THREE.Mesh(resources.getPlane(doorW / 2, doorH), glassMat);
     drMesh.position.set(-(doorW / 4), doorH / 2, 0.05);
     doorR.add(drMesh);
 
     // Frame on doors
-    const dFrame = new THREE.Mesh(new THREE.BoxGeometry(0.08, doorH, 0.1), frameMat);
+    const dFrame = new THREE.Mesh(resources.getBox(0.08, doorH, 0.1), frameMat);
     dFrame.position.y = doorH / 2;
     doorL.add(dFrame.clone());
     doorR.add(dFrame.clone());
 
     // Push bars
-    const pushBarL = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.5, 8), steelMat);
+    const pushBarL = new THREE.Mesh(resources.getCylinder(0.03, 0.03, 0.5, 8), steelMat);
     pushBarL.rotation.z = Math.PI / 2;
     pushBarL.position.set(doorW / 4, 1.1, 0.1);
     doorL.add(pushBarL);
@@ -164,7 +165,7 @@ export function buildInveonBuilding(scene, physics, groundMaterial, position = [
     // ── BACK WALL — mostly solid concrete ────────────────────────────────────
     box(W, H, T, concreteMat, 0, H / 2, backZ);
     // Single high strip window
-    const bwg = new THREE.Mesh(new THREE.PlaneGeometry(W - 3, 1.4), glassDark);
+    const bwg = new THREE.Mesh(resources.getPlane(W - 3, 1.4), glassDark);
     bwg.rotation.y = Math.PI;
     bwg.position.set(0, H - 1.4, backZ + 0.02);
     add(bwg, false);
@@ -174,7 +175,7 @@ export function buildInveonBuilding(scene, physics, groundMaterial, position = [
     box(T, H, D, concreteMat, leftX, H / 2, 0);
     // Two windows
     [-D / 4, D / 4].forEach(zo => {
-        const sg = new THREE.Mesh(new THREE.PlaneGeometry(3.5, 2.2), glassDark);
+        const sg = new THREE.Mesh(resources.getPlane(3.5, 2.2), glassDark);
         sg.rotation.y = Math.PI / 2;
         sg.position.set(leftX - 0.02, H * 0.6, zo);
         add(sg, false);
@@ -187,7 +188,7 @@ export function buildInveonBuilding(scene, physics, groundMaterial, position = [
     // ── RIGHT WALL ────────────────────────────────────────────────────────────
     box(T, H, D, concreteMat, rightX, H / 2, 0);
     [-D / 4, D / 4].forEach(zo => {
-        const sg = new THREE.Mesh(new THREE.PlaneGeometry(3.5, 2.2), glassDark);
+        const sg = new THREE.Mesh(resources.getPlane(3.5, 2.2), glassDark);
         sg.rotation.y = -Math.PI / 2;
         sg.position.set(rightX + 0.02, H * 0.6, zo);
         add(sg, false);
@@ -206,7 +207,7 @@ export function buildInveonBuilding(scene, physics, groundMaterial, position = [
         const hg = new THREE.Group();
         box(2.5, 1.2, 1.8, concreteMat, 0, 0.6, 0).parent = hg;
         cyl(0.8, 0.7, 0.4, steelMat, 0, 1.4, 0).parent = hg; // Fan vent
-        box(0.1, 0.1, 0.1, new THREE.MeshBasicMaterial({ color: 0xff0000 }), 0, 1.6, 0).parent = hg; // Safety light
+        box(0.1, 0.1, 0.1, resources.getMaterial('safety_red', () => new THREE.MeshBasicMaterial({ color: 0xff0000 })), 0, 1.6, 0).parent = hg; // Safety light
         hg.position.set(x, roofY, z);
         group.add(hg);
     };
@@ -214,10 +215,10 @@ export function buildInveonBuilding(scene, physics, groundMaterial, position = [
     createHvac(4.5, 3);
 
     // Solar Panel Array (Sustainable Tech)
-    const solarMat = new THREE.MeshStandardMaterial({ color: 0x1a237e, metalness: 0.8, roughness: 0.1 });
+    const solarMat = resources.getMaterial('solar_panel', () => new THREE.MeshStandardMaterial({ color: 0x1a237e, metalness: 0.8, roughness: 0.1 }));
     for (let x = -5; x <= 5; x += 2.5) {
         for (let z = -2.5; z <= 0; z += 1.5) {
-            const p = new THREE.Mesh(new THREE.PlaneGeometry(2, 1.2), solarMat);
+            const p = new THREE.Mesh(resources.getPlane(2, 1.2), solarMat);
             p.rotation.x = -Math.PI / 6; // Angled
             p.position.set(x, roofY + 0.5, z);
             add(p);
@@ -227,10 +228,8 @@ export function buildInveonBuilding(scene, physics, groundMaterial, position = [
     }
 
     // Safety Beacons (Red glowing lights)
-    const beaconGeo = new THREE.SphereGeometry(0.15, 8, 8);
-    const beaconMat = new THREE.MeshBasicMaterial({ color: 0xff0000 });
     const addBeacon = (x, z) => {
-        const b = new THREE.Mesh(beaconGeo, beaconMat);
+        const b = new THREE.Mesh(resources.getMaterial('shared_sphere_015', () => new THREE.SphereGeometry(0.15, 8, 8)), resources.getMaterial('safety_red', () => new THREE.MeshBasicMaterial({ color: 0xff0000 })));
         b.position.set(x, roofY + 1.2, z);
         add(b);
         // Base pole
@@ -280,7 +279,7 @@ export function buildInveonBuilding(scene, physics, groundMaterial, position = [
 
     const signTex = new THREE.CanvasTexture(signCanvas);
     const signBoard = new THREE.Mesh(
-        new THREE.PlaneGeometry(W - 1, 2.0),
+        resources.getPlane(W - 1, 2.0),
         new THREE.MeshBasicMaterial({ map: signTex, transparent: true, side: THREE.DoubleSide })
     );
     // Boyner ile aynı: canvas aynalı, ekstra rotation yok (metin düz okunur)
@@ -296,85 +295,85 @@ export function buildInveonBuilding(scene, physics, groundMaterial, position = [
         const wg = new THREE.Group();
 
         // Desk surface
-        const desk = new THREE.Mesh(new THREE.BoxGeometry(1.6, 0.06, 0.75), woodMat);
+        const desk = new THREE.Mesh(resources.getBox(1.6, 0.06, 0.75), woodMat);
         desk.position.y = 0.78;
         wg.add(desk);
 
         // Desk legs (metal trestle style)
         [[-0.7, -0.32], [0.7, -0.32], [-0.7, 0.32], [0.7, 0.32]].forEach(([lx, lz]) => {
-            const leg = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.78, 0.05), steelMat);
+            const leg = new THREE.Mesh(resources.getBox(0.05, 0.78, 0.05), steelMat);
             leg.position.set(lx, 0.39, lz);
             wg.add(leg);
         });
 
         // Monitor base
-        const monBase = new THREE.Mesh(new THREE.BoxGeometry(0.25, 0.03, 0.2), steelMat);
+        const monBase = new THREE.Mesh(resources.getBox(0.25, 0.03, 0.2), steelMat);
         monBase.position.set(0, 0.82, -0.2);
         wg.add(monBase);
         // Monitor stand
-        const monStand = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.28, 0.04), steelMat);
+        const monStand = new THREE.Mesh(resources.getBox(0.04, 0.28, 0.04), steelMat);
         monStand.position.set(0, 0.95, -0.2);
         wg.add(monStand);
         // Monitor screen
-        const monScreen = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.42, 0.05), screenMat);
+        const monScreen = new THREE.Mesh(resources.getBox(0.7, 0.42, 0.05), screenMat);
         monScreen.position.set(0, 1.24, -0.2);
         wg.add(monScreen);
         // Screen bezel
-        const bezel = new THREE.Mesh(new THREE.BoxGeometry(0.74, 0.46, 0.03),
-            new THREE.MeshStandardMaterial({ color: 0x1c1c1c, roughness: 0.7 }));
+        const bezel = new THREE.Mesh(resources.getBox(0.74, 0.46, 0.03),
+            resources.getMaterial('bezel_dark', () => new THREE.MeshStandardMaterial({ color: 0x1c1c1c, roughness: 0.7 })));
         bezel.position.set(0, 1.24, -0.17);
         wg.add(bezel);
 
         // Second monitor (dual setup, at an angle)
-        const mon2 = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.36, 0.05), screenMat);
+        const mon2 = new THREE.Mesh(resources.getBox(0.6, 0.36, 0.05), screenMat);
         mon2.position.set(0.52, 1.22, -0.16);
         mon2.rotation.y = -0.3;
         wg.add(mon2);
-        const bezel2 = new THREE.Mesh(new THREE.BoxGeometry(0.64, 0.4, 0.03),
-            new THREE.MeshStandardMaterial({ color: 0x1c1c1c, roughness: 0.7 }));
+        const bezel2 = new THREE.Mesh(resources.getBox(0.64, 0.4, 0.03),
+            resources.getMaterial('bezel_dark', () => new THREE.MeshStandardMaterial({ color: 0x1c1c1c, roughness: 0.7 })));
         bezel2.position.set(0.52, 1.22, -0.13);
         bezel2.rotation.y = -0.3;
         wg.add(bezel2);
 
         // Keyboard
-        const kb = new THREE.Mesh(new THREE.BoxGeometry(0.52, 0.02, 0.18), keyboardMat);
+        const kb = new THREE.Mesh(resources.getBox(0.52, 0.02, 0.18), keyboardMat);
         kb.position.set(-0.1, 0.815, 0.1);
         wg.add(kb);
 
         // Mouse
-        const mouse = new THREE.Mesh(new THREE.SphereGeometry(0.04, 8, 6), steelMat);
+        const mouse = new THREE.Mesh(resources.getMaterial('mouse_geo', () => new THREE.SphereGeometry(0.04, 8, 6)), steelMat);
         mouse.scale.set(1, 0.5, 1.4);
         mouse.position.set(0.28, 0.815, 0.1);
         wg.add(mouse);
 
         // Coffee mug
-        const mug = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.04, 0.1, 10),
-            new THREE.MeshStandardMaterial({ color: 0xb71c1c, roughness: 0.8 }));
+        const mug = new THREE.Mesh(resources.getCylinder(0.05, 0.04, 0.1, 10),
+            resources.getMaterial('shared_mug_red', () => new THREE.MeshStandardMaterial({ color: 0xb71c1c, roughness: 0.8 })));
         mug.position.set(-0.55, 0.84, 0.05);
         wg.add(mug);
 
         // Office chair
         const cg = new THREE.Group();
         // Seat
-        const seat = new THREE.Mesh(new THREE.BoxGeometry(0.52, 0.07, 0.5), chairMat);
+        const seat = new THREE.Mesh(resources.getBox(0.52, 0.07, 0.5), chairMat);
         seat.position.y = 0.52;
         cg.add(seat);
         // Backrest
-        const back = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.6, 0.07), chairMat);
+        const back = new THREE.Mesh(resources.getBox(0.5, 0.6, 0.07), chairMat);
         back.position.set(0, 0.88, -0.22);
         cg.add(back);
         // Central pole
-        const cpole = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 0.52, 8), steelMat);
+        const cpole = new THREE.Mesh(resources.getCylinder(0.04, 0.04, 0.52, 8), steelMat);
         cpole.position.y = 0.26;
         cg.add(cpole);
         // 5-star base with wheels
         for (let i = 0; i < 5; i++) {
             const angle = (i / 5) * Math.PI * 2;
-            const arm = new THREE.Mesh(new THREE.BoxGeometry(0.35, 0.03, 0.05), steelMat);
+            const arm = new THREE.Mesh(resources.getBox(0.35, 0.03, 0.05), steelMat);
             arm.position.set(Math.cos(angle) * 0.17, 0.04, Math.sin(angle) * 0.17);
             arm.rotation.y = angle;
             cg.add(arm);
-            const wheel = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.035, 0.04, 8), chairMat);
+            const wheel = new THREE.Mesh(resources.getCylinder(0.035, 0.035, 0.04, 8), chairMat);
             wheel.rotation.z = Math.PI / 2;
             wheel.position.set(Math.cos(angle) * 0.32, 0.04, Math.sin(angle) * 0.32);
             cg.add(wheel);
@@ -410,7 +409,7 @@ export function buildInveonBuilding(scene, physics, groundMaterial, position = [
     addWorkstation( 4.0,  3.2);
 
     // ── Whiteboard on back wall ───────────────────────────────────────────────
-    const wb = new THREE.Mesh(new THREE.BoxGeometry(5, 2.2, 0.06), whiteboardM);
+    const wb = new THREE.Mesh(resources.getBox(5, 2.2, 0.06), whiteboardM);
     wb.position.set(0, 4.0, backZ - T - 0.05);
     group.add(wb);
     // Whiteboard frame
@@ -454,7 +453,7 @@ export function buildInveonBuilding(scene, physics, groundMaterial, position = [
     wbCtx.setLineDash([]);
     const wbTex = new THREE.CanvasTexture(wbCanvas);
     const wbLabel = new THREE.Mesh(
-        new THREE.PlaneGeometry(4.9, 2.1),
+        resources.getPlane(4.9, 2.1),
         new THREE.MeshBasicMaterial({ map: wbTex, side: THREE.DoubleSide })
     );
     wbLabel.rotation.y = Math.PI; // Face local -z (into room)
@@ -462,23 +461,23 @@ export function buildInveonBuilding(scene, physics, groundMaterial, position = [
     group.add(wbLabel);
 
     // ── Server rack (right back corner) ──────────────────────────────────────
-    const rackMat = new THREE.MeshStandardMaterial({ color: 0x212121, roughness: 0.6, metalness: 0.5 });
-    const rackGlow = new THREE.MeshStandardMaterial({
+    const rackMat = resources.getMaterial('server_rack', () => new THREE.MeshStandardMaterial({ color: 0x212121, roughness: 0.6, metalness: 0.5 }));
+    const rackGlow = resources.getMaterial('server_glow', () => new THREE.MeshStandardMaterial({
         color: 0x00e676, emissive: 0x00e676, emissiveIntensity: 1.2, roughness: 0.3
-    });
+    }));
     const serverRack = new THREE.Group();
     // Cabinet
-    const cabinet = new THREE.Mesh(new THREE.BoxGeometry(0.8, 2.0, 0.6), rackMat);
+    const cabinet = new THREE.Mesh(resources.getBox(0.8, 2.0, 0.6), rackMat);
     cabinet.position.y = 1.0;
     serverRack.add(cabinet);
     // Server units (glowing lines)
     for (let su = 0; su < 8; su++) {
-        const unit = new THREE.Mesh(new THREE.BoxGeometry(0.72, 0.18, 0.05), rackMat);
+        const unit = new THREE.Mesh(resources.getBox(0.72, 0.18, 0.05), rackMat);
         unit.position.set(0, 0.2 + su * 0.22, 0.28);
         serverRack.add(unit);
-        const led = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.04, 0.02),
+        const led = new THREE.Mesh(resources.getBox(0.04, 0.04, 0.02),
             su % 3 === 0 ? rackGlow :
-            new THREE.MeshStandardMaterial({ color: 0xffa726, emissive: 0xffa726, emissiveIntensity: 1.0 })
+            resources.getMaterial('server_orange', () => new THREE.MeshStandardMaterial({ color: 0xffa726, emissive: 0xffa726, emissiveIntensity: 1.0 }))
         );
         led.position.set(0.32, 0.2 + su * 0.22, 0.31);
         serverRack.add(led);
@@ -497,16 +496,16 @@ export function buildInveonBuilding(scene, physics, groundMaterial, position = [
     box(2.0, 0.98, 0.7, new THREE.MeshStandardMaterial({ color: 0x5d4037, roughness: 0.8 }),
         leftX + 1.6, 0.49, backZ - 1.2);
     // Coffee machine (blocky)
-    const cmMat = new THREE.MeshStandardMaterial({ color: 0x1c1c1c, roughness: 0.4, metalness: 0.6 });
+    const cmMat = resources.getMaterial('coffee_machine', () => new THREE.MeshStandardMaterial({ color: 0x1c1c1c, roughness: 0.4, metalness: 0.6 }));
     const cm = new THREE.Group();
-    const cmBody = new THREE.Mesh(new THREE.BoxGeometry(0.35, 0.42, 0.3), cmMat);
+    const cmBody = new THREE.Mesh(resources.getBox(0.35, 0.42, 0.3), cmMat);
     cmBody.position.y = 0.21;
     cm.add(cmBody);
-    const cmDrip = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 0.15, 8), steelMat);
+    const cmDrip = new THREE.Mesh(resources.getCylinder(0.04, 0.04, 0.15, 8), steelMat);
     cmDrip.position.set(0, 0.18, 0.18);
     cm.add(cmDrip);
-    const cmLight = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.025, 0.02, 8),
-        new THREE.MeshStandardMaterial({ color: 0x00e5ff, emissive: 0x00e5ff, emissiveIntensity: 2.0 }));
+    const cmLight = new THREE.Mesh(resources.getCylinder(0.025, 0.025, 0.02, 8),
+        resources.getMaterial('shared_cyan_glow', () => new THREE.MeshStandardMaterial({ color: 0x00e5ff, emissive: 0x00e5ff, emissiveIntensity: 2.0 })));
     cmLight.position.set(0.1, 0.38, 0.16);
     cm.add(cmLight);
     cm.position.set(leftX + 0.9, 1.01, backZ - 1.05);
@@ -515,22 +514,22 @@ export function buildInveonBuilding(scene, physics, groundMaterial, position = [
     [0, 1, 2].forEach(i => {
         const mugColors = [0xe53935, 0x1565c0, 0x388e3c];
         const mug2 = new THREE.Mesh(
-            new THREE.CylinderGeometry(0.05, 0.04, 0.1, 10),
-            new THREE.MeshStandardMaterial({ color: mugColors[i], roughness: 0.8 })
+            resources.getCylinder(0.05, 0.04, 0.1, 10),
+            resources.getMaterial('shared_mug_' + mugColors[i], () => new THREE.MeshStandardMaterial({ color: mugColors[i], roughness: 0.8 }))
         );
         mug2.position.set(leftX + 1.8 + i * 0.18, 1.07, backZ - 1.25);
         group.add(mug2);
     });
 
     // ── Reception/front desk near entrance ───────────────────────────────────
-    const recMat = new THREE.MeshStandardMaterial({ color: 0x37474f, roughness: 0.5, metalness: 0.4 });
+    const recMat = resources.getMaterial('inveon_rec_desk', () => new THREE.MeshStandardMaterial({ color: 0x37474f, roughness: 0.5, metalness: 0.4 }));
     // L-shaped desk
     box(3.5, 0.06, 0.75, recMat, 0, 0.92, -(D / 2) + 3.0);
     box(3.5, 0.88, 0.75, recMat, 0, 0.44, -(D / 2) + 3.0);
     // Tall front panel facing visitor
     box(3.5, 0.45, 0.08, recMat, 0, 1.16, -(D / 2) + 2.65);
     // Monitor on reception desk
-    const recScreen = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.33, 0.04), screenMat);
+    const recScreen = new THREE.Mesh(resources.getBox(0.5, 0.33, 0.04), screenMat);
     recScreen.position.set(-1.0, 1.37, -(D / 2) + 2.88);
     group.add(recScreen);
     // INVEON logo placard on reception desk front panel
@@ -547,7 +546,7 @@ export function buildInveonBuilding(scene, physics, groundMaterial, position = [
 
     const placardTex = new THREE.CanvasTexture(placardCanvas);
     const placard = new THREE.Mesh(
-        new THREE.PlaneGeometry(1.5, 0.37),
+        resources.getPlane(1.5, 0.37),
         new THREE.MeshBasicMaterial({ map: placardTex, side: THREE.DoubleSide })
     );
     placard.rotation.y = Math.PI; // Face local -z (toward entrance)
