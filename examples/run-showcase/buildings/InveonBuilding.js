@@ -4,7 +4,7 @@ import {
     buildRectDoorShellBoxes,
     createBuildingInteractionHandle
 } from './buildingPhysics.js';
-import { resources } from './ResourceLibrary.js';
+import { resources } from 'zortengine';
 
 /**
  * InveonBuilding — 4-walled software development office.

@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { createStreetLight, createBench, createTrashCan, createPlanter } from './StreetProps.js';
 import { SittingNpcBench } from './SittingNpcBench.js';
+import { resources } from 'zortengine';
 
 /**
  * Ana cadde + mağaza tarafı taş kaldırım. Doğu kaldırım yok; harita yolun ötesinde biter.

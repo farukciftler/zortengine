@@ -4,7 +4,7 @@ import {
     buildRectDoorShellBoxes,
     createBuildingInteractionHandle
 } from './buildingPhysics.js';
-import { resources } from './ResourceLibrary.js';
+import { resources } from 'zortengine';
 
 /**
  * WugoBuilding — Modern Event Discovery Hub.

@@ -10,3 +10,4 @@ export { PluginRegistry } from './plugin/PluginRegistry.js';
 export { SeededRandom } from './snapshot/SeededRandom.js';
 export { ObjectPool } from './object/ObjectPool.js';
 export { HeadlessHarness } from './snapshot/HeadlessHarness.js';
+export { ResourceLibrary, resources } from './resources/ResourceLibrary.js';

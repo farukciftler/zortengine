@@ -17,12 +17,18 @@ import {
     ObjectiveZoneSystem,
     ProjectileSystem,
     SpawnSystem,
-    EffectRegistry
+    EffectRegistry,
+    WeatherSystem,
+    BannerPlane,
+    InteractionSystem,
+    DialogueSystem,
+    TrafficSystem
 } from 'zortengine/kits';
 import {
     CollectibleActor,
     ObjectiveZoneActor
 } from 'zortengine/gameplay';
+import { resources } from 'zortengine';
 import { SaveManager } from 'zortengine/persistence';
 import { createDashAbility } from '../abilities/DashAbility.js';
 import { createPrimaryFireAbility } from '../abilities/PrimaryFireAbility.js';
@@ -62,9 +68,6 @@ import {
 } from '../buildings/buildingPhysics.js';
 import { CareerTimelineHud } from '../ui/CareerTimelineHud.js';
 import { DialogueUI } from '../ui/DialogueUI.js';
-import { BannerPlane } from '../actors/BannerPlane.js';
-import { InteractionManager } from '../runtime/InteractionManager.js';
-import { WeatherSystem } from '../runtime/WeatherSystem.js';
 import { getInteractions } from '../data/Interactions.js';
 
 
@@ -174,43 +177,76 @@ export class RunScene extends GameScene {
         this._infoBooth = buildInfoBooth(this.threeScene, physics, this.propMaterial, [-24.1, 0, 11.5]);
 
         // Banner Plane
-        this._bannerPlane = new BannerPlane(this.threeScene, {
+        this._bannerPlane = new BannerPlane({
             text: 'FARUK CIFTLER — AI PM',
             altitude: 50,
             speed: 14,
             radius: 130,
             bannerColor: '#0d47a1'
         });
-        this._bannerPlane.setup();
+        this.registerSystem('bannerPlane', this._bannerPlane);
 
-        this.registerSystem(
-            'streetTrafficStep',
-            {
-                update: delta => {
-                    const p = this._getPrimaryTarget()?.group?.position;
-                    this._streetTraffic?.update(delta, p);
-                    this._bannerPlane?.update(delta);
-                }
-            },
-            { priority: 99 }
-        );
+        this._streetTraffic = new TrafficSystem({ carCount: 12 });
+        this.registerSystem('traffic', this._streetTraffic);
         // this._enterRoom(ROOM_GRAPH[0].id);
         this.checkpointController.save('setup');
         this.replicationController.connect();
 
         this._dialogueUI = new DialogueUI(this);
-        this.interactionManager = new InteractionManager(this);
-        this.interactionManager.setup();
+        this.interactionSystem = new InteractionSystem();
+        this.registerSystem('interaction', this.interactionSystem);
         
-        this.weather = new WeatherSystem(this);
-        this.weather.setup();
+        this.dialogueSystem = new DialogueSystem();
+        this.registerSystem('dialogue', this.dialogueSystem);
+
+        this.weather = new WeatherSystem({
+            startTime: 0.5,
+            cycleSpeed: 0.015,
+            isRaining: false
+        });
+        this.registerSystem('weather', this.weather);
+
+        // Register interactions from data
+        const inters = getInteractions();
+        for (const inter of inters) {
+            this.interactionSystem.addInteraction(inter.id, inter.pos, inter.radius, {
+                onEnter: () => {
+                   if (this._dialogueUI) {
+                       this._isDialogueActive = true;
+                       this._dialogueUI.show({
+                           ...inter,
+                           onComplete: () => { this._isDialogueActive = false; }
+                       });
+                   }
+                },
+                onLeave: () => {
+                   if (this._dialogueUI) this._dialogueUI.hide();
+                }
+            });
+        }
+
+        this.registerSystem('clockUI', {
+            update: () => {
+                if (this.weather && this.hud) {
+                    this.hud.updateTime(this.weather.timeCycle);
+                }
+            }
+        });
+        
+        // Handle pointer lock on click for TPS mode
+        window.addEventListener('mousedown', () => {
+            if (this.cameraMode === 'tps' && !this._isDialogueActive) {
+                this.getSystem('input')?.requestPointerLock();
+            }
+        });
+
         this.weather.setRain(false);
         
         // Show Faruk dialogue immediately on game start
-        if (this.interactionManager.interactions[0]) {
+        if (inters[0]) {
             this._isDialogueActive = true;
             this._dialogueUI.show({
-                ...this.interactionManager.interactions[0],
+                ...inters[0],
                 onComplete: () => {
                     this._isDialogueActive = false;
                     const btn = document.getElementById('faruk-trigger-btn');
@@ -1097,11 +1133,19 @@ export class RunScene extends GameScene {
 
         this.runState.update(delta);
 
-        if (this.cameraMode === 'tps' && (input?.isPointerLocked() || window.innerWidth <= 768)) {
-            const mouseDelta = input.getMouseDelta();
-            this.yaw -= mouseDelta.x * 0.0025;
-            this.pitch += mouseDelta.y * 0.0015;
-            this.pitch = Math.max(-0.2, Math.min(0.75, this.pitch));
+        if (this.cameraMode === 'tps' && !this._isDialogueActive) {
+            // Hide native cursor in TPS mode
+            if (document.body.style.cursor !== 'none') document.body.style.cursor = 'none';
+
+            const canRotate = input.isPointerLocked() || window.innerWidth <= 768;
+            if (canRotate) {
+                const mouseDelta = input.getMouseDelta();
+                this.yaw -= mouseDelta.x * 0.0025;
+                this.pitch += mouseDelta.y * 0.0015;
+                this.pitch = Math.max(-0.2, Math.min(0.75, this.pitch));
+            }
+        } else {
+            if (document.body.style.cursor === 'none') document.body.style.cursor = 'auto';
         }
 
         for (const player of this.players) {
@@ -1120,8 +1164,7 @@ export class RunScene extends GameScene {
             this._failRun();
         }
 
-        this.interactionManager?.update(delta, this.engine.time);
-        this.weather?.update(delta);
+        // Systems are updated automatically by GameScene.update()
 
 
         if (this.waveDirector && this.runState.status === 'active' && !this.choiceActive) {
@@ -1239,10 +1282,7 @@ export class RunScene extends GameScene {
             return new SittingNpcController(sitBench.parts);
         });
 
-        this._streetTraffic = new StreetTrafficManager(this.threeScene, this.environmentMeshes, {
-            physics,
-            propMaterial: this.propMaterial
-        });
+        // Traffic is now managed by TrafficSystem registered in setup()
     }
 
 }

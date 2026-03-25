@@ -4,7 +4,7 @@ import {
     buildRectDoorShellBoxes,
     createBuildingInteractionHandle
 } from './buildingPhysics.js';
-import { resources } from './ResourceLibrary.js';
+import { resources } from 'zortengine';
 
 /**
  * NewMindBuilding — Premium Legal-Tech AI Office.
