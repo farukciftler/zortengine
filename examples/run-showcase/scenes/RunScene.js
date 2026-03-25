@@ -64,6 +64,7 @@ import { CareerTimelineHud } from '../ui/CareerTimelineHud.js';
 import { DialogueUI } from '../ui/DialogueUI.js';
 import { BannerPlane } from '../actors/BannerPlane.js';
 import { InteractionManager } from '../runtime/InteractionManager.js';
+import { WeatherSystem } from '../runtime/WeatherSystem.js';
 import { getInteractions } from '../data/Interactions.js';
 
 
@@ -200,6 +201,10 @@ export class RunScene extends GameScene {
         this._dialogueUI = new DialogueUI(this);
         this.interactionManager = new InteractionManager(this);
         this.interactionManager.setup();
+        
+        this.weather = new WeatherSystem(this);
+        this.weather.setup();
+        this.weather.setRain(false);
         
         // Show Faruk dialogue immediately on game start
         if (this.interactionManager.interactions[0]) {
@@ -1116,6 +1121,7 @@ export class RunScene extends GameScene {
         }
 
         this.interactionManager?.update(delta, this.engine.time);
+        this.weather?.update(delta);
 
 
         if (this.waveDirector && this.runState.status === 'active' && !this.choiceActive) {

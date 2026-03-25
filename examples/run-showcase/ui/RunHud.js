@@ -21,8 +21,31 @@ export class RunHud {
         this._gameCursor = cursor;
 
         const style = document.createElement('style');
-        style.innerHTML = `* { cursor: none !important; }`;
+        style.innerHTML = `
+            * { cursor: none !important; }
+            #game-clock {
+                position: fixed;
+                top: 20px;
+                left: 50%;
+                transform: translateX(-50%);
+                font-family: 'Press Start 2P', cursive;
+                font-size: 18px;
+                color: #fff;
+                background: rgba(0,0,0,0.4);
+                padding: 10px 20px;
+                border-radius: 8px;
+                border: 2px solid rgba(255,255,255,0.2);
+                z-index: 9000;
+                text-shadow: 2px 2px 0 #000;
+            }
+        `;
         document.head.appendChild(style);
+
+        const clock = document.createElement('div');
+        clock.id = 'game-clock';
+        clock.innerText = '12:00';
+        document.body.appendChild(clock);
+        this._timeClock = clock;
     }
 
     updateCursor(x, y, mode, isLocked) {
@@ -54,6 +77,26 @@ export class RunHud {
 
         this._gameCursor.style.left = `${targetX}px`;
         this._gameCursor.style.top = `${targetY}px`;
+    }
+
+    updateTime(timeCycle) {
+        if (!this._timeClock) return;
+        
+        // timeCycle is 0 to 1, where 0.0 is Midnight, 0.5 is Noon
+        const totalMinutes = Math.floor(timeCycle * 24 * 60);
+        const hours = Math.floor(totalMinutes / 60) % 24;
+        const minutes = totalMinutes % 60;
+        
+        const hStr = hours.toString().padStart(2, '0');
+        const mStr = minutes.toString().padStart(2, '0');
+        
+        // Add a small icon based on time
+        let icon = '☀️';
+        if (hours >= 20 || hours < 6) icon = '🌙';
+        else if (hours >= 17) icon = '🌇';
+        else if (hours < 9) icon = '🌅';
+        
+        this._timeClock.innerText = `${icon} ${hStr}:${mStr}`;
     }
 
     updateAmmo(freeCount, totalCount = 20) {

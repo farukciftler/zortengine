@@ -328,6 +328,7 @@ export function createDetailedCarGroup(bodyColor) {
  */
 export function buildMainStreet(scene, environmentMeshes, physics, propMaterial) {
     const asphaltMat = new THREE.MeshStandardMaterial({
+        name: 'asphalt',
         color: 0x2a2a2a,
         roughness: 0.92,
         metalness: 0.06
@@ -335,6 +336,7 @@ export function buildMainStreet(scene, environmentMeshes, physics, propMaterial)
     const curbMat = new THREE.MeshStandardMaterial({ color: 0x6a6a68, roughness: 0.82 });
     const stoneTex = createStonePavementTexture();
     const sidewalkMat = new THREE.MeshStandardMaterial({
+        name: 'sidewalk',
         map: stoneTex,
         roughness: 0.88,
         metalness: 0.02
