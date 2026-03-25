@@ -88,6 +88,9 @@ export class Engine {
                 'resize',
                 () => this.onWindowResize()
             );
+
+            // Trigger initial resize to synchronize everything
+            this.onWindowResize();
         } else {
             this.container = null;
         }
@@ -222,7 +225,7 @@ export class Engine {
             activeScene.onResize(viewport.width, viewport.height, aspect);
             this._syncConvenienceRefs(activeScene);
         } else if (this.camera && typeof this.camera.onResize === 'function') {
-            this.camera.onResize(aspect, viewport.width, viewport.height);
+            this.camera.onResize(viewport.width, viewport.height, aspect);
         }
 
         const activePostProcessor = activeScene ? activeScene.getPostProcessor() : this.postProcessor;

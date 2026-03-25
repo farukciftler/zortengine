@@ -74,7 +74,17 @@ export class CameraManager {
         }
     }
 
-    onResize(aspect) {
+    onResize(width, height, aspect) {
+        if (arguments.length === 1) {
+            aspect = width;
+        } else if (!aspect && height > 0) {
+            aspect = width / height;
+        }
+
+        if (!aspect || isNaN(aspect) || aspect <= 0) {
+            aspect = CameraManager.getDefaultAspect();
+        }
+
         const d = this.orthoSize;
         this.orthoCam.left = -d * aspect;
         this.orthoCam.right = d * aspect;

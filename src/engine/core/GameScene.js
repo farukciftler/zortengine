@@ -215,7 +215,7 @@ export class GameScene {
     onResize(width, height, aspect) {
         const camera = this.getCamera();
         if (camera && typeof camera.onResize === 'function') {
-            camera.onResize(aspect, width, height);
+            camera.onResize(width, height, aspect);
         }
 
         this.systems.onResize(width, height, aspect);

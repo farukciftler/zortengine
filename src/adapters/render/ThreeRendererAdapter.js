@@ -44,8 +44,14 @@ export class ThreeRendererAdapter {
         this.container = options.container || null;
         this.renderer = new THREE.WebGLRenderer({
             antialias: this.options.antialias ?? true,
+            alpha: this.options.alpha ?? false,
             ...this.options.rendererOptions
         });
+        
+        // Handle pixel ratio for high-DPI screens
+        const pixelRatio = typeof window !== 'undefined' ? window.devicePixelRatio : 1;
+        this.renderer.setPixelRatio(pixelRatio);
+        
         this.renderer.setSize(viewport.width, viewport.height);
         this.renderer.shadowMap.enabled = this.options.shadows ?? true;
         this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
@@ -89,7 +95,15 @@ export class ThreeRendererAdapter {
     }
 
     resize(width, height) {
-        this.renderer?.setSize?.(width, height);
+        if (!this.renderer) return;
+        
+        // Optional: Ensure pixel ratio is updated on resize (e.g. window moved to different screen)
+        const pixelRatio = typeof window !== 'undefined' ? window.devicePixelRatio : 1;
+        if (this.renderer.getPixelRatio() !== pixelRatio) {
+            this.renderer.setPixelRatio(pixelRatio);
+        }
+        
+        this.renderer.setSize(width, height);
     }
 
     setSize(width, height) {
