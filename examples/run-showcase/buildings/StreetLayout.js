@@ -282,13 +282,15 @@ export function createDetailedCarGroup(bodyColor) {
     });
 
     [[-0.55, 2.18], [0.55, 2.18]].forEach(([hx, hz]) => {
-        const h = new THREE.Mesh(new THREE.BoxGeometry(0.38, 0.14, 0.08), emissiveHead);
+        const h = new THREE.Mesh(new THREE.BoxGeometry(0.38, 0.14, 0.08), emissiveHead.clone());
         h.position.set(hx, wr + 0.35, hz);
+        h.name = 'car_front_light';
         group.add(h);
     });
     [[-0.5, -2.2], [0.5, -2.2]].forEach(([tx, tz]) => {
-        const t = new THREE.Mesh(new THREE.BoxGeometry(0.32, 0.12, 0.06), emissiveTail);
+        const t = new THREE.Mesh(new THREE.BoxGeometry(0.32, 0.12, 0.06), emissiveTail.clone());
         t.position.set(tx, wr + 0.32, tz);
+        t.name = 'car_back_light';
         group.add(t);
     });
 

@@ -39,13 +39,16 @@ export function createStreetLight(color = 0xffffff) {
     group.add(head);
 
     // Glowing bulb
-    const bulb = new THREE.Mesh(new THREE.SphereGeometry(0.15, 12, 12), lampMat);
+    const bulb = new THREE.Mesh(new THREE.SphereGeometry(0.15, 12, 12), lampMat.clone());
     bulb.position.set(1.1, 5.45, 0);
+    bulb.name = 'lamp_bulb';
+    bulb.material.emissiveIntensity = 0;
     group.add(bulb);
 
     // Point Light
-    const light = new THREE.PointLight(0xfff4d6, 15, 12);
+    const light = new THREE.PointLight(0xfff4d6, 0, 12);
     light.position.set(1.1, 5.3, 0);
+    light.name = 'lamp_light';
     light.castShadow = true;
     light.shadow.bias = -0.005;
     group.add(light);

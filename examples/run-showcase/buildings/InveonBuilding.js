@@ -107,10 +107,12 @@ export function buildInveonBuilding(scene, physics, groundMaterial, position = [
         // Lower glass panel
         const lg = new THREE.Mesh(resources.getPlane(bayW, H / 2 - 0.65), glassMat);
         lg.position.set(bx, H / 4 + 0.4, frontZ - 0.02);
+        lg.name = 'window_glow';
         add(lg, false);
         // Upper glass panel
         const ug = new THREE.Mesh(resources.getPlane(bayW, H / 2 - 0.6), glassDark);
         ug.position.set(bx, H * 0.75 - 0.15, frontZ - 0.02);
+        ug.name = 'window_glow';
         add(ug, false);
         // Vertical steel mullions
         box(0.06, H, 0.08, frameMat, bx - bayW / 2, H / 2, frontZ - 0.04);
@@ -168,6 +170,7 @@ export function buildInveonBuilding(scene, physics, groundMaterial, position = [
     const bwg = new THREE.Mesh(resources.getPlane(W - 3, 1.4), glassDark);
     bwg.rotation.y = Math.PI;
     bwg.position.set(0, H - 1.4, backZ + 0.02);
+    bwg.name = 'window_glow';
     add(bwg, false);
     // Blank wall over/under strip — already covered by base wall
 
@@ -317,6 +320,7 @@ export function buildInveonBuilding(scene, physics, groundMaterial, position = [
         // Monitor screen
         const monScreen = new THREE.Mesh(resources.getBox(0.7, 0.42, 0.05), screenMat);
         monScreen.position.set(0, 1.24, -0.2);
+        monScreen.name = 'screen_glow';
         wg.add(monScreen);
         // Screen bezel
         const bezel = new THREE.Mesh(resources.getBox(0.74, 0.46, 0.03),

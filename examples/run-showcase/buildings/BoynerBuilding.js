@@ -83,10 +83,12 @@ export function buildBoynerBuilding(scene, physics, groundMaterial, position = [
 
     const lglass = new THREE.Mesh(resources.getPlane(3.8, winH), glassMat);
     lglass.position.set(-5.5, winY, frontZ - 0.01);
+    lglass.name = 'window_glow';
     add(lglass, false);
 
     const rglass = new THREE.Mesh(resources.getPlane(3.8, winH), glassMat);
     rglass.position.set(5.5, winY, frontZ - 0.01);
+    rglass.name = 'window_glow';
     add(rglass, false);
 
     // Window frames
