@@ -63,6 +63,8 @@ import {
 import { CareerTimelineHud } from '../ui/CareerTimelineHud.js';
 import { DialogueUI } from '../ui/DialogueUI.js';
 import { BannerPlane } from '../actors/BannerPlane.js';
+import { InteractionManager } from '../runtime/InteractionManager.js';
+import { getInteractions } from '../data/Interactions.js';
 
 
 /** cannon-es: zemin/bina kutuları=1, oyuncu=2, yaya NPC=4 — NPC↔NPC çarpışması kapalı */
@@ -196,14 +198,14 @@ export class RunScene extends GameScene {
         this.replicationController.connect();
 
         this._dialogueUI = new DialogueUI(this);
-        this._setupInteractions();
-        this._createDialogueTrigger();
+        this.interactionManager = new InteractionManager(this);
+        this.interactionManager.setup();
         
         // Show Faruk dialogue immediately on game start
-        if (this._interactions[0]) {
+        if (this.interactionManager.interactions[0]) {
             this._isDialogueActive = true;
             this._dialogueUI.show({
-                ...this._interactions[0],
+                ...this.interactionManager.interactions[0],
                 onComplete: () => {
                     this._isDialogueActive = false;
                     const btn = document.getElementById('faruk-trigger-btn');
@@ -1113,7 +1115,7 @@ export class RunScene extends GameScene {
             this._failRun();
         }
 
-        this._updateInteractions(delta, this.engine.time);
+        this.interactionManager?.update(delta, this.engine.time);
 
 
         if (this.waveDirector && this.runState.status === 'active' && !this.choiceActive) {
@@ -1237,128 +1239,5 @@ export class RunScene extends GameScene {
         });
     }
 
-    _setupInteractions() {
-        this._interactions = [
-            {
-                id: 'info_booth',
-                pos: new THREE.Vector3(-24.1, 0, 11.5),
-                radius: 4.5,
-                name: 'Faruk',
-                portraitUrl: './farukchar.png',
-                text: 'Merhaba! Ben Faruk. ZortEngine Showcase dünyasına hoş geldin! Sana nasıl yardımcı olabilirim?',
-                choices: [
-                    {
-                        text: 'Buralarda ne var?',
-                        nextText: 'Hemen yanımızda Boyner mağazası, karşıda Inveon ofisi ve ileride Wugo etkinlik alanı var. Hepsi çok havalı!',
-                        nextChoices: [
-                            { text: 'Boyner nerede?', nextText: 'Tam solunuzdaki büyük bina! İçeride harika kıyafetler bulabilirsiniz (yakında!).' },
-                            { text: 'Inveon ne yapar?', nextText: 'Onlar harika yazılımlar geliştiriyor! Ofisleri yolun hemen karşısında.' },
-                            { text: 'Teşekkürler!', nextText: 'Rica ederim, iyi gezmeler!' }
-                        ]
-                    },
-                    {
-                        text: 'Sen kimsin?',
-                        nextText: 'Ben bu motorun mimarıyım! Her türlü teknik sorunuzu bana sorabilirsiniz.',
-                        nextChoices: [
-                            { text: 'ZortEngine nedir?', nextText: 'Minimal, modüler ve yüksek performanslı bir 3D oyun motoru!' },
-                            { text: 'Anladım.', nextText: 'Harika! Başka bir sorun var mı?' }
-                        ]
-                    },
-                    { text: 'Sadece bakınıyorum.', nextText: 'Tabii ki! Keyifli keşifler dilerim.' }
-                ]
-            }
-        ];
-        this._activeInteraction = null;
-    }
-
-    _updateInteractions(delta, time) {
-        if (!this.player || !this._dialogueUI) return;
-
-        const pPos = this.player.group.position;
-        let bestInteraction = null;
-        let minDist = Infinity;
-
-        for (const inter of this._interactions) {
-            if (inter.id === 'info_booth') continue; // Handled via button and startup
-            const dist = pPos.distanceTo(inter.pos);
-            if (dist < inter.radius) {
-                if (dist < minDist) {
-                    minDist = dist;
-                    bestInteraction = inter;
-                }
-            }
-        }
-
-        if (bestInteraction && !this._activeInteraction) {
-            // Check if looking at the NPC or just automatic? 
-            // Let's do automatic for now but with a "Press E" if possible.
-            // But since the user wants a dialogue right away, let's show it.
-            // Actually, showing it once when entering radius is better.
-            this._activeInteraction = bestInteraction;
-            this._dialogueUI.show({
-                ...bestInteraction,
-                onComplete: () => {
-                    // Interaction finished, but we don't want to re-trigger immediately
-                    // Maybe add a cooldown or wait until player leaves and re-enters
-                }
-            });
-        } else if (!bestInteraction && this._activeInteraction) {
-            this._activeInteraction = null;
-            this._dialogueUI.hide();
-        }
-    }
-
-    _createDialogueTrigger() {
-        const btn = document.createElement('div');
-        btn.id = 'faruk-trigger-btn';
-        btn.textContent = 'F'; // Representing Faruk
-        btn.style.position = 'fixed';
-        btn.style.right = '24px';
-        btn.style.bottom = '120px';
-        btn.style.width = '60px';
-        btn.style.height = '60px';
-        btn.style.background = '#d35400';
-        btn.style.color = '#fff';
-        btn.style.border = '4px solid #1a1a2e';
-        btn.style.borderRadius = '12px';
-        btn.style.display = 'flex';
-        btn.style.alignItems = 'center';
-        btn.style.justifyContent = 'center';
-        btn.style.fontFamily = '"Press Start 2P", cursive';
-        btn.style.fontSize = '24px';
-        btn.style.cursor = 'pointer';
-        btn.style.zIndex = '1000'; // High enough but below dialogue modal (9500)
-        btn.style.boxShadow = '6px 6px 0 rgba(0,0,0,0.4)';
-        btn.style.pointerEvents = 'auto';
-        btn.style.transition = 'transform 0.1s, background 0.1s';
-        
-        btn.onmouseover = () => { 
-            btn.style.background = '#e67e22';
-            btn.style.transform = 'scale(1.1)';
-        };
-        btn.onmouseout = () => { 
-            btn.style.background = '#d35400';
-            btn.style.transform = 'scale(1.0)';
-        };
-        
-        btn.onclick = () => {
-            if (this._interactions[0]) {
-                const triggerBtn = document.getElementById('faruk-trigger-btn');
-                if (triggerBtn) triggerBtn.style.display = 'none';
-                
-                this._isDialogueActive = true;
-                this._dialogueUI.show({
-                    ...this._interactions[0],
-                    onComplete: () => {
-                        this._isDialogueActive = false;
-                        if (triggerBtn) triggerBtn.style.display = 'flex';
-                    }
-                });
-            }
-        };
-
-        const parent = this.engine?.container || document.body;
-        parent.appendChild(btn);
-    }
 }
 

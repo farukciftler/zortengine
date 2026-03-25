@@ -36,7 +36,8 @@ export class DialogueUI {
                     left: 50%;
                     transform: translateX(-50%);
                     width: min(800px, 92vw);
-                    height: 180px;
+                    height: auto;
+                    min-height: 180px;
                     z-index: 9500;
                     display: none;
                     font-family: 'Press Start 2P', cursive;
@@ -109,11 +110,11 @@ export class DialogueUI {
                 }
 
                 .dialogue-content {
-                    flex: 1;
                     font-size: 16px;
                     line-height: 1.6;
                     color: #1a1a2e;
                     overflow: hidden;
+                    margin-bottom: 10px;
                 }
 
                 .dialogue-choices {
@@ -263,9 +264,30 @@ export class DialogueUI {
 
         this._choiceContainer.innerHTML = '';
         this._arrowEl.style.display = 'none';
+        this._onComplete = config.onComplete;
+        this._updateFontSize(config.text || '', !!config.choices);
         this._isTyping = true;
         this._typeText(config.text || '');
-        this._onComplete = config.onComplete;
+    }
+
+    _updateFontSize(text, hasChoices) {
+        const len = text.length;
+        let size = 14; // Default starting a bit smaller to be safe
+        
+        if (len > 250) size = 9;
+        else if (len > 180) size = 10;
+        else if (len > 120) size = 12;
+        else size = 14;
+
+        // Even smaller if we have choices taking up space
+        if (hasChoices) {
+            if (len > 150) size -= 1;
+            if (len > 100) size -= 1;
+        }
+
+        // Apply to element
+        this._textEl.style.fontSize = `${size}px`;
+        this._textEl.style.lineHeight = '1.4';
     }
 
     hide() {

@@ -157,6 +157,39 @@ function createStonePavementTexture() {
     return tex;
 }
 
+/** 
+ * Create a simple license plate texture.
+ */
+function createLicensePlateTexture() {
+    const canvas = document.createElement('canvas');
+    canvas.width = 128;
+    canvas.height = 32;
+    const ctx = canvas.getContext('2d');
+    
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, 128, 32);
+    
+    ctx.fillStyle = '#003399';
+    ctx.fillRect(0, 0, 16, 32);
+    
+    ctx.strokeStyle = '#333333';
+    ctx.lineWidth = 2;
+    ctx.strokeRect(1, 1, 126, 30);
+    
+    const city = Math.floor(Math.random() * 81 + 1).toString().padStart(2, '0');
+    const letters = String.fromCharCode(65 + Math.floor(Math.random() * 26)) + (Math.random() > 0.5 ? String.fromCharCode(65 + Math.floor(Math.random() * 26)) : '');
+    const numbers = Math.floor(Math.random() * 9000 + 100).toString().slice(0, 4);
+    
+    ctx.fillStyle = '#000000';
+    ctx.font = 'bold 20px monospace';
+    ctx.textAlign = 'center';
+    ctx.fillText(`${city} ${letters} ${numbers}`, 72, 24);
+    
+    const tex = new THREE.CanvasTexture(canvas);
+    tex.colorSpace = THREE.SRGBColorSpace;
+    return tex;
+}
+
 /**
  * Düşük poli ama okunaklı otomobil (şasi, kabin, cam, jant, far).
  * @param {number} bodyColor
@@ -265,6 +298,20 @@ export function createDetailedCarGroup(bodyColor) {
     const mirrorR = mirrorL.clone();
     mirrorR.position.x = 1.02;
     group.add(mirrorR);
+    
+    // License Plates
+    const plateTex = createLicensePlateTexture();
+    const plateMat = new THREE.MeshStandardMaterial({ map: plateTex, roughness: 0.5 });
+    const plateGeo = new THREE.PlaneGeometry(0.5, 0.12);
+    
+    const plateF = new THREE.Mesh(plateGeo, plateMat);
+    plateF.position.set(0, wr + 0.2, 2.4);
+    group.add(plateF);
+    
+    const plateR = new THREE.Mesh(plateGeo, plateMat);
+    plateR.position.set(0, wr + 0.2, -2.4);
+    plateR.rotation.y = Math.PI;
+    group.add(plateR);
 
     group.traverse(o => {
         if (o.isMesh) {
