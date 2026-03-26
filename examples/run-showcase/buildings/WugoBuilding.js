@@ -5,6 +5,7 @@ import {
     createBuildingInteractionHandle
 } from './buildingPhysics.js';
 import { resources } from 'zortengine';
+import { RenderSettings } from '../data/RenderSettings.js';
 
 /**
  * WugoBuilding — Modern Event Discovery Hub.
@@ -41,7 +42,10 @@ export function buildWugoBuilding(scene, physics, groundMaterial, position = [0,
 
     // ── Helpers ───────────────────────────────────────────────────────────────
     const add = (mesh, shadow = true) => {
-        if (shadow) { mesh.castShadow = true; mesh.receiveShadow = true; }
+        if (shadow) { 
+            mesh.castShadow = RenderSettings.policy.cast.buildings; 
+            mesh.receiveShadow = RenderSettings.policy.receive.buildings; 
+        }
         group.add(mesh);
         return mesh;
     };

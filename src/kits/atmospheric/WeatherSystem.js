@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { RenderSettings } from '../../../examples/run-showcase/data/RenderSettings.js';
 
 /**
  * WeatherSystem — Core kit for managing environment effects like rain and day/night cycles.
@@ -95,52 +96,100 @@ export class WeatherSystem {
 
     _updateTimeCycle(delta) {
         this.timeCycle = (this.timeCycle + delta * this.cycleSpeed) % 1.0;
-        
         const scene = this.context.scene.getRenderScene();
-        const angle = (this.timeCycle * Math.PI * 2) - (Math.PI / 2);
-        const radius = 120;
+        
+        // Define key timeframes for interpolation
+        // 0.0: Midnight, 0.25: Sunrise, 0.5: Noon, 0.75: Sunset
+        const states = [
+            { time: 0.0,  amb: 0x101a30, ambInt: 0.65, sky: 0x02050c, sunInt: 0.0, moonInt: 0.6,  fog: 0x02050c },
+            { time: 0.22, amb: 0x101a30, ambInt: 0.65, sky: 0x02050c, sunInt: 0.0, moonInt: 0.6,  fog: 0x02050c },
+            { time: 0.30, amb: 0xff7e4d, ambInt: 0.85, sky: 0x6e3a2a, sunInt: 0.6, moonInt: 0.0,  fog: 0x4a2518 },
+            { time: 0.50, amb: 0xffffff, ambInt: 1.00, sky: 0x7fb5e5, sunInt: 1.6, moonInt: 0.0,  fog: 0xc9e2ff },
+            { time: 0.70, amb: 0xffffff, ambInt: 1.00, sky: 0x7fb5e5, sunInt: 1.6, moonInt: 0.0,  fog: 0xc9e2ff },
+            { time: 0.78, amb: 0xff6b35, ambInt: 0.88, sky: 0x8a3a2a, sunInt: 0.7, moonInt: 0.0,  fog: 0x4a1a0a },
+            { time: 0.85, amb: 0x101a30, ambInt: 0.65, sky: 0x02050c, sunInt: 0.0, moonInt: 0.6,  fog: 0x02050c },
+            { time: 1.00, amb: 0x101a30, ambInt: 0.65, sky: 0x02050c, sunInt: 0.0, moonInt: 0.6,  fog: 0x02050c }
+        ];
 
-        const sunX = Math.cos(angle) * radius * 0.5;
-        const sunY = Math.sin(angle) * radius;
-        const sunZ = Math.cos(angle) * radius;
-
-        const moonX = -sunX;
-        const moonY = -sunY;
-        const moonZ = -sunZ;
-
-        const isNight = sunY < 0;
-        const sunsetThreshold = 0.28;
-
-        if (isNight !== this._nightActive) {
-            this._nightActive = isNight;
-            this._toggleNightObjects(scene, isNight);
+        // Find current pair for LERP
+        let s0 = states[0], s1 = states[states.length - 1];
+        for (let i = 0; i < states.length - 1; i++) {
+            if (this.timeCycle >= states[i].time && this.timeCycle <= states[i + 1].time) {
+                s0 = states[i];
+                s1 = states[i + 1];
+                break;
+            }
         }
 
+        const t = (this.timeCycle - s0.time) / (s1.time - s0.time || 0.001);
+        
+        // Colors
+        const cAmb = new THREE.Color(s0.amb).lerp(new THREE.Color(s1.amb), t);
+        const cSky = new THREE.Color(s0.sky).lerp(new THREE.Color(s1.sky), t);
+        
+        // Intensities
+        const iAmb = s0.ambInt + (s1.ambInt - s0.ambInt) * t;
+        const iSun = s0.sunInt + (s1.sunInt - s0.sunInt) * t;
+        const iMoon = s0.moonInt + (s1.moonInt - s0.moonInt) * t;
+
+        // Position Sun & Moon
+        const angle = (this.timeCycle * Math.PI * 2) - (Math.PI / 2);
+        const radius = 120;
+        const sunPos = new THREE.Vector3(Math.cos(angle) * radius * 0.5, Math.sin(angle) * radius, Math.cos(angle) * radius);
+        const moonPos = new THREE.Vector3(-sunPos.x, -sunPos.y, -sunPos.z);
+        
+        // Get player position for shadow tracking
+        const player = this.context.scene.player?.position || this.context.scene.player?.group?.position || new THREE.Vector3();
+
         if (this.sun) {
-            this.sun.position.set(sunX, Math.max(0.1, sunY), sunZ);
-            if (isNight || this.isRaining) {
-                this.sun.intensity = 0;
+            // Shadow Throttling: Update shadow camera and trigger shadow map render only at 15-20 fps
+            const lastPos = this._lastSunPos || new THREE.Vector3();
+            const shouldUpdateShadow = sunPos.distanceTo(lastPos) > 0.05 || (this._shadowTick || 0) > 4;
+
+            if (shouldUpdateShadow) {
+                this.sun.position.copy(sunPos).add(player);
+                this.sun.target.position.copy(player);
+                this.sun.target.updateMatrixWorld();
+                this._lastSunPos = sunPos.clone();
+                this._shadowTick = 0;
+                
+                // Manual Shadow Update Trigger
+                const renderer = this.context.getRenderer?.();
+                if (renderer && !RenderSettings.shadows.autoUpdate) {
+                    renderer.shadowMap.needsUpdate = true;
+                }
             } else {
-                let intensity = Math.min(1.0, sunY / (radius * 0.3)) * 1.5;
-                this.sun.intensity = intensity;
-                const sunsetFactor = Math.abs(sunY / radius);
-                if (sunsetFactor < sunsetThreshold) {
-                    const t = 1.0 - (sunsetFactor / sunsetThreshold);
-                    this.sun.color.setHSL(0.08, 0.9, 0.5 + 0.2 * (1 - t));
-                } else {
-                    this.sun.color.setHex(0xffffff);
+                this._shadowTick = (this._shadowTick || 0) + 1;
+            }
+
+            this.sun.intensity = this.isRaining ? 0 : iSun;
+            this.sun.color.copy(cAmb).lerp(new THREE.Color(0xffffff), 0.5);
+            this.sun.position.y = Math.max(0.1, this.sun.position.y);
+            
+            // Apply RenderSettings and Layer constraints
+            if (this.sun.shadow) {
+                const s = RenderSettings.shadows.camera.size;
+                this.sun.shadow.camera.left = -s;
+                this.sun.shadow.camera.right = s;
+                this.sun.shadow.camera.top = s;
+                this.sun.shadow.camera.bottom = -s;
+                
+                // PERFORMANCE: Shadow camera ONLY sees Layer 1
+                // This will skip intersection tests for ALL objects NOT on Layer 1
+                this.sun.shadow.camera.layers.set(1);
+                
+                this.sun.shadow.camera.updateProjectionMatrix();
+                
+                if (this.sun.shadow.mapSize.x !== RenderSettings.shadows.resolution) {
+                    this.sun.shadow.mapSize.set(RenderSettings.shadows.resolution, RenderSettings.shadows.resolution);
                 }
             }
         }
 
         if (this.moon) {
-            this.moon.position.set(moonX, Math.max(0.1, moonY), moonZ);
-            if (!isNight || this.isRaining) {
-                this.moon.intensity = 0;
-            } else {
-                const moonHeightFactor = Math.abs(moonY / radius);
-                this.moon.intensity = 0.45 * moonHeightFactor;
-            }
+            this.moon.position.copy(moonPos);
+            this.moon.intensity = this.isRaining ? 0 : iMoon;
+            this.moon.position.y = Math.max(0.1, this.moon.position.y);
         }
 
         if (this.ambient) {
@@ -148,23 +197,31 @@ export class WeatherSystem {
                 this.ambient.intensity = 0.85;
                 this.ambient.color.setHex(0xa6c4ff);
                 if (scene.background?.isColor) scene.background.setHex(0x334455);
-            } else if (isNight) {
-                const moonFactor = Math.abs(moonY / radius);
-                this.ambient.intensity = 0.65 + (moonFactor * 0.15);
-                this.ambient.color.setHex(0x1a2a4a);
-                if (scene.background?.isColor) scene.background.setHex(0x050a18);
             } else {
-                const sunsetFactor = Math.abs(sunY / radius);
-                if (sunsetFactor < sunsetThreshold) {
-                    this.ambient.intensity = 0.65;
-                    this.ambient.color.setHex(0xffaa77);
-                    if (scene.background?.isColor) scene.background.setHex(0x884422);
-                } else {
-                    this.ambient.intensity = 1.0;
-                    this.ambient.color.setHex(0xffffff);
-                    if (scene.background?.isColor) scene.background.setHex(0x7fb5e5);
-                }
+                this.ambient.intensity = iAmb;
+                this.ambient.color.copy(cAmb);
+                if (scene.background?.isColor) scene.background.copy(cSky);
             }
+        }
+
+        // Interpolate Fog if present
+        const cFog = new THREE.Color(s0.fog).lerp(new THREE.Color(s1.fog), t);
+        if (scene.fog) {
+            scene.fog.color.copy(cFog);
+            if (this.isRaining) {
+                scene.fog.density = 0.015;
+            } else {
+                // Thicker fog at night/dawn
+                const density = 0.005 + (1 - iAmb) * 0.01;
+                scene.fog.density = density;
+            }
+        }
+
+        // Handle night-time objects toggle
+        const isNight = this.timeCycle < 0.26 || this.timeCycle > 0.78;
+        if (isNight !== this._nightActive) {
+            this._nightActive = isNight;
+            this._toggleNightObjects(scene, isNight);
         }
     }
 

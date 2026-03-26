@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { RenderSettings } from '../data/RenderSettings.js';
 import {
     addBuildingShellPhysics,
     buildRectDoorShellBoxes,
@@ -55,7 +56,10 @@ export function buildInveonBuilding(scene, physics, groundMaterial, position = [
 
     // ── Helpers ───────────────────────────────────────────────────────────────
     const add = (mesh, shadow = true) => {
-        if (shadow) { mesh.castShadow = true; mesh.receiveShadow = true; }
+        if (shadow) { 
+            mesh.castShadow = RenderSettings.policy.cast.buildings; 
+            mesh.receiveShadow = RenderSettings.policy.receive.buildings; 
+        }
         group.add(mesh);
         return mesh;
     };

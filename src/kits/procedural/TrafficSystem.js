@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { ObjectPool } from '../../engine/object/ObjectPool.js';
 import { CityKit } from './CityKit.js';
 
 /**
@@ -23,6 +24,11 @@ export class TrafficSystem {
             0xc0392b, 0x2980b9, 0x7f8c8d, 0xd35400, 0x8e44ad, 
             0x16a085, 0x2c3e50, 0xf39c12, 0x1abc9c, 0x95a5a6
         ];
+
+        this.pool = new ObjectPool(() => {
+            // Simple logic for pool - we pass color later
+            return CityKit.createVehicleMesh(0xffffff);
+        }, { initialSize: 0, maxSize: 50 });
     }
 
     onAttach(context) {
@@ -36,6 +42,9 @@ export class TrafficSystem {
             const laneIndex = i % this.laneDefs.length;
             const def = this.laneDefs[laneIndex];
             const color = this.carColors[i % this.carColors.length];
+            
+            // To properly reuse color, we might need a more complex pool
+            // but for now we create or modify mesh color
             const mesh = CityKit.createVehicleMesh(color);
             
             // Random distribution
@@ -57,7 +66,9 @@ export class TrafficSystem {
     }
 
     update(delta) {
-        const playerPos = this.context.scene.player?.position || this.context.scene.player?.group?.position;
+        const pPos = this.context.scene.player?.position || 
+                      this.context.scene.player?.group?.position || 
+                      new THREE.Vector3(0, -999, 0); 
         
         for (const car of this.cars) {
             const m = car.mesh;
@@ -85,9 +96,9 @@ export class TrafficSystem {
             }
 
             // Simple obstacle avoidance for player
-            if (playerPos) {
-                const dz = (playerPos.z - myZ) * car.dir;
-                if (Math.abs(playerPos.x - myX) < 2.5 && dz > 0 && dz < 15) {
+            if (pPos) {
+                const dz = (pPos.z - myZ) * car.dir;
+                if (Math.abs(pPos.x - myX) < 2.5 && dz > 0 && dz < 15) {
                     const gap = dz - 1.5;
                     if (gap < minGap) {
                         minGap = gap;
@@ -103,6 +114,25 @@ export class TrafficSystem {
             } else {
                 car.speed = Math.min(car.maxSpeed, car.speed + 3 * delta);
             }
+
+            // --- Performance: Dynamic Shadow & Layer Culling ---
+            // Only cars within shadow frustum range should cast shadows AND be on Layer 1
+            const distSq = m.position.distanceToSquared(pPos);
+            // 30m range = 900 distSq. 
+            const shouldBeInShadow = distSq < 900; 
+            
+            if (m.castShadow !== shouldBeInShadow) {
+                m.traverse(o => {
+                    if (o.isMesh && !o.name.includes('light')) {
+                        o.castShadow = shouldBeInShadow;
+                        // PERFORMANCE: Only nearby meshes exist on Layer 1
+                        if (shouldBeInShadow) o.layers.enable(1);
+                        else o.layers.disable(1);
+                    }
+                });
+                m.castShadow = shouldBeInShadow;
+            }
+            // ------------------------------------------
 
             // Move the car
             m.position.z += car.dir * car.speed * delta;

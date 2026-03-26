@@ -28,7 +28,7 @@ import {
     CollectibleActor,
     ObjectiveZoneActor
 } from 'zortengine/gameplay';
-import { resources } from 'zortengine';
+import { resources as Res } from 'zortengine';
 import { SaveManager } from 'zortengine/persistence';
 import { createDashAbility } from '../abilities/DashAbility.js';
 import { createPrimaryFireAbility } from '../abilities/PrimaryFireAbility.js';
@@ -149,6 +149,9 @@ export class RunScene extends GameScene {
         this.cameraMode = 'isometric';
         this.checkpointController = new RunCheckpointController(this, this.saveManager);
         this.combatCoordinator = new RunCombatCoordinator(this);
+        
+        const rs = this.getRenderScene();
+        if (rs) rs.fog = new THREE.FogExp2(0x02050c, 0.005);
         this.flowController = new RunFlowController(this);
         this.replicationController = new RunReplicationController(this, this.options.network || null);
         this._registerSnapshotFactories();
@@ -1132,6 +1135,56 @@ export class RunScene extends GameScene {
         }
 
         this.runState.update(delta);
+
+        // Periodic Memory Cleanup (GC)
+        this._gcTimer = (this._gcTimer || 0) + delta;
+        if (this._gcTimer > 10.0) { // Every 10 seconds
+            Res.disposeUnused();
+            this._gcTimer = 0;
+        }
+
+        // --- PERFORMANCE: Aggressive Shadow & Layer Culling for Static objects ---
+        this._shadowCullTimer = (this._shadowCullTimer || 0) + delta;
+        if (this._shadowCullTimer > 0.1) { // Every 100ms
+            const pPos = this.player?.position || new THREE.Vector3();
+            // Shadow camera size is 30m, we cull at 35m to avoid popping at edges
+            const cullDistSq = 35 * 35; 
+
+            // 1. Interactive Buildings
+            this._interactiveBuildings?.forEach(b => {
+                const distSq = b.group.position.distanceToSquared(pPos);
+                const shouldShadow = distSq < cullDistSq;
+                if (b.group.castShadow !== shouldShadow) {
+                    b.group.traverse(o => {
+                        if (o.isMesh) {
+                            o.castShadow = shouldShadow;
+                            if (shouldShadow) o.layers.enable(1);
+                            else o.layers.disable(1);
+                        }
+                    });
+                    b.group.castShadow = shouldShadow;
+                }
+            });
+
+            // 2. Static Environment Props (lights, benches, etc.)
+            this.environmentMeshes?.forEach(m => {
+                if (!m.userData.isStaticProp) return;
+                const distSq = m.position.distanceToSquared(pPos);
+                const shouldShadow = distSq < cullDistSq;
+                if (m.castShadow !== shouldShadow) {
+                    m.traverse(o => {
+                        if (o.isMesh) {
+                            o.castShadow = shouldShadow;
+                            if (shouldShadow) o.layers.enable(1);
+                            else o.layers.disable(1);
+                        }
+                    });
+                    m.castShadow = shouldShadow;
+                }
+            });
+            this._shadowCullTimer = 0;
+        }
+        // -----------------------------------------------------------------------
 
         if (this.cameraMode === 'tps' && !this._isDialogueActive) {
             // Hide native cursor in TPS mode

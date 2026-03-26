@@ -90,6 +90,52 @@ export class GameScene {
         this.events.emit('scene:exited', { name: this.name });
         this.systems.clearContext();
         this.engine = null;
+        
+        // Final cleanup
+        this.dispose();
+    }
+
+    /**
+     * Dispose of all resources in the scene, including systems and Three.js objects.
+     */
+    dispose() {
+        this.systems.dispose?.();
+        
+        if (this.threeScene) {
+            this.threeScene.traverse(object => {
+                // If the object has a custom dispose method, call it
+                if (typeof object.dispose === 'function') {
+                    object.dispose();
+                }
+
+                if (object.geometry && !object.geometry._isShared) {
+                    object.geometry.dispose();
+                }
+
+                if (object.material) {
+                    const materials = Array.isArray(object.material) ? object.material : [object.material];
+                    materials.forEach(mat => {
+                        if (mat._isShared) return; // Skip shared materials
+                        if (mat.map) mat.map.dispose();
+                        if (mat.lightMap) mat.lightMap.dispose();
+                        if (mat.bumpMap) mat.bumpMap.dispose();
+                        if (mat.normalMap) mat.normalMap.dispose();
+                        if (mat.specularMap) mat.specularMap.dispose();
+                        if (mat.envMap) mat.envMap.dispose();
+                        mat.dispose();
+                    });
+                }
+            });
+
+            // Clear the scene graph
+            while (this.threeScene.children.length > 0) {
+                const child = this.threeScene.children[0];
+                this.threeScene.remove(child);
+            }
+        }
+
+        this.objects = [];
+        this.events.emit('scene:disposed', { name: this.name });
     }
 
     on(eventName, listener) {

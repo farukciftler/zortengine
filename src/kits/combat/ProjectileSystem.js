@@ -1,5 +1,7 @@
 import * as THREE from 'three';
+import { resources as Res } from '../../engine/resources/ResourceLibrary.js';
 import { ObjectPool } from '../../engine/object/ObjectPool.js';
+import { RenderSettings } from '../../../examples/run-showcase/data/RenderSettings.js';
 
 export class ProjectileSystem {
     constructor(options = {}) {
@@ -15,9 +17,13 @@ export class ProjectileSystem {
         this.totalCount = options.poolSize || 20;
 
         this.pool = new ObjectPool(() => {
-            const material = new THREE.MeshBasicMaterial({ color: 0xf1c40f });
-            return new THREE.Mesh(new THREE.SphereGeometry(0.2), material);
-        }, this.totalCount);
+            const mat = Res.getMaterial('projectile_yellow', () => new THREE.MeshBasicMaterial({ color: 0xf1c40f }));
+            const geo = Res.getBox(0.3, 0.3, 0.3); // Using box for better perf/shared
+            const mesh = new THREE.Mesh(geo, mat);
+            mesh.castShadow = RenderSettings.policy.cast.props;
+            mesh.receiveShadow = RenderSettings.policy.receive.props;
+            return mesh;
+        }, { initialSize: this.totalCount, maxSize: 100 });
 
         this._notifyCount();
     }

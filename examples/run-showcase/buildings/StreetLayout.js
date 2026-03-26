@@ -107,6 +107,7 @@ function pushEnv(list, obj) {
         obj.receiveShadow = true;
     }
     list.push(obj);
+    obj.userData.isStaticProp = true;
     return obj;
 }
 

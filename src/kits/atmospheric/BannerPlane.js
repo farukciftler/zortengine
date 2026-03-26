@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { RenderSettings } from '../../../examples/run-showcase/data/RenderSettings.js';
 
 /**
  * BannerPlane — An atmospheric element that flies in a circular path trailing a text banner.
@@ -94,6 +95,14 @@ export class BannerPlane {
         plane.add(bannerMesh);
 
         plane.scale.set(1.2, 1.2, 1.2);
+        
+        plane.traverse(o => {
+            if (o.isMesh) {
+                o.castShadow = RenderSettings.policy.cast.atmospheric;
+                o.receiveShadow = RenderSettings.policy.receive.props;
+            }
+        });
+
         this.group.add(plane);
     }
 

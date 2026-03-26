@@ -1,13 +1,33 @@
 import * as THREE from 'three';
+import { resources as Res } from '../../engine/resources/ResourceLibrary.js';
+import { ObjectPool } from '../../engine/object/ObjectPool.js';
+import { RenderSettings } from '../../../examples/run-showcase/data/RenderSettings.js';
 
 /**
  * CityKit — Utilities for procedural city generation, road building, and vehicle meshes.
  */
 export const CityKit = {
+    _textureCache: new Map(),
+    _vehiclePool: null,
+
+    /**
+     * Initializes the vehicle pool if not already present.
+     */
+    _initPool() {
+        if (this._vehiclePool) return;
+        this._vehiclePool = new ObjectPool(() => this._buildVehicleMesh(), {
+            initialSize: 5,
+            maxSize: 100
+        });
+    },
+
     /**
      * Creates a stone pavement texture using a canvas.
      */
     createPavementTexture(options = {}) {
+        const key = `pavement_${options.color || 'default'}_${options.repeatX || 6}`;
+        if (this._textureCache.has(key)) return this._textureCache.get(key);
+
         const {
             width = 512,
             height = 512,
@@ -53,6 +73,8 @@ export const CityKit = {
         tex.wrapT = THREE.RepeatWrapping;
         tex.repeat.set(repeatX, repeatY);
         tex.colorSpace = THREE.SRGBColorSpace;
+        
+        this._textureCache.set(key, tex);
         return tex;
     },
 
@@ -89,88 +111,119 @@ export const CityKit = {
     },
 
     /**
-     * Builds a low-poly vehicle mesh.
+     * Acquires a pooled vehicle mesh and sets its paint color.
      */
     createVehicleMesh(color = 0xc0392b) {
-        const group = new THREE.Group();
-        const paint = new THREE.MeshStandardMaterial({
-            color: color,
-            roughness: 0.38,
-            metalness: 0.55
-        });
-        const plastic = new THREE.MeshStandardMaterial({ color: 0x1a1a1e, roughness: 0.65 });
-        const glassMat = new THREE.MeshStandardMaterial({
-            color: 0x0d1520,
-            roughness: 0.08,
-            metalness: 0.65,
-            transparent: true,
-            opacity: 0.82
-        });
-        const rubber = new THREE.MeshStandardMaterial({ color: 0x0a0a0a, roughness: 0.98 });
-        const chrome = new THREE.MeshStandardMaterial({ color: 0xd5dbe0, roughness: 0.18, metalness: 0.88 });
+        this._initPool();
+        const mesh = this._vehiclePool.acquire();
         
-        const emissiveHead = new THREE.MeshStandardMaterial({
-            color: 0xfff8e8,
-            emissive: 0xffe8b8,
-            emissiveIntensity: 0.45,
-            roughness: 0.35
+        // Update vehicle primary paint color
+        const paintMat = Res.getMaterial(`car_paint_${color}`, () => new THREE.MeshStandardMaterial({
+            color: color, roughness: 0.38, metalness: 0.55
+        }));
+        
+        mesh.traverse(o => {
+            if (o.userData.isPaintable) o.material = paintMat;
         });
-        const emissiveTail = new THREE.MeshStandardMaterial({
-            color: 0x8b0000,
-            emissive: 0xff2200,
-            emissiveIntensity: 0.35,
-            roughness: 0.4
-        });
+        
+        return mesh;
+    },
+
+    /**
+     * Releases a vehicle mesh back into the pool.
+     */
+    releaseVehicleMesh(mesh) {
+        if (this._vehiclePool && mesh) {
+            this._vehiclePool.release(mesh);
+        }
+    },
+
+    /**
+     * Internal: Builds a new vehicle mesh structure.
+     */
+    _buildVehicleMesh() {
+        const group = new THREE.Group();
+        
+        // Default paint (will be overridden on acquire)
+        const paint = Res.getMaterial('car_paint_default', () => new THREE.MeshStandardMaterial({
+            color: 0xffffff, roughness: 0.38, metalness: 0.55
+        }));
+        
+        const plastic = Res.getMaterial('car_plastic', () => new THREE.MeshStandardMaterial({ 
+            color: 0x1a1a1e, roughness: 0.65 
+        }));
+        
+        const glassMat = Res.getMaterial('car_glass', () => new THREE.MeshStandardMaterial({
+            color: 0x0d1520, roughness: 0.08, metalness: 0.65, transparent: true, opacity: 0.82
+        }));
+        
+        const rubber = Res.getMaterial('car_rubber', () => new THREE.MeshStandardMaterial({ 
+            color: 0x0a0a0a, roughness: 0.98 
+        }));
+        
+        const emissiveHead = Res.getMaterial('car_light_front', () => new THREE.MeshStandardMaterial({
+            color: 0xfff8e8, emissive: 0xffe8b8, emissiveIntensity: 0.45, roughness: 0.35
+        }));
+        
+        const emissiveTail = Res.getMaterial('car_light_back', () => new THREE.MeshStandardMaterial({
+            color: 0x8b0000, emissive: 0xff2200, emissiveIntensity: 0.35, roughness: 0.4
+        }));
 
         const wr = 0.34;
-        const chassis = new THREE.Mesh(new THREE.BoxGeometry(1.92, 0.52, 4.35), paint);
+        const chassis = new THREE.Mesh(Res.getBox(1.92, 0.52, 4.35), paint);
         chassis.position.set(0, wr + 0.26, 0);
+        chassis.userData.isPaintable = true;
         group.add(chassis);
 
-        const cabin = new THREE.Mesh(new THREE.BoxGeometry(1.78, 0.68, 2.15), paint);
+        const cabin = new THREE.Mesh(Res.getBox(1.78, 0.68, 2.15), paint);
         cabin.position.set(0, wr + 0.86, -0.2);
+        cabin.userData.isPaintable = true;
         group.add(cabin);
 
         // Windows
-        const wind = new THREE.Mesh(new THREE.PlaneGeometry(1.55, 0.62), glassMat);
+        const wind = new THREE.Mesh(Res.getPlane(1.55, 0.62), glassMat);
         wind.position.set(0, wr + 0.95, 0.72);
         wind.rotation.x = -0.32;
         group.add(wind);
 
         // Wheels
+        const wheelGeo = Res.getCylinder(wr, wr, 0.22, 20);
         [[-0.86, 1.32], [0.86, 1.32], [-0.86, -1.32], [0.86, -1.32]].forEach(([wx, wz]) => {
-            const w = new THREE.Mesh(new THREE.CylinderGeometry(wr, wr, 0.22, 20), rubber);
+            const w = new THREE.Mesh(wheelGeo, rubber);
             w.rotation.z = Math.PI / 2;
             w.position.set(wx, wr, wz);
             group.add(w);
         });
 
         // Lights
+        const lightGeo = Res.getBox(0.38, 0.14, 0.08);
         [[-0.55, 2.18], [0.55, 2.18]].forEach(([hx, hz]) => {
-            const h = new THREE.Mesh(new THREE.BoxGeometry(0.38, 0.14, 0.08), emissiveHead.clone());
+            const h = new THREE.Mesh(lightGeo, emissiveHead);
             h.position.set(hx, wr + 0.35, hz);
             h.name = 'car_front_light';
             group.add(h);
         });
+        
+        const tailGeo = Res.getBox(0.32, 0.12, 0.06);
         [[-0.5, -2.2], [0.5, -2.2]].forEach(([tx, tz]) => {
-            const t = new THREE.Mesh(new THREE.BoxGeometry(0.32, 0.12, 0.06), emissiveTail.clone());
+            const t = new THREE.Mesh(tailGeo, emissiveTail);
             t.position.set(tx, wr + 0.32, tz);
             t.name = 'car_back_light';
             group.add(t);
         });
 
-        // Plates
+        // Plates - Shared geometry, but unique texture per physical car instance (pooled)
         const plateTex = this.createLicensePlateTexture();
-        const plateMat = new THREE.MeshStandardMaterial({ map: plateTex });
-        const plateGeo = new THREE.PlaneGeometry(0.5, 0.12);
-        const plateF = new THREE.Mesh(plateGeo, plateMat);
+        const plateMat = new THREE.MeshStandardMaterial({ map: plateTex }); 
+        const plateF = new THREE.Mesh(Res.getPlane(0.5, 0.12), plateMat);
         plateF.position.set(0, wr + 0.2, 2.4);
         group.add(plateF);
 
         group.traverse(o => {
             if (o.isMesh) {
-                o.castShadow = true;
-                o.receiveShadow = true;
+                const isProp = o.name.includes('light') || o.name.includes('plate');
+                o.castShadow = isProp ? RenderSettings.policy.cast.props : RenderSettings.policy.cast.vehicles;
+                o.receiveShadow = RenderSettings.policy.receive.vehicles;
             }
         });
 
