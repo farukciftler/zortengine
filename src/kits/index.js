@@ -1,4 +1,10 @@
+export { InteractionSystem } from './interaction/InteractionSystem.js';
+export { DialogueSystem } from './interaction/DialogueSystem.js';
+export { DialogueUI } from './interaction/DialogueUI.js';
 export { AbilitySystem } from './abilities/AbilitySystem.js';
+export { createDashAbility } from './abilities/catalog/DashAbility.js';
+export { createProjectileAbility } from './abilities/catalog/ProjectileAbility.js';
+export { CursorManager } from './ui/CursorManager.js';
 export { CollectibleSystem } from './pickups/CollectibleSystem.js';
 export { DamageSystem } from './combat/DamageSystem.js';
 export { EncounterDirector } from './combat/EncounterDirector.js';
@@ -11,7 +17,5 @@ export { EffectRegistry } from './status/EffectRegistry.js';
 export { StateMachine } from './status/StateMachine.js';
 export { WeatherSystem } from './atmospheric/WeatherSystem.js';
 export { BannerPlane } from './atmospheric/BannerPlane.js';
-export { InteractionSystem } from './interaction/InteractionSystem.js';
-export { DialogueSystem } from './interaction/DialogueSystem.js';
 export { CityKit } from './procedural/CityKit.js';
 export { TrafficSystem } from './procedural/TrafficSystem.js';
