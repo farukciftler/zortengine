@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Balance Runner — ZortEngine</title>
+    <style>
+        :root { color-scheme: dark; }
+        html, body { width: 100%; height: 100%; margin: 0; padding: 0; overflow: hidden; }
+        body {
+            background: linear-gradient(180deg, #050505 0%, #1a0a2e 100%);
+            font-family: 'Inter', sans-serif;
+        }
+        canvas { display: block; width: 100vw; height: 100vh; }
+        #ui-overlay {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            color: #00f3ff;
+            text-shadow: 0 0 10px rgba(0, 243, 255, 0.5);
+            pointer-events: none;
+        }
+        .stat { margin-bottom: 10px; font-size: 24px; font-weight: bold; }
+        #tilt-meter {
+            position: absolute;
+            bottom: 40px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 300px;
+            height: 10px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 5px;
+            overflow: hidden;
+        }
+        #tilt-fill {
+            height: 100%;
+            width: 50%;
+            background: #00f3ff;
+            transition: background 0.2s;
+        }
+    </style>
+    <script type="importmap">
+    {
+        "imports": {
+            "three": "https://cdn.jsdelivr.net/npm/three@0.166.0/build/three.module.js",
+            "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.166.0/examples/jsm/",
+            "cannon-es": "https://cdn.jsdelivr.net/npm/cannon-es@0.20.0/dist/cannon-es.js",
+            "zortengine": "../../../src/engine/index.js",
+            "zortengine/assets": "../../../src/engine/assets/index.js",
+            "zortengine/browser": "../../../src/adapters/browser/index.js",
+            "zortengine/gameplay": "../../../src/gameplay/index.js",
+            "zortengine/physics": "../../../src/adapters/physics/index.js",
+            "zortengine/kits": "../../../src/kits/index.js"
+        }
+    }
+    </script>
+</head>
+<body>
+    <div id="ui-overlay">
+        <div class="stat">DISTANCE: <span id="dist-val">0</span>m</div>
+        <div class="stat">BALANCE: <span id="balance-val">PERFECT</span></div>
+    </div>
+    <div id="tilt-meter">
+        <div id="tilt-fill"></div>
+    </div>
+    <script type="module" src="main.js"></script>
+</body>
+</html>

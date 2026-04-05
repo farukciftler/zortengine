@@ -24,3 +24,6 @@ export { ProgressionSystem } from './status/ProgressionSystem.js';
 export { createPortalMesh } from './atmospheric/PortalMesh.js';
 export { CityKit } from './procedural/CityKit.js';
 export { TrafficSystem } from './procedural/TrafficSystem.js';
+export { HumanoidActor } from './characters/HumanoidActor.js';
+export { ModularCharacter } from './characters/ModularCharacter.js';
+export { HealthComponent } from './characters/HealthComponent.js';

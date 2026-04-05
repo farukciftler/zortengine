@@ -311,7 +311,8 @@ export class PhysicsManager {
     }
 
     _toVec3(value) {
+        if (!value) return new CANNON.Vec3(0, 0, 0);
         if (value instanceof CANNON.Vec3) return value;
-        return new CANNON.Vec3(value.x, value.y, value.z);
+        return new CANNON.Vec3(value.x || 0, value.y || 0, value.z || 0);
     }
 }
